@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Logging Assessment Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; text-align: center; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .summary-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; }
+        .summary-card h3 { color: #667eea; margin-bottom: 0.5rem; }
+        .summary-card .number { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .complete { color: #10b981; }
+        .incomplete { color: #ef4444; }
+        .total { color: #667eea; }
+        .progress-bar { width: 100%; height: 20px; background-color: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 0.5rem; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #10b981, #059669); }
+        .checks-section { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 2rem; overflow: hidden; }
+        .section-header { background: #f8fafc; padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; }
+        .checks-table { width: 100%; border-collapse: collapse; }
+        .checks-table th, .checks-table td { padding: 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        .checks-table th { background-color: #f8fafc; font-weight: 600; color: #374151; }
+        .checks-table tr:hover { background-color: #f9fafb; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.875rem; font-weight: 500; }
+        .status-complete { background-color: #d1fae5; color: #065f46; }
+        .status-incomplete { background-color: #fee2e2; color: #991b1b; }
+        .priority-high { background-color: #fef3c7; color: #92400e; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; }
+        .priority-medium { background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; }
+        .priority-low { background-color: #d1fae5; color: #065f46; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; }
+        .footer { text-align: center; padding: 2rem; color: #6b7280; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AWS Logging Assessment Report</h1>
+            <p>Generated on October 18, 2025 at 10:53 PM</p>
+            <p>Account: 911197153850</p>
+        </div>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Overall Score</h3>
+                <div class="number total">0.9/4.0</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 23.5%"></div></div>
+            </div>
+            <div class="summary-card">
+                <h3>Maturity Level</h3>
+                <div class="number total">Initial</div>
+            </div>
+            <div class="summary-card">
+                <h3>Checks Complete</h3>
+                <div class="number complete">4/17</div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 23.5%"></div></div>
+            </div>
+        </div>
+        <div class="checks-section">
+            <div class="section-header"><h2>Assessment Details</h2></div>
+            <table class="checks-table">
+                <thead>
+                    <tr><th>Check</th><th>Status</th><th>Priority</th><th>Remediation</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Log Groups Collection</strong><br><small style="color: #6b7280;">Found 88 CloudWatch log groups</small></td>
+                        <td><span class="status-badge status-complete">complete</span></td>
+                        <td><span class="priority-high">High</span></td>
+                        <td>Enable CloudWatch Logs for all services and applications</td>
+                    </tr>
+                    <tr>
+                        <td><strong>EC2 CloudWatch Agent</strong><br><small style="color: #6b7280;">Found 1 EC2 instances in us-east-2; 1 instances have CloudWatch agent IAM policy</small></td>
+                        <td><span class="status-badge status-complete">complete</span></td>
+                        <td><span class="priority-high">High</span></td>
+                        <td>Install and configure CloudWatch agent on EC2 instances with proper IAM permissions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>EKS Control Plane Logging</strong><br><small style="color: #6b7280;">Found 2 EKS clusters; 0 clusters have control plane logging enabled</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-high">High</span></td>
+                        <td>Enable EKS control plane logging for API server, audit, authenticator, controller manager, and scheduler</td>
+                    </tr>
+                    <tr>
+                        <td><strong>EKS Workload Logging (Container Insights & ADOT)</strong><br><small style="color: #6b7280;">Found 2 EKS clusters; 1 clusters have ADOT operator configured</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-high">High</span></td>
+                        <td>Enable Container Insights and configure ADOT operator for comprehensive workload observability</td>
+                    </tr>
+                    <tr>
+                        <td><strong>ECS Task Definition Logging</strong><br><small style="color: #6b7280;">Found 4 ECS clusters; 6/6 task definitions use awslogs driver</small></td>
+                        <td><span class="status-badge status-complete">complete</span></td>
+                        <td><span class="priority-medium">Medium</span></td>
+                        <td>Configure awslogs driver in ECS task definitions for all containers</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Lambda Function Logs</strong><br><small style="color: #6b7280;">No evidence found</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-medium">Medium</span></td>
+                        <td>Ensure Lambda functions have proper logging configuration</td>
+                    </tr>
+                    <tr>
+                        <td><strong>RDS Database Logs</strong><br><small style="color: #6b7280;">Found 2 RDS instances; 0 instances have CloudWatch logs enabled</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-medium">Medium</span></td>
+                        <td>Enable CloudWatch Logs exports for RDS instances</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Aurora Cluster Logs</strong><br><small style="color: #6b7280;">Found 2 Aurora clusters; 0 clusters have CloudWatch logs enabled</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-medium">Medium</span></td>
+                        <td>Enable CloudWatch Logs exports for Aurora clusters (audit, error, general, slowquery for MySQL; postgresql for PostgreSQL)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>VPC Flow Logs</strong><br><small style="color: #6b7280;">Found 0 VPC Flow Logs</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-high">High</span></td>
+                        <td>Enable VPC Flow Logs for network monitoring and security</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Structured Logging Usage</strong><br><small style="color: #6b7280;">Analyzed all 88 log groups; 0 groups have JSON-structured logs; 0 groups have unstructured logs; 88 groups are empty or have no recent events</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-medium">Medium</span></td>
+                        <td>Implement JSON structured logging in applications for better parsing and analysis</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CloudWatch Logs Anomaly Detection</strong><br><small style="color: #6b7280;">Found 0 anomaly detectors</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-low">Low</span></td>
+                        <td>Enable CloudWatch Logs Anomaly Detection for proactive monitoring</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CloudWatch Logs Insights Queries</strong><br><small style="color: #6b7280;">Found 0 saved Logs Insights queries</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-medium">Medium</span></td>
+                        <td>Create saved queries in CloudWatch Logs Insights for common investigations</td>
+                    </tr>
+                    <tr>
+                        <td><strong>CloudWatch Logs Field Index Policies</strong><br><small style="color: #6b7280;">Checked 88 log groups; 0 log groups have field index policies defined</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-low">Low</span></td>
+                        <td>Create field index policies for frequently queried log fields to improve Logs Insights performance</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Log-based Metric Filters & Alarms</strong><br><small style="color: #6b7280;">Found 0 metric filters</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-high">High</span></td>
+                        <td>Create metric filters from logs and set up CloudWatch alarms</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Log Subscription Filters</strong><br><small style="color: #6b7280;">Found 0 subscription filters</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-medium">Medium</span></td>
+                        <td>Set up subscription filters to stream logs to other services</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Log Retention Policies</strong><br><small style="color: #6b7280;">Retention analysis: {'Never expire': 73, 14: 2, 30: 4, 1: 3, 7: 1, 731: 5}</small></td>
+                        <td><span class="status-badge status-incomplete">incomplete</span></td>
+                        <td><span class="priority-high">High</span></td>
+                        <td>Set appropriate retention periods for all log groups based on compliance requirements</td>
+                    </tr>
+                    <tr>
+                        <td><strong>OpenSearch/Elasticsearch Integration</strong><br><small style="color: #6b7280;">Found 1 OpenSearch domains</small></td>
+                        <td><span class="status-badge status-complete">complete</span></td>
+                        <td><span class="priority-low">Low</span></td>
+                        <td>Set up OpenSearch for advanced log analytics and long-term storage</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="footer">
+            <p>AWS Comprehensive Logging Assessment Tool</p>
+        </div>
+    </div>
+</body>
+</html>
