@@ -1,0 +1,165 @@
+🚀 AWS Logging Observability Assessment - Enhanced with HTML Report
+================================================================================
+Assessment started at: 2025-10-18 21:34:51
+Output file: comprehensive_logging_assessment_20251018_213451.txt
+HTML report: logging_assessment_report_20251018_213451.html
+Executing: aws sts get-caller-identity --output json
+✅ Connected to AWS Account: 911197153850
+👤 User/Role: arn:aws:sts::911197153850:assumed-role/Admin/nilou-Isengard
+
+🔍 COMPREHENSIVE AWS LOGGING SERVICES DISCOVERY:
+
+🌐 VPC Flow Logs Discovery:
+Executing: aws ec2 describe-flow-logs --output json
+  ❌ No VPC Flow Logs found
+
+🔍 CloudTrail Discovery:
+Executing: aws cloudtrail describe-trails --output json
+  📋 2 CloudTrail trails found
+Executing: aws cloudtrail get-trail-status --name IsengardTrail-DO-NOT-DELETE --output json
+Command failed: An error occurred (TrailNotFoundException) when calling the GetTrailStatus operation: Unknown trail: arn:aws:cloudtrail:us-east-2:911197153850:trail/IsengardTrail-DO-NOT-DELETE for the user: 911197153850
+    ❌ IsengardTrail-DO-NOT-DELETE - Inactive
+Executing: aws cloudtrail get-trail-status --name management-events --output json
+    ✅ management-events - Active, logs to s3://aws-cloudtrail-logs-911197153850-bbbfc977
+  📊 Active: 1, Multi-region: 2
+  🪣 S3 destinations: 2
+
+🔍 CloudWatch Logs Insights Patterns Discovery:
+Executing: aws logs describe-queries --output json
+Executing: aws logs describe-query-definitions --output json
+Executing: aws logs describe-log-groups --output json
+Executing: aws logs get-log-group-fields --log-group-name "/aws/apigateway/welcome" --output json
+Command failed: An error occurred (InvalidParameterException) when calling the GetLogGroupFields operation: 1 validation error detected: Value '"/aws/apigateway/welcome"' at 'logGroupName' failed to satisfy constraint: Member must satisfy regular expression pattern: [\.\-_/#A-Za-z0-9]+
+Executing: aws logs get-log-group-fields --log-group-name "/aws/codebuild/oso-ws-v1-eks-automation-eks-deployment" --output json
+Command failed: An error occurred (InvalidParameterException) when calling the GetLogGroupFields operation: 1 validation error detected: Value '"/aws/codebuild/oso-ws-v1-eks-automation-eks-deployment"' at 'logGroupName' failed to satisfy constraint: Member must satisfy regular expression pattern: [\.\-_/#A-Za-z0-9]+
+Executing: aws logs get-log-group-fields --log-group-name "/aws/codebuild/otel-demo-deployment" --output json
+Command failed: An error occurred (InvalidParameterException) when calling the GetLogGroupFields operation: 1 validation error detected: Value '"/aws/codebuild/otel-demo-deployment"' at 'logGroupName' failed to satisfy constraint: Member must satisfy regular expression pattern: [\.\-_/#A-Za-z0-9]+
+Executing: aws logs get-log-group-fields --log-group-name "/aws/containerinsights/PetSite/application" --output json
+Command failed: An error occurred (InvalidParameterException) when calling the GetLogGroupFields operation: 1 validation error detected: Value '"/aws/containerinsights/PetSite/application"' at 'logGroupName' failed to satisfy constraint: Member must satisfy regular expression pattern: [\.\-_/#A-Za-z0-9]+
+Executing: aws logs get-log-group-fields --log-group-name "/aws/containerinsights/PetSite/dataplane" --output json
+Command failed: An error occurred (InvalidParameterException) when calling the GetLogGroupFields operation: 1 validation error detected: Value '"/aws/containerinsights/PetSite/dataplane"' at 'logGroupName' failed to satisfy constraint: Member must satisfy regular expression pattern: [\.\-_/#A-Za-z0-9]+
+
+============================================================
+Q1: How do you collect logs?
+============================================================
+Executing: aws logs describe-log-groups --output json
+
+📋 CloudWatch Log Groups (88 total):
+   1. /aws/apigateway/welcome
+      └─ Retention: Never expire, Size: 0.00 MB
+   2. /aws/codebuild/oso-ws-v1-eks-automation-eks-deployment
+      └─ Retention: 14, Size: 0.00 MB
+   3. /aws/codebuild/otel-demo-deployment
+      └─ Retention: Never expire, Size: 0.10 MB
+   4. /aws/containerinsights/PetSite/application
+      └─ Retention: Never expire, Size: 22618.77 MB
+   5. /aws/containerinsights/PetSite/dataplane
+      └─ Retention: Never expire, Size: 162.45 MB
+   6. /aws/containerinsights/PetSite/host
+      └─ Retention: Never expire, Size: 184.58 MB
+   7. /aws/containerinsights/PetSite/performance
+      └─ Retention: Never expire, Size: 6434.06 MB
+   8. /aws/ec2/custom-nsm/custom-nsm-useast2
+      └─ Retention: 30, Size: 0.00 MB
+   9. /aws/ecs/containerinsights/Services-PayForAdoptionAAAD8027-TywvMB96lQ81/performance
+      └─ Retention: 1, Size: 4.52 MB
+   10. /aws/ecs/containerinsights/Services-PetListAdoptions1706E0DF-EOTMQppZGvQU/performance
+      └─ Retention: 1, Size: 4.52 MB
+   ... and 78 more log groups
+Executing: aws lambda list-functions --output json
+
+⚡ Analyzing Lambda functions for logging automation:
+  ✓ Logging function: osi-oss-role-map-oso-ws-v1-opensearch-ingestion
+    └─ Runtime: python3.9, Timeout: 240s
+
+============================================================
+Q2: How do you use logs?
+============================================================
+Executing: aws logs describe-metric-filters --output json
+Executing: aws xray get-service-graph --start-time 1760837710 --end-time 1760841310 --output json
+Executing: aws logs list-log-anomaly-detectors --output json
+Executing: aws cloudwatch describe-insight-rules --output json
+
+============================================================
+Q3: How do you access logs?
+============================================================
+Executing: aws logs describe-log-groups --output json
+Executing: aws logs describe-resource-policies --output json
+Executing: aws opensearch list-domain-names --output json
+
+============================================================
+Q4: What is your log retention policy for security and regulatory compliance?
+============================================================
+Executing: aws logs describe-log-groups --output json
+Executing: aws s3api list-buckets --output json
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket aws-cloudtrail-logs-911197153850-bbbfc977 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket cloudtrail-awslogs-911197153850-igq9pmf4-isengard-do-not-delete --output json
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket core-stack-cloudtrailtrailbucket023d63fd-3k5wimkqmwff --output json
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket oso-ws-v1-eks-automation-eksdeploymentlogsbucket-6durr0oaevwv --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-ap-northeast-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-ap-northeast-2 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-ap-northeast-3 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-ap-south-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-ap-southeast-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-ap-southeast-2 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-ca-central-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-eu-central-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-eu-north-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-eu-west-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-eu-west-2 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-eu-west-3 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-sa-east-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-us-east-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-us-east-2 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-us-west-1 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+Executing: aws s3api get-bucket-lifecycle-configuration --bucket pr1c-stack-access-logs-911197153850-us-west-2 --output json
+Command failed: An error occurred (NoSuchLifecycleConfiguration) when calling the GetBucketLifecycleConfiguration operation: The lifecycle configuration does not exist
+
+================================================================================
+📋 COMPREHENSIVE LOGGING ASSESSMENT SUMMARY
+================================================================================
+
+Q1: How do you collect logs?
+Score: 2/4 ⭐⭐
+Selected Answer: We collect, store, and analyze logs.
+Reasoning: Selected option 2 based on evidence: Found 88 CloudWatch log groups; Found 3 log groups with structured logging patterns; Found 1 Lambda functions for log automation
+
+Q2: How do you use logs?
+Score: 1/4 ⭐
+Selected Answer: We use logs for diagnostics purposes such as troubleshooting issues and investigating outages.
+Reasoning: Selected option 1 based on evidence: X-Ray tracing enabled for log correlation
+
+Q3: How do you access logs?
+Score: 4/4 ⭐⭐⭐⭐
+Selected Answer: With centralized log management, we are able to obtain insights into issues automatically with proactive root cause identification and also lay out resolution options to resolve issues.
+Reasoning: Selected option 4 based on evidence: Found 88 log groups in centralized CloudWatch Logs; Found 1 resource policies for cross-account access; Found 1 OpenSearch domains for advanced log analytics
+
+Q4: What is your log retention policy for security and regulatory compliance?
+Score: 3/4 ⭐⭐⭐
+Selected Answer: We have log retention policies and use a log archival solution to automatically archive the logs reducing storage costs.
+Reasoning: Selected option 3 based on evidence: Log retention analysis: {'Never expire': 73, 14: 2, 30: 4, 1: 3, 7: 1, 731: 5}; Found 21 S3 buckets for log storage/archival; Found 2 buckets with lifecycle policies for automated archival
+
+🏆 Overall Logging Maturity Score: 2.5/4.0
+🎯 Logging Maturity Level: 📈 Intermediate
+
+✅ Assessment completed at: 2025-10-18 21:36:01
+📄 Full results saved to: comprehensive_logging_assessment_20251018_213451.txt
+🌐 HTML report saved to: logging_assessment_report_20251018_213451.html
