@@ -131,6 +131,20 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_oam_links_and_sinks_check()
             elif check.command == "custom_json_structured_logs_check":
                 check.result = self.execute_json_structured_logs_check()
+            elif check.command == "custom_alarm_sns_configuration_check":
+                check.result = self.execute_alarm_sns_configuration_check()
+            elif check.command == "custom_anomaly_detection_bands_check":
+                check.result = self.execute_anomaly_detection_bands_check()
+            elif check.command == "custom_alarm_opsitem_actions_check":
+                check.result = self.execute_alarm_opsitem_actions_check()
+            elif check.command == "custom_devops_agent_spaces_check":
+                check.result = self.execute_devops_agent_spaces_check()
+            elif check.command == "custom_alarm_lambda_actions_check":
+                check.result = self.execute_alarm_lambda_actions_check()
+            elif check.command == "custom_alarm_investigations_actions_check":
+                check.result = self.execute_alarm_investigations_actions_check()
+            elif check.command == "custom_alarm_ec2_actions_check":
+                check.result = self.execute_alarm_ec2_actions_check()
             else:
                 check.result = self.run_aws_command(check.command)
             
@@ -157,7 +171,58 @@ class ComprehensiveObservabilityAssessment:
             return f"{base_info} | No resources found"
         
         # Handle specific checks first to avoid generic handler conflicts
-        if check.name == "Lambda Insights":
+        if check.name == "Metric Streams":
+            entries = check.result.get('Entries', [])
+            if entries:
+                summary = f"{base_info} | Found {len(entries)} metric streams"
+                
+                # Create detailed breakdown
+                details = ""
+                for i, stream in enumerate(entries, 1):
+                    name = stream.get('Name', 'Unknown')
+                    state = stream.get('State', 'Unknown')
+                    output_format = stream.get('OutputFormat', 'Unknown')
+                    firehose_arn = stream.get('FirehoseArn', 'Unknown')
+                    creation_date = stream.get('CreationDate', 'Unknown')
+                    
+                    details += f"{i}. <strong>{name}</strong><br>"
+                    details += f"   State: {state}<br>"
+                    details += f"   Output Format: {output_format}<br>"
+                    details += f"   Firehose: {firehose_arn.split('/')[-1] if '/' in str(firehose_arn) else firehose_arn}<br>"
+                    details += f"   Created: {creation_date}<br><br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No metric streams found"
+        
+        elif check.name == "Composite Alarms":
+            composite_alarms = check.result.get('CompositeAlarms', [])
+            if composite_alarms:
+                summary = f"{base_info} | Found {len(composite_alarms)} composite alarms"
+                
+                # Create detailed breakdown
+                details = ""
+                for i, alarm in enumerate(composite_alarms, 1):
+                    alarm_name = alarm.get('AlarmName', 'Unknown')
+                    state_value = alarm.get('StateValue', 'Unknown')
+                    alarm_rule = alarm.get('AlarmRule', 'No rule')
+                    actions_enabled = alarm.get('ActionsEnabled', False)
+                    alarm_actions = alarm.get('AlarmActions', [])
+                    
+                    details += f"{i}. <strong>{alarm_name}</strong><br>"
+                    details += f"   State: {state_value}<br>"
+                    details += f"   Rule: {alarm_rule}<br>"
+                    details += f"   Actions Enabled: {actions_enabled}<br>"
+                    if alarm_actions:
+                        details += f"   Actions: {len(alarm_actions)} configured<br>"
+                        for j, action in enumerate(alarm_actions[:3], 1):
+                            action_type = "SNS" if "sns:" in action else "SSM" if "ssm:" in action else "Other"
+                            details += f"     {j}. {action_type}: {action.split(':')[-1]}<br>"
+                    details += "<br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No composite alarms found"
+        
+        elif check.name == "Lambda Insights":
             if check.result:
                 total_functions = check.result.get('total_functions', 0)
                 insights_functions = check.result.get('insights_functions', 0)
@@ -736,6 +801,300 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"{base_info} | No SNS topics found"
         
+        elif check.name == "Alarm SNS Configuration":
+            if check.result:
+                total_checked = check.result.get('total_alarms_checked', 0)
+                alarms_with_sns = check.result.get('alarms_with_sns', 0)
+                alarms_without_sns = check.result.get('alarms_without_sns', 0)
+                alarms_with_sns_details = check.result.get('alarms_with_sns_details', [])
+                alarms_without_sns_details = check.result.get('alarms_without_sns_details', [])
+                
+                summary = f"{base_info} | SNS configured for {alarms_with_sns} of {total_checked} alarms checked"
+                
+                # Create detailed breakdown
+                details = f"<strong>Alarms with SNS Configuration ({alarms_with_sns}):</strong><br>"
+                for i, alarm in enumerate(alarms_with_sns_details, 1):
+                    alarm_name = alarm.get('AlarmName', 'Unknown')
+                    sns_topics = alarm.get('SNSTopics', [])
+                    details += f"{i}. <strong>{alarm_name}</strong><br>"
+                    details += f"   SNS Topics: {len(sns_topics)}<br>"
+                    for j, topic in enumerate(sns_topics[:2], 1):
+                        topic_name = topic.split(':')[-1] if ':' in topic else topic
+                        details += f"     {j}. {topic_name}<br>"
+                    if len(sns_topics) > 2:
+                        details += f"     ... and {len(sns_topics) - 2} more topics<br>"
+                    details += "<br>"
+                
+                if alarms_without_sns > 0:
+                    details += f"<br><strong>Alarms without SNS Configuration ({alarms_without_sns}):</strong><br>"
+                    for i, alarm in enumerate(alarms_without_sns_details[:10], 1):
+                        alarm_name = alarm.get('AlarmName', 'Unknown')
+                        details += f"{i}. {alarm_name}<br>"
+                    if len(alarms_without_sns_details) > 10:
+                        details += f"... and {len(alarms_without_sns_details) - 10} more alarms without SNS<br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No alarms found to check"
+        
+        elif check.name == "Anomaly Detection Bands":
+            if check.result:
+                total_bands = check.result.get('total_bands', 0)
+                bands_details = check.result.get('bands_details', [])
+                
+                if total_bands > 0:
+                    summary = f"{base_info} | Found {total_bands} anomaly detection bands configured"
+                    
+                    # Create detailed breakdown
+                    details = f"<strong>Anomaly Detection Bands ({total_bands}):</strong><br>"
+                    for i, band in enumerate(bands_details, 1):
+                        namespace = band.get('Namespace', 'Unknown')
+                        metric_name = band.get('MetricName', 'Unknown')
+                        dimensions = band.get('Dimensions', 'None')
+                        state = band.get('State', 'Unknown')
+                        
+                        details += f"{i}. <strong>{namespace}/{metric_name}</strong><br>"
+                        details += f"   State: {state}<br>"
+                        if dimensions and dimensions != 'None':
+                            details += f"   Dimensions: {dimensions}<br>"
+                        details += "<br>"
+                    
+                    return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+                else:
+                    return f"{base_info} | No anomaly detection bands configured"
+            return f"{base_info} | No anomaly detection bands found"
+        
+        elif check.name == "Resource Tags":
+            resources = check.result.get('ResourceTagMappingList', []) if check.result else []
+            if resources:
+                summary = f"{base_info} | Found {len(resources)} tagged resources"
+                details = ""
+                for i, resource in enumerate(resources[:15], 1):
+                    resource_arn = resource.get('ResourceARN', 'Unknown')
+                    resource_type = resource_arn.split(':')[2] if ':' in resource_arn else 'Unknown'
+                    resource_name = resource_arn.split('/')[-1] if '/' in resource_arn else resource_arn.split(':')[-1]
+                    tags = resource.get('Tags', [])
+                    tag_count = len(tags)
+                    details += f"{i}. <strong>{resource_type}</strong>: {resource_name}<br>   Tags: {tag_count}<br><br>"
+                if len(resources) > 15:
+                    details += f"... and {len(resources) - 15} more tagged resources"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No tagged resources found"
+        
+        elif check.name == "CloudWatch Synthetics Canaries":
+            canaries = check.result.get('Canaries', []) if check.result else []
+            if canaries:
+                summary = f"{base_info} | Found {len(canaries)} synthetic canaries"
+                details = ""
+                for i, canary in enumerate(canaries, 1):
+                    name = canary.get('Name', 'Unknown')
+                    status = canary.get('Status', {}).get('State', 'Unknown')
+                    runtime_version = canary.get('RuntimeVersion', 'Unknown')
+                    details += f"{i}. <strong>{name}</strong><br>   Status: {status}<br>   Runtime: {runtime_version}<br><br>"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No synthetic canaries found"
+        
+        elif check.name == "RUM Applications":
+            apps = check.result.get('AppMonitorSummaries', []) if check.result else []
+            if apps:
+                summary = f"{base_info} | Found {len(apps)} RUM applications"
+                details = ""
+                for i, app in enumerate(apps, 1):
+                    name = app.get('Name', 'Unknown')
+                    domain = app.get('Domain', 'Unknown')
+                    state = app.get('State', 'Unknown')
+                    details += f"{i}. <strong>{name}</strong><br>   Domain: {domain}<br>   State: {state}<br><br>"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No RUM applications found"
+        
+        elif check.name == "Alarm OpsItem Actions":
+            if check.result:
+                total_checked = check.result.get('total_alarms_checked', 0)
+                alarms_with_opsitem = check.result.get('alarms_with_opsitem', 0)
+                alarms_without_opsitem = check.result.get('alarms_without_opsitem', 0)
+                alarms_with_opsitem_details = check.result.get('alarms_with_opsitem_details', [])
+                alarms_without_opsitem_details = check.result.get('alarms_without_opsitem_details', [])
+                
+                summary = f"{base_info} | OpsItem actions configured for {alarms_with_opsitem} of {total_checked} alarms checked"
+                
+                # Create detailed breakdown
+                details = f"<strong>Alarms with OpsItem Actions ({alarms_with_opsitem}):</strong><br>"
+                for i, alarm in enumerate(alarms_with_opsitem_details, 1):
+                    alarm_name = alarm.get('AlarmName', 'Unknown')
+                    opsitem_actions = alarm.get('OpsItemActions', [])
+                    details += f"{i}. <strong>Alarm:</strong> {alarm_name}<br>"
+                    details += f"   <strong>OpsItem Actions ({len(opsitem_actions)}):</strong><br>"
+                    for j, action in enumerate(opsitem_actions, 1):
+                        details += f"     {j}. ARN: {action}<br>"
+                    details += "<br>"
+                
+                if alarms_without_opsitem > 0:
+                    details += f"<br><strong>Alarms without OpsItem Actions ({alarms_without_opsitem}):</strong><br>"
+                    for i, alarm in enumerate(alarms_without_opsitem_details[:10], 1):
+                        alarm_name = alarm.get('AlarmName', 'Unknown')
+                        details += f"{i}. {alarm_name}<br>"
+                    if len(alarms_without_opsitem_details) > 10:
+                        details += f"... and {len(alarms_without_opsitem_details) - 10} more alarms without OpsItem actions<br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No alarms found to check"
+        
+        elif check.name == "Application Signals Services":
+            services = check.result.get('Services', []) if check.result else []
+            if services:
+                summary = f"{base_info} | Found {len(services)} Application Signals services"
+                details = ""
+                for i, service in enumerate(services[:10], 1):
+                    service_name = service.get('ServiceName', 'Unknown')
+                    namespace = service.get('Namespace', 'Unknown')
+                    details += f"{i}. <strong>{service_name}</strong><br>   Namespace: {namespace}<br><br>"
+                if len(services) > 10:
+                    details += f"... and {len(services) - 10} more services"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No Application Signals services found"
+        
+        elif check.name == "Application Signals SLOs":
+            slos = check.result.get('SloSummaries', []) if check.result else []
+            if slos:
+                summary = f"{base_info} | Found {len(slos)} Application Signals SLOs"
+                details = ""
+                for i, slo in enumerate(slos, 1):
+                    name = slo.get('Name', 'Unknown')
+                    service_name = slo.get('ServiceName', 'Unknown')
+                    details += f"{i}. <strong>{name}</strong><br>   Service: {service_name}<br><br>"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No Application Signals SLOs found"
+        
+        elif check.name == "Anomaly Detectors":
+            anomaly_detectors = check.result.get('AnomalyDetectors', []) if check.result else []
+            if anomaly_detectors:
+                summary = f"{base_info} | Found {len(anomaly_detectors)} anomaly detectors"
+                details = ""
+                for i, detector in enumerate(anomaly_detectors, 1):
+                    namespace = detector.get('Namespace', 'Unknown')
+                    metric_name = detector.get('MetricName', 'Unknown')
+                    state = detector.get('StateValue', 'Unknown')
+                    dimensions = detector.get('Dimensions', [])
+                    dim_str = ', '.join([f"{d.get('Name', 'Unknown')}={d.get('Value', 'Unknown')}" for d in dimensions])
+                    
+                    details += f"{i}. <strong>{namespace}/{metric_name}</strong><br>"
+                    details += f"   State: {state}<br>"
+                    if dim_str:
+                        details += f"   Dimensions: {dim_str}<br>"
+                    details += "<br>"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No anomaly detectors found"
+        
+        elif check.name == "DevOps Agent Spaces":
+            if check.result:
+                total_spaces = check.result.get('total_spaces', 0)
+                spaces_details = check.result.get('spaces_details', [])
+                regions_checked = check.result.get('regions_checked', [])
+                
+                if total_spaces > 0:
+                    summary = f"{base_info} | Found {total_spaces} DevOps Agent spaces"
+                    
+                    # Create detailed breakdown
+                    details = f"<strong>DevOps Agent Spaces ({total_spaces}):</strong><br>"
+                    details += f"<em>Regions checked: {', '.join(regions_checked)}</em><br><br>"
+                    
+                    for i, space in enumerate(spaces_details, 1):
+                        name = space.get('name', 'Unknown')
+                        space_id = space.get('agentSpaceId', 'Unknown')
+                        created_at = space.get('createdAt', 'Unknown')
+                        updated_at = space.get('updatedAt', 'Unknown')
+                        region = space.get('region', 'Unknown')
+                        
+                        details += f"{i}. <strong>{name}</strong> ({region})<br>"
+                        details += f"   ID: {space_id}<br>"
+                        details += f"   Created: {created_at}<br>"
+                        details += f"   Updated: {updated_at}<br><br>"
+                    
+                    return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+                else:
+                    regions_str = ', '.join(regions_checked) if regions_checked else 'none'
+                    return f"{base_info} | No DevOps Agent spaces found (checked regions: {regions_str})"
+            return f"{base_info} | DevOps Agent service not accessible"
+        
+        elif check.name == "Alarm Lambda Actions":
+            if check.result:
+                total_checked = check.result.get('total_alarms_checked', 0)
+                alarms_with_lambda = check.result.get('alarms_with_lambda', 0)
+                alarms_without_lambda = check.result.get('alarms_without_lambda', 0)
+                alarms_with_lambda_details = check.result.get('alarms_with_lambda_details', [])
+                alarms_without_lambda_details = check.result.get('alarms_without_lambda_details', [])
+                
+                summary = f"{base_info} | Lambda actions configured for {alarms_with_lambda} of {total_checked} alarms checked"
+                
+                # Create detailed breakdown
+                details = f"<strong>Alarms with Lambda Actions ({alarms_with_lambda}):</strong><br>"
+                for i, alarm in enumerate(alarms_with_lambda_details, 1):
+                    alarm_name = alarm.get('AlarmName', 'Unknown')
+                    lambda_actions = alarm.get('LambdaActions', [])
+                    details += f"{i}. <strong>Alarm:</strong> {alarm_name}<br>"
+                    details += f"   <strong>Lambda Actions ({len(lambda_actions)}):</strong><br>"
+                    for j, action in enumerate(lambda_actions, 1):
+                        function_name = action.split(':')[-1] if ':' in action else action
+                        details += f"     {j}. Function: {function_name}<br>"
+                        details += f"        ARN: {action}<br>"
+                    details += "<br>"
+                
+                if alarms_without_lambda > 0:
+                    details += f"<br><strong>Alarms without Lambda Actions ({alarms_without_lambda}):</strong><br>"
+                    for i, alarm in enumerate(alarms_without_lambda_details[:10], 1):
+                        alarm_name = alarm.get('AlarmName', 'Unknown')
+                        details += f"{i}. {alarm_name}<br>"
+                    if len(alarms_without_lambda_details) > 10:
+                        details += f"... and {len(alarms_without_lambda_details) - 10} more alarms without Lambda actions<br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No alarms found to check"
+        
+        elif check.name == "Alarm Investigations Actions":
+            if check.result:
+                total_checked = check.result.get('total_alarms_checked', 0)
+                alarms_with_investigations = check.result.get('alarms_with_investigations', 0)
+                alarms_without_investigations = check.result.get('alarms_without_investigations', 0)
+                alarms_with_investigations_details = check.result.get('alarms_with_investigations_details', [])
+                alarms_without_investigations_details = check.result.get('alarms_without_investigations_details', [])
+                
+                summary = f"{base_info} | CloudWatch Investigations actions configured for {alarms_with_investigations} of {total_checked} alarms checked"
+                
+                # Create detailed breakdown
+                details = f"<strong>Alarms with CloudWatch Investigations Actions ({alarms_with_investigations}):</strong><br>"
+                for i, alarm in enumerate(alarms_with_investigations_details, 1):
+                    alarm_name = alarm.get('AlarmName', 'Unknown')
+                    investigations_actions = alarm.get('InvestigationsActions', [])
+                    details += f"{i}. <strong>Alarm:</strong> {alarm_name}<br>"
+                    details += f"   <strong>Investigations Actions ({len(investigations_actions)}):</strong><br>"
+                    for j, action in enumerate(investigations_actions, 1):
+                        details += f"     {j}. ARN: {action}<br>"
+                    details += "<br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No alarms found to check"
+        
+        elif check.name == "Alarm EC2 Actions":
+            if check.result:
+                total_checked = check.result.get('total_alarms_checked', 0)
+                alarms_with_ec2 = check.result.get('alarms_with_ec2', 0)
+                alarms_with_ec2_details = check.result.get('alarms_with_ec2_details', [])
+                
+                summary = f"{base_info} | EC2 actions configured for {alarms_with_ec2} of {total_checked} alarms checked"
+                
+                # Create detailed breakdown - only show alarms with EC2 actions
+                details = f"<strong>Alarms with EC2 Actions ({alarms_with_ec2}):</strong><br>"
+                for i, alarm in enumerate(alarms_with_ec2_details, 1):
+                    alarm_name = alarm.get('AlarmName', 'Unknown')
+                    ec2_actions = alarm.get('EC2Actions', [])
+                    details += f"{i}. <strong>Alarm:</strong> {alarm_name}<br>"
+                    details += f"   <strong>EC2 Actions ({len(ec2_actions)}):</strong><br>"
+                    for j, action in enumerate(ec2_actions, 1):
+                        details += f"     {j}. ARN: {action}<br>"
+                    details += "<br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"{base_info} | No alarms found to check"
+        
         elif check.name == "Lambda Functions":
             functions = check.result.get('Functions', [])
             if functions:
@@ -1205,23 +1564,23 @@ class ComprehensiveObservabilityAssessment:
         
         # Dashboards & Alarms Discovery Checks (Detailed)
         self.add_discovery_check("CloudWatch Dashboards", "Dashboards", "aws cloudwatch list-dashboards --output json")
-        self.add_discovery_check("Dashboard Widgets", "Dashboards", "aws cloudwatch get-dashboard --dashboard-name test --output json")
         self.add_discovery_check("CloudWatch Alarms", "Alarms", "custom_cloudwatch_alarms_check")
         self.add_discovery_check("Metric Alarms", "Alarms", "aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
         self.add_discovery_check("Composite Alarms", "Alarms", "aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
         self.add_discovery_check("Anomaly Detector Alarms", "Alarms", "aws cloudwatch describe-alarms --query 'MetricAlarms[?contains(MetricName, `ANOMALY_DETECTION_FUNCTION`)]' --output json")
         self.add_discovery_check("SNS Topics", "Alarms", "aws sns list-topics --output json")
-        self.add_discovery_check("SNS Subscriptions", "Alarms", "aws sns list-subscriptions --output json")
-        self.add_discovery_check("Anomaly Detectors", "Alarms", "aws cloudwatch describe-anomaly-detectors --output json")
-        self.add_discovery_check("Auto Scaling Policies", "Alarms", "aws autoscaling describe-policies --output json")
+        self.add_discovery_check("Alarm SNS Configuration", "Alarms", "custom_alarm_sns_configuration_check")
+        self.add_discovery_check("Anomaly Detection Bands", "Alarms", "custom_anomaly_detection_bands_check")
         
         # Organization Discovery Checks (Detailed)
         self.add_discovery_check("Resource Tags", "Organization", "aws resourcegroupstaggingapi get-resources --output json")
         self.add_discovery_check("CloudWatch Synthetics Canaries", "Organization", "aws synthetics describe-canaries --output json")
         self.add_discovery_check("RUM Applications", "Organization", "aws rum list-app-monitors --output json")
-        self.add_discovery_check("Systems Manager OpsCenter", "Organization", "aws ssm describe-ops-items --output json")
-        self.add_discovery_check("Incident Manager", "Organization", "aws ssm-incidents list-incident-records --output json")
-        self.add_discovery_check("DevOps Guru Insights", "Organization", "aws devops-guru describe-account-health --output json")
+        self.add_discovery_check("Alarm OpsItem Actions", "Organization", "custom_alarm_opsitem_actions_check")
+        self.add_discovery_check("DevOps Agent Spaces", "Organization", "custom_devops_agent_spaces_check")
+        self.add_discovery_check("Alarm Lambda Actions", "Alarms", "custom_alarm_lambda_actions_check")
+        self.add_discovery_check("Alarm Investigations Actions", "Alarms", "custom_alarm_investigations_actions_check")
+        self.add_discovery_check("Alarm EC2 Actions", "Alarms", "custom_alarm_ec2_actions_check")
         
         # Cross-Category Checks (checks that apply to multiple categories)
         # Application Signals - applies to Metrics, Traces, and Organization
@@ -1233,10 +1592,6 @@ class ComprehensiveObservabilityAssessment:
         # CloudWatch Dashboards - applies to Logs, Metrics, Traces access
         self.add_discovery_check("CloudWatch Dashboards", "Logs", "aws cloudwatch list-dashboards --output json")
         self.add_discovery_check("CloudWatch Dashboards", "Metrics", "aws cloudwatch list-dashboards --output json")
-        
-        # Anomaly Detectors - applies to Metrics usage and Organization AI/ML
-        self.add_discovery_check("Anomaly Detectors", "Metrics", "aws cloudwatch describe-anomaly-detectors --output json")
-        self.add_discovery_check("Anomaly Detectors", "Organization", "aws cloudwatch describe-anomaly-detectors --output json")
         
         # Lambda Functions - applies to Logs, Metrics, and Traces
         self.add_discovery_check("Lambda Functions", "Logs", "aws lambda list-functions --output json")
@@ -2612,21 +2967,19 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 11:  # How do you use dashboards?
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
-                widgets_check = next((c for c in self.results.discovery_checks if c.name == "Dashboard Widgets"), None)
                 
-                check.evidence_check_ids = [c.id for c in [dashboards_check, widgets_check] if c]
+                check.evidence_check_ids = [c.id for c in [dashboards_check] if c]
                 
                 has_dashboards = dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries')
-                has_widgets = widgets_check and widgets_check.result
                 
-                if has_dashboards and has_widgets:
+                if has_dashboards:
                     dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
-                    check.current_level = 3
-                    check.explanation = f"Advanced dashboard usage with {dashboard_count} dashboards (Check #{dashboards_check.id}) containing flexible widgets and dynamic content (Check #{widgets_check.id}). This enables creation of dashboards that can display different content based on input fields for easier correlation and anomaly detection."
-                elif has_dashboards:
-                    dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
-                    check.current_level = 2
-                    check.explanation = f"Operational dashboards implemented with {dashboard_count} CloudWatch dashboards (Check #{dashboards_check.id}), providing single pane of glass visibility into various data sources. This enables faster communication flow during operational events with well-defined visualization criteria."
+                    if dashboard_count >= 5:
+                        check.current_level = 3
+                        check.explanation = f"Advanced dashboard usage with {dashboard_count} dashboards (Check #{dashboards_check.id}) providing comprehensive operational visibility. Multiple dashboards suggest systematic approach to visualization with potential for correlation and anomaly detection across different services and metrics."
+                    else:
+                        check.current_level = 2
+                        check.explanation = f"Operational dashboards implemented with {dashboard_count} CloudWatch dashboards (Check #{dashboards_check.id}), providing single pane of glass visibility into various data sources. This enables faster communication flow during operational events with well-defined visualization criteria."
                 else:
                     check.current_level = 1
                     check.explanation = "Limited dashboard usage, primarily basic resource monitoring without comprehensive operational visibility or systematic visualization strategies."
@@ -2710,18 +3063,12 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 16:  # Do you use any AI/ML capability today?
                 anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
-                devops_guru_check = next((c for c in self.results.discovery_checks if c.name == "DevOps Guru Insights"), None)
                 
-                check.evidence_check_ids = [c.id for c in [anomaly_check, devops_guru_check] if c]
+                check.evidence_check_ids = [c.id for c in [anomaly_check] if c]
                 
                 has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('AnomalyDetectors')
-                has_devops_guru = devops_guru_check and devops_guru_check.result
                 
-                if has_anomaly and has_devops_guru:
-                    anomaly_count = len(anomaly_check.result.get('AnomalyDetectors', []))
-                    check.current_level = 4
-                    check.explanation = f"Comprehensive AI/ML implementation with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) and DevOps Guru insights (Check #{devops_guru_check.id}). This provides real-time ML-driven analysis with automatic correlation, pattern recognition, and proactive issue identification."
-                elif has_anomaly:
+                if has_anomaly:
                     anomaly_count = len(anomaly_check.result.get('AnomalyDetectors', []))
                     check.current_level = 3
                     check.explanation = f"Active AI/ML capabilities with {anomaly_count} CloudWatch anomaly detectors (Check #{anomaly_check.id}), providing automatic correlation and pattern detection for proactive monitoring and alerting."
@@ -3291,6 +3638,395 @@ class ComprehensiveObservabilityAssessment:
             
         except Exception as e:
             return {'MetricAlarms': [], 'CompositeAlarms': []}
+
+    def execute_alarm_sns_configuration_check(self):
+        """Check first 50 alarms for SNS topic configurations"""
+        try:
+            # Get all alarms (both metric and composite)
+            metric_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
+            composite_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
+            
+            metric_alarms = metric_alarms_result.get('MetricAlarms', []) if metric_alarms_result else []
+            composite_alarms = composite_alarms_result.get('CompositeAlarms', []) if composite_alarms_result else []
+            
+            # Combine and limit to first 50 alarms
+            all_alarms = metric_alarms + composite_alarms
+            first_50_alarms = all_alarms[:50]
+            
+            alarms_with_sns = []
+            alarms_without_sns = []
+            
+            for alarm in first_50_alarms:
+                alarm_name = alarm.get('AlarmName', 'Unknown')
+                alarm_actions = alarm.get('AlarmActions', [])
+                ok_actions = alarm.get('OKActions', [])
+                insufficient_data_actions = alarm.get('InsufficientDataActions', [])
+                
+                # Check if any action is an SNS topic (ARN contains :sns:)
+                all_actions = alarm_actions + ok_actions + insufficient_data_actions
+                sns_topics = [action for action in all_actions if ':sns:' in action]
+                
+                if sns_topics:
+                    alarms_with_sns.append({
+                        'AlarmName': alarm_name,
+                        'SNSTopics': sns_topics,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+                else:
+                    alarms_without_sns.append({
+                        'AlarmName': alarm_name,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+            
+            return {
+                'total_alarms_checked': len(first_50_alarms),
+                'alarms_with_sns': len(alarms_with_sns),
+                'alarms_without_sns': len(alarms_without_sns),
+                'alarms_with_sns_details': alarms_with_sns,
+                'alarms_without_sns_details': alarms_without_sns
+            }
+            
+        except Exception as e:
+            return {
+                'total_alarms_checked': 0,
+                'alarms_with_sns': 0,
+                'alarms_without_sns': 0,
+                'alarms_with_sns_details': [],
+                'alarms_without_sns_details': []
+            }
+
+    def execute_anomaly_detection_bands_check(self):
+        """Check for anomaly detection bands configured for metrics"""
+        try:
+            # Get anomaly detectors
+            anomaly_detectors_result = self.run_aws_command("aws cloudwatch describe-anomaly-detectors --output json")
+            anomaly_detectors = anomaly_detectors_result.get('AnomalyDetectors', []) if anomaly_detectors_result else []
+            
+            bands_configured = []
+            
+            for detector in anomaly_detectors:
+                namespace = detector.get('Namespace', 'Unknown')
+                metric_name = detector.get('MetricName', 'Unknown')
+                dimensions = detector.get('Dimensions', [])
+                state = detector.get('StateValue', 'Unknown')
+                
+                # Format dimensions for display
+                dim_str = ', '.join([f"{d.get('Name', 'Unknown')}={d.get('Value', 'Unknown')}" for d in dimensions])
+                
+                bands_configured.append({
+                    'Namespace': namespace,
+                    'MetricName': metric_name,
+                    'Dimensions': dim_str,
+                    'State': state,
+                    'DimensionCount': len(dimensions)
+                })
+            
+            return {
+                'total_bands': len(bands_configured),
+                'bands_details': bands_configured
+            }
+            
+        except Exception as e:
+            return {
+                'total_bands': 0,
+                'bands_details': []
+            }
+
+    def execute_alarm_opsitem_actions_check(self):
+        """Check first 50 alarms for OpsItem creation actions"""
+        try:
+            # Get all alarms (both metric and composite)
+            metric_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
+            composite_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
+            
+            metric_alarms = metric_alarms_result.get('MetricAlarms', []) if metric_alarms_result else []
+            composite_alarms = composite_alarms_result.get('CompositeAlarms', []) if composite_alarms_result else []
+            
+            # Combine and limit to first 50 alarms
+            all_alarms = metric_alarms + composite_alarms
+            first_50_alarms = all_alarms[:50]
+            
+            alarms_with_opsitem = []
+            alarms_without_opsitem = []
+            
+            for alarm in first_50_alarms:
+                alarm_name = alarm.get('AlarmName', 'Unknown')
+                alarm_actions = alarm.get('AlarmActions', [])
+                ok_actions = alarm.get('OKActions', [])
+                insufficient_data_actions = alarm.get('InsufficientDataActions', [])
+                
+                # Check if any action is an OpsItem action (ARN contains :opsitem:)
+                all_actions = alarm_actions + ok_actions + insufficient_data_actions
+                opsitem_actions = [action for action in all_actions if ':opsitem:' in action]
+                
+                if opsitem_actions:
+                    alarms_with_opsitem.append({
+                        'AlarmName': alarm_name,
+                        'OpsItemActions': opsitem_actions,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+                else:
+                    alarms_without_opsitem.append({
+                        'AlarmName': alarm_name,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+            
+            return {
+                'total_alarms_checked': len(first_50_alarms),
+                'alarms_with_opsitem': len(alarms_with_opsitem),
+                'alarms_without_opsitem': len(alarms_without_opsitem),
+                'alarms_with_opsitem_details': alarms_with_opsitem,
+                'alarms_without_opsitem_details': alarms_without_opsitem
+            }
+            
+        except Exception as e:
+            return {
+                'total_alarms_checked': 0,
+                'alarms_with_opsitem': 0,
+                'alarms_without_opsitem': 0,
+                'alarms_with_opsitem_details': [],
+                'alarms_without_opsitem_details': []
+            }
+
+    def execute_devops_agent_spaces_check(self):
+        """Check for DevOps Agent Spaces in current region and us-east-1"""
+        try:
+            all_spaces = []
+            regions_checked = []
+            
+            # Always check us-east-1
+            regions_to_check = ['us-east-1']
+            
+            # Add current region if it's not us-east-1
+            if self.region != 'us-east-1':
+                regions_to_check.append(self.region)
+            
+            for region in regions_to_check:
+                try:
+                    # Build region-specific endpoint URL
+                    endpoint_url = f"https://api.prod.cp.aidevops.{region}.api.aws"
+                    
+                    # Execute the DevOps Agent command with custom endpoint
+                    command = f"aws devopsagent list-agent-spaces --endpoint-url \"{endpoint_url}\" --region {region} --output json"
+                    result = self.run_aws_command(command)
+                    
+                    agent_spaces = result.get('agentSpaces', []) if result else []
+                    
+                    for space in agent_spaces:
+                        all_spaces.append({
+                            'name': space.get('name', 'Unknown'),
+                            'agentSpaceId': space.get('agentSpaceId', 'Unknown'),
+                            'createdAt': space.get('createdAt', 'Unknown'),
+                            'updatedAt': space.get('updatedAt', 'Unknown'),
+                            'region': region
+                        })
+                    
+                    regions_checked.append(region)
+                    
+                except Exception as e:
+                    # Continue checking other regions if one fails
+                    continue
+            
+            return {
+                'total_spaces': len(all_spaces),
+                'spaces_details': all_spaces,
+                'regions_checked': regions_checked
+            }
+            
+        except Exception as e:
+            return {
+                'total_spaces': 0,
+                'spaces_details': [],
+                'regions_checked': []
+            }
+
+    def execute_alarm_lambda_actions_check(self):
+        """Check first 50 alarms for Lambda function invocation actions"""
+        try:
+            # Get all alarms (both metric and composite)
+            metric_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
+            composite_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
+            
+            metric_alarms = metric_alarms_result.get('MetricAlarms', []) if metric_alarms_result else []
+            composite_alarms = composite_alarms_result.get('CompositeAlarms', []) if composite_alarms_result else []
+            
+            # Combine and limit to first 50 alarms
+            all_alarms = metric_alarms + composite_alarms
+            first_50_alarms = all_alarms[:50]
+            
+            alarms_with_lambda = []
+            alarms_without_lambda = []
+            
+            for alarm in first_50_alarms:
+                alarm_name = alarm.get('AlarmName', 'Unknown')
+                alarm_actions = alarm.get('AlarmActions', [])
+                ok_actions = alarm.get('OKActions', [])
+                insufficient_data_actions = alarm.get('InsufficientDataActions', [])
+                
+                # Check if any action is a Lambda function (ARN contains :lambda:)
+                all_actions = alarm_actions + ok_actions + insufficient_data_actions
+                lambda_actions = [action for action in all_actions if ':lambda:' in action]
+                
+                if lambda_actions:
+                    alarms_with_lambda.append({
+                        'AlarmName': alarm_name,
+                        'LambdaActions': lambda_actions,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+                else:
+                    alarms_without_lambda.append({
+                        'AlarmName': alarm_name,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+            
+            return {
+                'total_alarms_checked': len(first_50_alarms),
+                'alarms_with_lambda': len(alarms_with_lambda),
+                'alarms_without_lambda': len(alarms_without_lambda),
+                'alarms_with_lambda_details': alarms_with_lambda,
+                'alarms_without_lambda_details': alarms_without_lambda
+            }
+            
+        except Exception as e:
+            return {
+                'total_alarms_checked': 0,
+                'alarms_with_lambda': 0,
+                'alarms_without_lambda': 0,
+                'alarms_with_lambda_details': [],
+                'alarms_without_lambda_details': []
+            }
+
+    def execute_alarm_investigations_actions_check(self):
+        """Check first 50 alarms for CloudWatch Investigations actions"""
+        try:
+            # Get all alarms (both metric and composite)
+            metric_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
+            composite_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
+            
+            metric_alarms = metric_alarms_result.get('MetricAlarms', []) if metric_alarms_result else []
+            composite_alarms = composite_alarms_result.get('CompositeAlarms', []) if composite_alarms_result else []
+            
+            # Combine and limit to first 50 alarms
+            all_alarms = metric_alarms + composite_alarms
+            first_50_alarms = all_alarms[:50]
+            
+            alarms_with_investigations = []
+            alarms_without_investigations = []
+            
+            for alarm in first_50_alarms:
+                alarm_name = alarm.get('AlarmName', 'Unknown')
+                alarm_actions = alarm.get('AlarmActions', [])
+                ok_actions = alarm.get('OKActions', [])
+                insufficient_data_actions = alarm.get('InsufficientDataActions', [])
+                
+                # Check if any action is a CloudWatch Investigations action (ARN contains :aiops:)
+                all_actions = alarm_actions + ok_actions + insufficient_data_actions
+                investigations_actions = [action for action in all_actions if ':aiops:' in action]
+                
+                if investigations_actions:
+                    alarms_with_investigations.append({
+                        'AlarmName': alarm_name,
+                        'InvestigationsActions': investigations_actions,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+                else:
+                    alarms_without_investigations.append({
+                        'AlarmName': alarm_name,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+            
+            return {
+                'total_alarms_checked': len(first_50_alarms),
+                'alarms_with_investigations': len(alarms_with_investigations),
+                'alarms_without_investigations': len(alarms_without_investigations),
+                'alarms_with_investigations_details': alarms_with_investigations,
+                'alarms_without_investigations_details': alarms_without_investigations
+            }
+            
+        except Exception as e:
+            return {
+                'total_alarms_checked': 0,
+                'alarms_with_investigations': 0,
+                'alarms_without_investigations': 0,
+                'alarms_with_investigations_details': [],
+                'alarms_without_investigations_details': []
+            }
+
+    def execute_alarm_ec2_actions_check(self):
+        """Check first 50 alarms for EC2 actions"""
+        try:
+            # Get all alarms (both metric and composite)
+            metric_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
+            composite_alarms_result = self.run_aws_command("aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
+            
+            metric_alarms = metric_alarms_result.get('MetricAlarms', []) if metric_alarms_result else []
+            composite_alarms = composite_alarms_result.get('CompositeAlarms', []) if composite_alarms_result else []
+            
+            # Combine and limit to first 50 alarms
+            all_alarms = metric_alarms + composite_alarms
+            first_50_alarms = all_alarms[:50]
+            
+            alarms_with_ec2 = []
+            alarms_without_ec2 = []
+            
+            for alarm in first_50_alarms:
+                alarm_name = alarm.get('AlarmName', 'Unknown')
+                alarm_actions = alarm.get('AlarmActions', [])
+                ok_actions = alarm.get('OKActions', [])
+                insufficient_data_actions = alarm.get('InsufficientDataActions', [])
+                
+                # Check if any action is an EC2 action (ARN contains :ec2:)
+                all_actions = alarm_actions + ok_actions + insufficient_data_actions
+                ec2_actions = [action for action in all_actions if ':ec2:' in action]
+                
+                if ec2_actions:
+                    alarms_with_ec2.append({
+                        'AlarmName': alarm_name,
+                        'EC2Actions': ec2_actions,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+                else:
+                    alarms_without_ec2.append({
+                        'AlarmName': alarm_name,
+                        'AlarmActions': alarm_actions,
+                        'OKActions': ok_actions,
+                        'InsufficientDataActions': insufficient_data_actions
+                    })
+            
+            return {
+                'total_alarms_checked': len(first_50_alarms),
+                'alarms_with_ec2': len(alarms_with_ec2),
+                'alarms_without_ec2': len(alarms_without_ec2),
+                'alarms_with_ec2_details': alarms_with_ec2,
+                'alarms_without_ec2_details': alarms_without_ec2
+            }
+            
+        except Exception as e:
+            return {
+                'total_alarms_checked': 0,
+                'alarms_with_ec2': 0,
+                'alarms_without_ec2': 0,
+                'alarms_with_ec2_details': [],
+                'alarms_without_ec2_details': []
+            }
 
 def main():
     parser = argparse.ArgumentParser(description='AWS Comprehensive Observability Assessment')

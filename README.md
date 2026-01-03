@@ -1,12 +1,96 @@
-# resco-observability
+# AWS Comprehensive Observability Assessment Tool
 
+A comprehensive tool for evaluating observability maturity across AWS environments, covering logs, metrics, traces, dashboards, alerting, and organizational practices.
 
+## Prerequisites
 
-## Getting started
+### AWS DevOps Agent Setup
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+The assessment tool includes checks for AWS DevOps Agent spaces. To enable these checks, you need to configure the AWS CLI with the DevOps Agent service model:
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+1. **Download the AWS DevOps Agent model file:**
+   ```bash
+   curl -o devopsagent.json https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json
+   ```
+
+2. **Add the DevOps Agent service to your AWS CLI:**
+   ```bash
+   aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
+   ```
+
+3. **Test the installation:**
+   ```bash
+   aws devopsagent help
+   ```
+
+## Usage
+
+Run the comprehensive observability assessment:
+
+```bash
+python3 observability_assessment_comprehensive.py --profile YOUR_AWS_PROFILE --region YOUR_REGION
+```
+
+### Options
+
+- `--profile`: AWS profile to use for authentication
+- `--region`: AWS region to assess (default: us-west-2)
+- `--single-check N`: Run only a specific check by ID (outputs to console)
+
+### Examples
+
+```bash
+# Full assessment
+python3 observability_assessment_comprehensive.py --profile prod --region us-east-1
+
+# Single check
+python3 observability_assessment_comprehensive.py --single-check 46 --profile prod --region us-east-1
+```
+
+## Assessment Coverage
+
+The tool evaluates 51 discovery checks across 5 categories:
+
+### Logs (Questions 1-4)
+- Collection mechanisms and analytics capabilities
+- Usage patterns from diagnostics to automated insights
+- Access patterns and centralized management
+- Retention policies for compliance and cost optimization
+
+### Metrics (Questions 5-7)
+- Metric types: infrastructure, application, custom, and dimensional
+- Usage from manual exploration to AI/ML-driven automation
+- Centralized collection with correlation and anomaly detection
+
+### Traces (Questions 8-9)
+- Collection from auto-instrumentation to automatic injection
+- Usage from basic collection to cross-boundary insights
+
+### Dashboards & Alerting (Questions 10-12)
+- Alarm strategies from basic notifications to composite alarms
+- Dashboard evolution from monitoring to dynamic visualizations
+- Adaptive thresholds from static to ML-based anomaly detection
+
+### Organization (Questions 13-17)
+- Enterprise observability strategy and culture
+- SLO adoption and business alignment
+- ROI optimization and cost management
+- AI/ML capabilities integration
+- Real user monitoring implementation
+
+## Output
+
+The assessment generates:
+- **HTML Report**: Comprehensive report saved to `sample-result/` directory
+- **Maturity Scoring**: 1.0-4.0 scale across Initial, Developing, Defined, and Optimized levels
+- **Evidence-Based Results**: Detailed discovery findings with expandable sections
+- **Actionable Recommendations**: Specific guidance for advancing maturity levels
+
+## Requirements
+
+- Python 3.x
+- AWS CLI configured with appropriate permissions
+- Access to AWS services being assessed
 
 ## Add your files
 
@@ -91,3 +175,11 @@ For open source projects, say how it is licensed.
 
 ## Project status
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
+
+
+#TODO
+Remove check for Logs Insights Query History (it gets filled up by automatic queries from app signals and container insights)
+Facets is creating default Field Indexes, need to work on ignoring those defaults
+Do you enable/disable alarms during maintenance windows?
+Dashboard dynamic variables widgets
