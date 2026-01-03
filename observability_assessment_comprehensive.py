@@ -791,16 +791,6 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"{base_info} | No dashboards found"
         
-        elif check.name == "SNS Topics":
-            topics = check.result.get('Topics', [])
-            if topics:
-                summary = f"{base_info} | Found {len(topics)} SNS topics"
-                details = "<br>".join([topic.get('TopicArn', 'Unknown').split(':')[-1] for topic in topics[:15]])
-                if len(topics) > 15:
-                    details += f"<br>... and {len(topics) - 15} more topics"
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No SNS topics found"
-        
         elif check.name == "Alarm SNS Configuration":
             if check.result:
                 total_checked = check.result.get('total_alarms_checked', 0)
@@ -1568,7 +1558,6 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Metric Alarms", "Alarms", "aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
         self.add_discovery_check("Composite Alarms", "Alarms", "aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
         self.add_discovery_check("Anomaly Detector Alarms", "Alarms", "aws cloudwatch describe-alarms --query 'MetricAlarms[?contains(MetricName, `ANOMALY_DETECTION_FUNCTION`)]' --output json")
-        self.add_discovery_check("SNS Topics", "Alarms", "aws sns list-topics --output json")
         self.add_discovery_check("Alarm SNS Configuration", "Alarms", "custom_alarm_sns_configuration_check")
         self.add_discovery_check("Anomaly Detection Bands", "Alarms", "custom_anomaly_detection_bands_check")
         
@@ -2939,12 +2928,11 @@ class ComprehensiveObservabilityAssessment:
                 sns_check = next((c for c in self.results.discovery_checks if c.name == "SNS Topics"), None)
                 anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
                 
-                check.evidence_check_ids = [c.id for c in [alarms_check, composite_check, sns_check, anomaly_check] if c]
+                check.evidence_check_ids = [c.id for c in [alarms_check, composite_check, anomaly_check] if c]
                 
                 has_composite = composite_check and composite_check.result and composite_check.result.get('CompositeAlarms')
                 has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('AnomalyDetectors')
                 has_basic_alarms = alarms_check and alarms_check.result and alarms_check.result.get('MetricAlarms')
-                has_sns = sns_check and sns_check.result and sns_check.result.get('Topics')
                 
                 if has_composite:
                     composite_count = len(composite_check.result.get('CompositeAlarms', []))
@@ -2956,11 +2944,10 @@ class ComprehensiveObservabilityAssessment:
                     alarm_count = len(alarms_check.result.get('MetricAlarms', []))
                     check.current_level = 3
                     check.explanation = f"Sophisticated alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) complementing {alarm_count} traditional alarms (Check #{alarms_check.id}). This provides actionable alerts based on ML-driven anomaly detection that accounts for patterns and seasonality."
-                elif has_basic_alarms and has_sns:
+                elif has_basic_alarms:
                     alarm_count = len(alarms_check.result.get('MetricAlarms', []))
-                    sns_count = len(sns_check.result.get('Topics', []))
                     check.current_level = 2
-                    check.explanation = f"Structured alerting with {alarm_count} alarms (Check #{alarms_check.id}) integrated with {sns_count} SNS topics for notifications (Check #{sns_check.id}). This enables clear priority setting and understanding of urgency and customer impact for operational issues."
+                    check.explanation = f"Structured alerting with {alarm_count} alarms (Check #{alarms_check.id}) providing notifications when metrics meet alarm triggers. This enables understanding of urgency and customer impact for operational issues."
                 else:
                     check.current_level = 1
                     check.explanation = "Basic or no alerting infrastructure detected. Limited ability to proactively notify operators when metrics meet alarm triggers."
