@@ -145,6 +145,12 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_alarm_investigations_actions_check()
             elif check.command == "custom_alarm_ec2_actions_check":
                 check.result = self.execute_alarm_ec2_actions_check()
+            elif check.command == "custom_dashboard_variables_check":
+                check.result = self.execute_dashboard_variables_check()
+            elif check.command == "custom_xray_service_graph_check":
+                check.result = self.execute_xray_service_graph_check()
+            elif check.command == "custom_xray_sampling_rules_check":
+                check.result = self.execute_xray_sampling_rules_check()
             else:
                 check.result = self.run_aws_command(check.command)
             
@@ -168,13 +174,13 @@ class ComprehensiveObservabilityAssessment:
         base_info = f"Account: {self.results.account_id}, Region: {self.region}"
         
         if not check.result:
-            return f"{base_info} | No resources found"
+            return f"No resources found"
         
         # Handle specific checks first to avoid generic handler conflicts
-        if check.name == "Metric Streams":
+        if check.name == "Have you configured metric streams for real-time export to third-party tools or data lakes?":
             entries = check.result.get('Entries', [])
             if entries:
-                summary = f"{base_info} | Found {len(entries)} metric streams"
+                summary = f"Found {len(entries)} metric streams"
                 
                 # Create detailed breakdown
                 details = ""
@@ -192,12 +198,12 @@ class ComprehensiveObservabilityAssessment:
                     details += f"   Created: {creation_date}<br><br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No metric streams found"
+            return f"No metric streams found"
         
         elif check.name == "Composite Alarms":
             composite_alarms = check.result.get('CompositeAlarms', [])
             if composite_alarms:
-                summary = f"{base_info} | Found {len(composite_alarms)} composite alarms"
+                summary = f"Found {len(composite_alarms)} composite alarms"
                 
                 # Create detailed breakdown
                 details = ""
@@ -220,15 +226,15 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No composite alarms found"
+            return f"No composite alarms found"
         
-        elif check.name == "Lambda Insights":
+        elif check.name == "What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?":
             if check.result:
                 total_functions = check.result.get('total_functions', 0)
                 insights_functions = check.result.get('insights_functions', 0)
                 functions_with_insights = check.result.get('functions_with_insights', [])
                 
-                summary = f"{base_info} | {insights_functions}/{total_functions} Lambda functions have Lambda Insights enabled"
+                summary = f"{insights_functions}/{total_functions} Lambda functions have Lambda Insights enabled"
                 
                 if insights_functions > 0:
                     # Create detailed breakdown
@@ -242,16 +248,16 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 
                 return summary
-            return f"{base_info} - No Lambda functions found"
+            return f"No Lambda functions found"
         
-        elif check.name == "Custom Metrics Namespaces":
+        elif check.name == "Are you publishing custom business and application metrics to CloudWatch?":
             if check.result:
                 custom_namespaces = check.result.get('custom_namespaces', [])
                 total_custom_metrics = check.result.get('total_custom_metrics', 0)
                 sample_metrics = check.result.get('sample_metrics', [])
                 
                 if custom_namespaces:
-                    summary = f"{base_info} | Found {len(custom_namespaces)} custom namespaces with {total_custom_metrics} total metrics"
+                    summary = f"Found {len(custom_namespaces)} custom namespaces with {total_custom_metrics} total metrics"
                     
                     # Create detailed breakdown
                     details = f"<strong>Custom Metrics Namespaces ({len(custom_namespaces)}):</strong><br>"
@@ -269,14 +275,14 @@ class ComprehensiveObservabilityAssessment:
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 
-                return f"{base_info} | Found {len(custom_namespaces)} custom namespaces with {total_custom_metrics} metrics"
-            return f"{base_info} - No custom metrics found"
+                return f"Found {len(custom_namespaces)} custom namespaces with {total_custom_metrics} metrics"
+            return f"No custom metrics found"
         
-        elif check.name == "Log Metric Filters":
+        elif check.name == "Have you created metric filters to extract KPIs from logs?":
             command_info = f"Command: {check.command}"
             metric_filters = check.result.get('metricFilters', [])
             if metric_filters:
-                summary = f"{base_info} | {command_info} | Found {len(metric_filters)} metric filters"
+                summary = f"Found {len(metric_filters)} metric filters"
                 
                 # Create detailed breakdown
                 details = ""
@@ -301,9 +307,9 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | {command_info} | No metric filters found - no log groups are configured to extract metrics from log events"
+            return f"{command_info} | No metric filters found - no log groups are configured to extract metrics from log events"
         
-        elif check.name == "Log Subscription Filters Coverage":
+        elif check.name == "What percentage of log groups have subscription filters for real-time processing?":
             if check.result:
                 total_groups = check.result.get('total_log_groups', 0)
                 groups_with_filters = check.result.get('groups_with_subscription_filters', 0)
@@ -311,7 +317,7 @@ class ComprehensiveObservabilityAssessment:
                 filter_details = check.result.get('subscription_filter_details', [])
                 
                 if groups_with_filters > 0:
-                    summary = f"{base_info} | Found {groups_with_filters}/{total_groups} log groups with subscription filters"
+                    summary = f"Found {groups_with_filters}/{total_groups} log groups with subscription filters"
                     
                     # Create detailed breakdown
                     details = ""
@@ -332,10 +338,10 @@ class ComprehensiveObservabilityAssessment:
                             details += f"{i}. {group}<br>"
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-                return f"{base_info} | Checked {total_groups} log groups - {groups_with_filters}/{total_groups} have subscription filters"
-            return f"{base_info} - No log groups checked for subscription filters"
+                return f"Checked {total_groups} log groups - {groups_with_filters}/{total_groups} have subscription filters"
+            return f"No log groups checked for subscription filters"
         
-        elif check.name == "EC2 CloudWatch Agent Status":
+        elif check.name == "What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?":
             instances = check.result.get('instances', [])
             ssm_instances = check.result.get('ssm_instances', [])
             cw_agent_instances = check.result.get('cw_agent_instances', [])
@@ -347,7 +353,7 @@ class ComprehensiveObservabilityAssessment:
             logging_count = len(logging_configured_instances)
             
             if total_instances > 0:
-                summary = f"{base_info} | Command: Multi-step EC2 CloudWatch agent analysis | Total: {total_instances} instances | SSM: {ssm_count}/{total_instances} | CW Agent: {cw_agent_count}/{ssm_count if ssm_count > 0 else 0} | Logging: {logging_count}/{total_instances}"
+                summary = f"Command: Multi-step EC2 CloudWatch agent analysis | Total: {total_instances} instances | SSM: {ssm_count}/{total_instances} | CW Agent: {cw_agent_count}/{ssm_count if ssm_count > 0 else 0} | Logging: {logging_count}/{total_instances}"
                 
                 # Create detailed breakdown
                 details = ""
@@ -376,19 +382,19 @@ class ComprehensiveObservabilityAssessment:
                     details += f"... and {len(logging_configured_instances) - 10} more instances<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | Command: Multi-step EC2 CloudWatch agent analysis | No EC2 instances found"
+            return f"Command: Multi-step EC2 CloudWatch agent analysis | No EC2 instances found"
         
-        elif check.name == "Lambda Log Groups":
+        elif check.name == "Are all Lambda functions logging to CloudWatch?":
             log_groups = check.result.get('logGroups', [])
             if log_groups:
-                summary = f"{base_info} | Found {len(log_groups)} Lambda log groups"
+                summary = f"Found {len(log_groups)} Lambda log groups"
                 details = "<br>".join([lg.get('logGroupName', 'Unknown') for lg in log_groups[:15]])
                 if len(log_groups) > 15:
                     details += f"<br>... and {len(log_groups) - 15} more log groups"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No Lambda log groups found"
+            return f"No Lambda log groups found"
         
-        elif check.name == "ECS Task Log Configuration":
+        elif check.name == "What percentage of ECS tasks use structured logging (JSON)?":
             if check.result:
                 clusters = check.result.get('clusters', [])
                 running_tasks = check.result.get('running_tasks', [])
@@ -396,7 +402,7 @@ class ComprehensiveObservabilityAssessment:
                 logging_configs = check.result.get('logging_configs', [])
                 
                 if running_tasks:
-                    summary = f"{base_info} | ECS clusters: {len(clusters)} | Running tasks: {len(running_tasks)} | Tasks with logging: {len(tasks_with_logging)}/{len(running_tasks)}"
+                    summary = f"ECS clusters: {len(clusters)} | Running tasks: {len(running_tasks)} | Tasks with logging: {len(tasks_with_logging)}/{len(running_tasks)}"
                     
                     # Create detailed breakdown
                     details = ""
@@ -430,20 +436,20 @@ class ComprehensiveObservabilityAssessment:
                             details += "<br>"
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-                return f"{base_info} | No running ECS tasks found"
-            return f"{base_info} | No ECS task log configuration data available"
+                return f"No running ECS tasks found"
+            return f"No ECS task log configuration data available"
         
-        elif check.name == "EKS Control Plane Logs":
+        elif check.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?":
             log_groups = check.result.get('logGroups', [])
             if log_groups:
-                summary = f"{base_info} | Found {len(log_groups)} EKS control plane log groups"
+                summary = f"Found {len(log_groups)} EKS control plane log groups"
                 details = "<br>".join([lg.get('logGroupName', 'Unknown') for lg in log_groups[:10]])
                 if len(log_groups) > 10:
                     details += f"<br>... and {len(log_groups) - 10} more log groups"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No EKS control plane log groups found"
+            return f"No EKS control plane log groups found"
         
-        elif check.name == "EKS CloudWatch Observability Add-on":
+        elif check.name == "Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?":
             if check.result and 'addon' in check.result:
                 addon = check.result['addon']
                 addon_name = addon.get('addonName', 'Unknown')
@@ -453,7 +459,7 @@ class ComprehensiveObservabilityAssessment:
                 modified_at = addon.get('modifiedAt', 'Unknown')
                 cluster_name = addon.get('clusterName', 'Unknown')
                 
-                summary = f"{base_info} | Found EKS addon: {addon_name} (version: {addon_version}, status: {status})"
+                summary = f"Found EKS addon: {addon_name} (version: {addon_version}, status: {status})"
                 
                 # Create detailed breakdown
                 details = f"<strong>Add-on Details:</strong><br>"
@@ -477,12 +483,12 @@ class ComprehensiveObservabilityAssessment:
                         details += f"<br><strong>Service Account Role:</strong><br>{service_account_role}<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | EKS CloudWatch Observability add-on not found"
+            return f"EKS CloudWatch Observability add-on not found"
         
-        elif check.name == "Log Anomaly Detection":
+        elif check.name == "Have you enabled anomaly detection?":
             anomaly_detectors = check.result.get('anomalyDetectors', [])
             if anomaly_detectors:
-                summary = f"{base_info} | Found {len(anomaly_detectors)} log anomaly detectors"
+                summary = f"Found {len(anomaly_detectors)} log anomaly detectors"
                 details = []
                 for detector in anomaly_detectors[:5]:  # Show first 5 detectors
                     detector_name = detector.get('detectorName', 'Unknown')
@@ -493,7 +499,7 @@ class ComprehensiveObservabilityAssessment:
                 
                 details_html = "<br>".join(details)
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details_html}</div></details>"
-            return f"{base_info} | No log anomaly detectors found"
+            return f"No log anomaly detectors found"
         
         elif check.name == "Log Export Tasks Per Log Group":
             if check.result:
@@ -503,7 +509,7 @@ class ComprehensiveObservabilityAssessment:
                 export_details = check.result.get('export_task_details', [])
                 
                 if exported_groups > 0:
-                    summary = f"{base_info} | Found {exported_groups}/{total_groups} log groups with export history"
+                    summary = f"Found {exported_groups}/{total_groups} log groups with export history"
                     
                     # Create detailed breakdown
                     details = f"<strong>Log Groups with Export History ({exported_groups}):</strong><br>"
@@ -535,16 +541,16 @@ class ComprehensiveObservabilityAssessment:
                             details += f"{i}. {group}<br>"
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-                return f"{base_info} | Checked {total_groups} log groups - {exported_groups}/{total_groups} have export history"
-            return f"{base_info} - No log groups checked for export tasks"
+                return f"Checked {total_groups} log groups - {exported_groups}/{total_groups} have export history"
+            return f"No log groups checked for export tasks"
         
-        elif check.name == "Log Centralization Analysis":
+        elif check.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?":
             if check.result:
                 patterns = check.result.get('centralization_patterns', [])
                 account_type = check.result.get('account_type', 'Unknown')
                 org_status = check.result.get('organization_status', 'Unknown')
                 
-                summary = f"{base_info} | Account type: {account_type} | Org status: {org_status}"
+                summary = f"Account type: {account_type} | Org status: {org_status}"
                 
                 if patterns:
                     summary += f" | Found {len(patterns)} centralization patterns"
@@ -563,23 +569,23 @@ class ComprehensiveObservabilityAssessment:
                     summary += " | No centralization patterns detected"
                 
                 return summary
-            return f"{base_info} - No centralization analysis data available"
+            return f"No centralization analysis data available"
         
-        elif check.name == "OAM Links for Log Centralization":
+        elif check.name == "Are you using CloudWatch cross-account observability?":
             if check.result:
                 account_type = check.result.get('account_type', 'Unknown')
                 links_count = check.result.get('links_count', 0)
                 sinks_count = check.result.get('sinks_count', 0)
                 config_details = check.result.get('configuration_details', [])
                 
-                summary = f"{base_info} | Account Type: {account_type}"
+                summary = f"Account Type: {account_type}"
                 if links_count > 0 or sinks_count > 0:
                     summary += f" | Links: {links_count}, Sinks: {sinks_count}"
                     if config_details:
                         details_text = "<br>".join(config_details)
                         return f"{summary}<details><summary>Show Configuration Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details_text}</div></details>"
                 return summary
-            return f"{base_info} | OAM configuration check failed"
+            return f"OAM configuration check failed"
         
         elif check.name == "Field Index Policies Per Log Group":
             if check.result:
@@ -599,13 +605,13 @@ class ComprehensiveObservabilityAssessment:
                             field_names = detail.get('field_names', [])
                             details_html += f"<strong>{log_group}</strong><br>Fields: {', '.join(field_names[:5])}<br><br>"
                         
-                        return f"{base_info} | Found {indexed_groups}/{total_groups} log groups with field indexes (top 20 largest by size) | {sample_info}<details><summary>Show Field Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details_html}</div></details>"
+                        return f"Found {indexed_groups}/{total_groups} log groups with field indexes (top 20 largest by size) | {sample_info}<details><summary>Show Field Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details_html}</div></details>"
                     
-                    return f"{base_info} | Found {indexed_groups}/{total_groups} log groups with field indexes (top 20 largest by size) | {sample_info}"
-                return f"{base_info} | Checked {total_groups} log groups (top 20 largest by size) - {indexed_groups}/{total_groups} have field indexes"
-            return f"{base_info} - No log groups checked for field indexes"
+                    return f"Found {indexed_groups}/{total_groups} log groups with field indexes (top 20 largest by size) | {sample_info}"
+                return f"Checked {total_groups} log groups (top 20 largest by size) - {indexed_groups}/{total_groups} have field indexes"
+            return f"No log groups checked for field indexes"
         
-        elif check.name == "EC2 Detailed Monitoring":
+        elif check.name == "What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?":
             if isinstance(check.result, list):
                 # Count instances with detailed monitoring enabled
                 enabled_instances = []
@@ -614,7 +620,7 @@ class ComprehensiveObservabilityAssessment:
                         enabled_instances.extend(reservation)
                 
                 if enabled_instances:
-                    summary = f"{base_info} | Found {len(enabled_instances)} EC2 instances with detailed monitoring enabled"
+                    summary = f"Found {len(enabled_instances)} EC2 instances with detailed monitoring enabled"
                     
                     # Create detailed breakdown
                     details = f"<strong>Instances with Detailed Monitoring ({len(enabled_instances)}):</strong><br>"
@@ -631,21 +637,21 @@ class ComprehensiveObservabilityAssessment:
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
-                    return f"{base_info} | No EC2 instances have detailed monitoring enabled - all instances using basic (5-minute) monitoring"
-            return f"{base_info} | EC2 detailed monitoring check completed"
+                    return f"No EC2 instances have detailed monitoring enabled - all instances using basic (5-minute) monitoring"
+            return f"EC2 detailed monitoring check completed"
         
-        elif check.name == "ECS Clusters":
+        elif check.name == "What percentage of ECS Clusters have monitoring enabled?":
             cluster_arns = check.result.get('clusterArns', [])
             if cluster_arns:
                 cluster_names = [arn.split('/')[-1] for arn in cluster_arns]
-                summary = f"{base_info} | Found {len(cluster_arns)} ECS clusters"
+                summary = f"Found {len(cluster_arns)} ECS clusters"
                 details = "<br>".join(cluster_names[:10])
                 if len(cluster_names) > 10:
                     details += f"<br>... and {len(cluster_names) - 10} more clusters"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No ECS clusters found"
+            return f"No ECS clusters found"
         
-        elif check.name == "ECS Container Insights":
+        elif check.name == "List of ECS clusters with Container Insights enabled?":
             clusters = check.result.get('clusters', [])
             if clusters:
                 insights_enabled = []
@@ -675,7 +681,7 @@ class ComprehensiveObservabilityAssessment:
                     else:
                         insights_disabled.append(cluster_info)
                 
-                summary = f"{base_info} | Found {len(clusters)} ECS clusters | Container Insights: {len(insights_enabled)} enabled, {len(insights_disabled)} disabled"
+                summary = f"Found {len(clusters)} ECS clusters | Container Insights: {len(insights_enabled)} enabled, {len(insights_disabled)} disabled"
                 
                 # Create detailed breakdown
                 details = ""
@@ -696,26 +702,26 @@ class ComprehensiveObservabilityAssessment:
                         details += f"   ARN: {cluster['arn']}<br><br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No ECS clusters found"
+            return f"No ECS clusters found"
         
         elif check.name == "EKS Clusters":
             clusters = check.result.get('clusters', [])
             if clusters:
-                summary = f"{base_info} | Found {len(clusters)} EKS clusters"
+                summary = f"Found {len(clusters)} EKS clusters"
                 details = "<br>".join(clusters[:10])
                 if len(clusters) > 10:
                     details += f"<br>... and {len(clusters) - 10} more clusters"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No EKS clusters found"
+            return f"No EKS clusters found"
         
-        elif check.name == "EKS Add-ons":
+        elif check.name == "List of EKS clusters enabled with CloudWatch Observability EKS add-on?":
             if check.result:
                 total_clusters = check.result.get('total_clusters', 0)
                 observability_clusters = check.result.get('observability_clusters', 0)
                 clusters_with_obs = check.result.get('clusters_with_observability', [])
                 cluster_details = check.result.get('cluster_addon_details', [])
                 
-                summary = f"{base_info} | Found {observability_clusters}/{total_clusters} EKS clusters with CloudWatch Observability add-on"
+                summary = f"Found {observability_clusters}/{total_clusters} EKS clusters with CloudWatch Observability add-on"
                 
                 if observability_clusters > 0:
                     # Create detailed breakdown
@@ -737,24 +743,24 @@ class ComprehensiveObservabilityAssessment:
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 
-                return f"{base_info} | Checked {total_clusters} EKS clusters - {observability_clusters}/{total_clusters} have CloudWatch Observability add-on"
-            return f"{base_info} - No EKS clusters checked for add-ons"
+                return f"Checked {total_clusters} EKS clusters - {observability_clusters}/{total_clusters} have CloudWatch Observability add-on"
+            return f"No EKS clusters checked for add-ons"
         
         # Handle different AWS service responses with expandable details
-        elif check.name == "CloudWatch Log Groups":
+        elif check.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)":
             log_groups = check.result.get('logGroups', [])
             if log_groups:
-                summary = f"{base_info} | Found {len(log_groups)} log groups"
+                summary = f"Found {len(log_groups)} log groups"
                 details = "<br>".join([lg.get('logGroupName', 'Unknown') for lg in log_groups[:20]])
                 if len(log_groups) > 20:
                     details += f"<br>... and {len(log_groups) - 20} more"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No log groups found"
+            return f"No log groups found"
         
-        if check.name == "Saved Log Insights Queries":
+        if check.name == "Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?":
             query_definitions = check.result.get('queryDefinitions', [])
             if query_definitions:
-                summary = f"{base_info} | Found {len(query_definitions)} saved query definitions"
+                summary = f"Found {len(query_definitions)} saved query definitions"
                 details = ""
                 for i, query_def in enumerate(query_definitions[:10], 1):
                     name = query_def.get('name', 'Unnamed')
@@ -765,31 +771,31 @@ class ComprehensiveObservabilityAssessment:
                 if len(query_definitions) > 10:
                     details += f"... and {len(query_definitions) - 10} more queries"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No saved query definitions found - users haven't saved any custom CloudWatch Logs Insights queries for reuse"
+            return f"No saved query definitions found - users haven't saved any custom CloudWatch Logs Insights queries for reuse"
         
         elif check.name == "CloudWatch Alarms":
             metric_alarms = check.result.get('MetricAlarms', [])
             composite_alarms = check.result.get('CompositeAlarms', [])
             total_alarms = len(metric_alarms) + len(composite_alarms)
             if total_alarms > 0:
-                summary = f"{base_info} | Found {total_alarms} alarms ({len(metric_alarms)} metric, {len(composite_alarms)} composite)"
+                summary = f"Found {total_alarms} alarms ({len(metric_alarms)} metric, {len(composite_alarms)} composite)"
                 details = "<strong>Metric Alarms:</strong><br>" + "<br>".join([alarm.get('AlarmName', 'Unknown') for alarm in metric_alarms[:10]])
                 if len(metric_alarms) > 10:
                     details += f"<br>... and {len(metric_alarms) - 10} more metric alarms"
                 if composite_alarms:
                     details += "<br><br><strong>Composite Alarms:</strong><br>" + "<br>".join([alarm.get('AlarmName', 'Unknown') for alarm in composite_alarms[:10]])
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No alarms found"
+            return f"No alarms found"
         
         elif check.name == "CloudWatch Dashboards":
             dashboards = check.result.get('DashboardEntries', [])
             if dashboards:
-                summary = f"{base_info} | Found {len(dashboards)} dashboards"
+                summary = f"Found {len(dashboards)} dashboards"
                 details = "<br>".join([dash.get('DashboardName', 'Unknown') for dash in dashboards[:15]])
                 if len(dashboards) > 15:
                     details += f"<br>... and {len(dashboards) - 15} more dashboards"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No dashboards found"
+            return f"No dashboards found"
         
         elif check.name == "Alarm SNS Configuration":
             if check.result:
@@ -799,7 +805,7 @@ class ComprehensiveObservabilityAssessment:
                 alarms_with_sns_details = check.result.get('alarms_with_sns_details', [])
                 alarms_without_sns_details = check.result.get('alarms_without_sns_details', [])
                 
-                summary = f"{base_info} | SNS configured for {alarms_with_sns} of {total_checked} alarms checked"
+                summary = f"SNS configured for {alarms_with_sns} of {total_checked} alarms checked"
                 
                 # Create detailed breakdown
                 details = f"<strong>Alarms with SNS Configuration ({alarms_with_sns}):</strong><br>"
@@ -824,7 +830,7 @@ class ComprehensiveObservabilityAssessment:
                         details += f"... and {len(alarms_without_sns_details) - 10} more alarms without SNS<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No alarms found to check"
+            return f"No alarms found to check"
         
         elif check.name == "Anomaly Detection Bands":
             if check.result:
@@ -832,7 +838,7 @@ class ComprehensiveObservabilityAssessment:
                 bands_details = check.result.get('bands_details', [])
                 
                 if total_bands > 0:
-                    summary = f"{base_info} | Found {total_bands} anomaly detection bands configured"
+                    summary = f"Found {total_bands} anomaly detection bands configured"
                     
                     # Create detailed breakdown
                     details = f"<strong>Anomaly Detection Bands ({total_bands}):</strong><br>"
@@ -850,13 +856,13 @@ class ComprehensiveObservabilityAssessment:
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
-                    return f"{base_info} | No anomaly detection bands configured"
-            return f"{base_info} | No anomaly detection bands found"
+                    return f"No anomaly detection bands configured"
+            return f"No anomaly detection bands found"
         
         elif check.name == "Resource Tags":
             resources = check.result.get('ResourceTagMappingList', []) if check.result else []
             if resources:
-                summary = f"{base_info} | Found {len(resources)} tagged resources"
+                summary = f"Found {len(resources)} tagged resources"
                 details = ""
                 for i, resource in enumerate(resources[:15], 1):
                     resource_arn = resource.get('ResourceARN', 'Unknown')
@@ -868,12 +874,12 @@ class ComprehensiveObservabilityAssessment:
                 if len(resources) > 15:
                     details += f"... and {len(resources) - 15} more tagged resources"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No tagged resources found"
+            return f"No tagged resources found"
         
         elif check.name == "CloudWatch Synthetics Canaries":
             canaries = check.result.get('Canaries', []) if check.result else []
             if canaries:
-                summary = f"{base_info} | Found {len(canaries)} synthetic canaries"
+                summary = f"Found {len(canaries)} synthetic canaries"
                 details = ""
                 for i, canary in enumerate(canaries, 1):
                     name = canary.get('Name', 'Unknown')
@@ -881,12 +887,12 @@ class ComprehensiveObservabilityAssessment:
                     runtime_version = canary.get('RuntimeVersion', 'Unknown')
                     details += f"{i}. <strong>{name}</strong><br>   Status: {status}<br>   Runtime: {runtime_version}<br><br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No synthetic canaries found"
+            return f"No synthetic canaries found"
         
         elif check.name == "RUM Applications":
             apps = check.result.get('AppMonitorSummaries', []) if check.result else []
             if apps:
-                summary = f"{base_info} | Found {len(apps)} RUM applications"
+                summary = f"Found {len(apps)} RUM applications"
                 details = ""
                 for i, app in enumerate(apps, 1):
                     name = app.get('Name', 'Unknown')
@@ -894,7 +900,7 @@ class ComprehensiveObservabilityAssessment:
                     state = app.get('State', 'Unknown')
                     details += f"{i}. <strong>{name}</strong><br>   Domain: {domain}<br>   State: {state}<br><br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No RUM applications found"
+            return f"No RUM applications found"
         
         elif check.name == "Alarm OpsItem Actions":
             if check.result:
@@ -904,7 +910,7 @@ class ComprehensiveObservabilityAssessment:
                 alarms_with_opsitem_details = check.result.get('alarms_with_opsitem_details', [])
                 alarms_without_opsitem_details = check.result.get('alarms_without_opsitem_details', [])
                 
-                summary = f"{base_info} | OpsItem actions configured for {alarms_with_opsitem} of {total_checked} alarms checked"
+                summary = f"OpsItem actions configured for {alarms_with_opsitem} of {total_checked} alarms checked"
                 
                 # Create detailed breakdown
                 details = f"<strong>Alarms with OpsItem Actions ({alarms_with_opsitem}):</strong><br>"
@@ -926,12 +932,12 @@ class ComprehensiveObservabilityAssessment:
                         details += f"... and {len(alarms_without_opsitem_details) - 10} more alarms without OpsItem actions<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No alarms found to check"
+            return f"No alarms found to check"
         
         elif check.name == "Application Signals Services":
             services = check.result.get('Services', []) if check.result else []
             if services:
-                summary = f"{base_info} | Found {len(services)} Application Signals services"
+                summary = f"Found {len(services)} Application Signals services"
                 details = ""
                 for i, service in enumerate(services[:10], 1):
                     service_name = service.get('ServiceName', 'Unknown')
@@ -940,24 +946,24 @@ class ComprehensiveObservabilityAssessment:
                 if len(services) > 10:
                     details += f"... and {len(services) - 10} more services"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No Application Signals services found"
+            return f"No Application Signals services found"
         
-        elif check.name == "Application Signals SLOs":
+        elif check.name == "Have you defined Service Level Objectives (SLOs) for critical application services?":
             slos = check.result.get('SloSummaries', []) if check.result else []
             if slos:
-                summary = f"{base_info} | Found {len(slos)} Application Signals SLOs"
+                summary = f"Found {len(slos)} Application Signals SLOs"
                 details = ""
                 for i, slo in enumerate(slos, 1):
                     name = slo.get('Name', 'Unknown')
                     service_name = slo.get('ServiceName', 'Unknown')
                     details += f"{i}. <strong>{name}</strong><br>   Service: {service_name}<br><br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No Application Signals SLOs found"
+            return f"No Application Signals SLOs found"
         
         elif check.name == "Anomaly Detectors":
             anomaly_detectors = check.result.get('AnomalyDetectors', []) if check.result else []
             if anomaly_detectors:
-                summary = f"{base_info} | Found {len(anomaly_detectors)} anomaly detectors"
+                summary = f"Found {len(anomaly_detectors)} anomaly detectors"
                 details = ""
                 for i, detector in enumerate(anomaly_detectors, 1):
                     namespace = detector.get('Namespace', 'Unknown')
@@ -972,7 +978,7 @@ class ComprehensiveObservabilityAssessment:
                         details += f"   Dimensions: {dim_str}<br>"
                     details += "<br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No anomaly detectors found"
+            return f"No anomaly detectors found"
         
         elif check.name == "DevOps Agent Spaces":
             if check.result:
@@ -981,7 +987,7 @@ class ComprehensiveObservabilityAssessment:
                 regions_checked = check.result.get('regions_checked', [])
                 
                 if total_spaces > 0:
-                    summary = f"{base_info} | Found {total_spaces} DevOps Agent spaces"
+                    summary = f"Found {total_spaces} DevOps Agent spaces"
                     
                     # Create detailed breakdown
                     details = f"<strong>DevOps Agent Spaces ({total_spaces}):</strong><br>"
@@ -1002,8 +1008,8 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
                     regions_str = ', '.join(regions_checked) if regions_checked else 'none'
-                    return f"{base_info} | No DevOps Agent spaces found (checked regions: {regions_str})"
-            return f"{base_info} | DevOps Agent service not accessible"
+                    return f"No DevOps Agent spaces found (checked regions: {regions_str})"
+            return f"DevOps Agent service not accessible"
         
         elif check.name == "Alarm Lambda Actions":
             if check.result:
@@ -1013,9 +1019,9 @@ class ComprehensiveObservabilityAssessment:
                 alarms_with_lambda_details = check.result.get('alarms_with_lambda_details', [])
                 alarms_without_lambda_details = check.result.get('alarms_without_lambda_details', [])
                 
-                summary = f"{base_info} | Lambda actions configured for {alarms_with_lambda} of {total_checked} alarms checked"
+                summary = f"Lambda actions configured for {alarms_with_lambda} of {total_checked} alarms checked"
                 
-                # Create detailed breakdown
+                # Create detailed breakdown - only show alarms with Lambda actions
                 details = f"<strong>Alarms with Lambda Actions ({alarms_with_lambda}):</strong><br>"
                 for i, alarm in enumerate(alarms_with_lambda_details, 1):
                     alarm_name = alarm.get('AlarmName', 'Unknown')
@@ -1028,16 +1034,8 @@ class ComprehensiveObservabilityAssessment:
                         details += f"        ARN: {action}<br>"
                     details += "<br>"
                 
-                if alarms_without_lambda > 0:
-                    details += f"<br><strong>Alarms without Lambda Actions ({alarms_without_lambda}):</strong><br>"
-                    for i, alarm in enumerate(alarms_without_lambda_details[:10], 1):
-                        alarm_name = alarm.get('AlarmName', 'Unknown')
-                        details += f"{i}. {alarm_name}<br>"
-                    if len(alarms_without_lambda_details) > 10:
-                        details += f"... and {len(alarms_without_lambda_details) - 10} more alarms without Lambda actions<br>"
-                
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No alarms found to check"
+            return f"No alarms found to check"
         
         elif check.name == "Alarm Investigations Actions":
             if check.result:
@@ -1047,7 +1045,7 @@ class ComprehensiveObservabilityAssessment:
                 alarms_with_investigations_details = check.result.get('alarms_with_investigations_details', [])
                 alarms_without_investigations_details = check.result.get('alarms_without_investigations_details', [])
                 
-                summary = f"{base_info} | CloudWatch Investigations actions configured for {alarms_with_investigations} of {total_checked} alarms checked"
+                summary = f"CloudWatch Investigations actions configured for {alarms_with_investigations} of {total_checked} alarms checked"
                 
                 # Create detailed breakdown
                 details = f"<strong>Alarms with CloudWatch Investigations Actions ({alarms_with_investigations}):</strong><br>"
@@ -1061,7 +1059,7 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No alarms found to check"
+            return f"No alarms found to check"
         
         elif check.name == "Alarm EC2 Actions":
             if check.result:
@@ -1069,7 +1067,7 @@ class ComprehensiveObservabilityAssessment:
                 alarms_with_ec2 = check.result.get('alarms_with_ec2', 0)
                 alarms_with_ec2_details = check.result.get('alarms_with_ec2_details', [])
                 
-                summary = f"{base_info} | EC2 actions configured for {alarms_with_ec2} of {total_checked} alarms checked"
+                summary = f"EC2 actions configured for {alarms_with_ec2} of {total_checked} alarms checked"
                 
                 # Create detailed breakdown - only show alarms with EC2 actions
                 details = f"<strong>Alarms with EC2 Actions ({alarms_with_ec2}):</strong><br>"
@@ -1083,24 +1081,24 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No alarms found to check"
+            return f"No alarms found to check"
         
         elif check.name == "Lambda Functions":
             functions = check.result.get('Functions', [])
             if functions:
-                summary = f"{base_info} | Found {len(functions)} Lambda functions"
+                summary = f"Found {len(functions)} Lambda functions"
                 details = "<br>".join([func.get('FunctionName', 'Unknown') for func in functions[:20]])
                 if len(functions) > 20:
                     details += f"<br>... and {len(functions) - 20} more functions"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No Lambda functions found"
+            return f"No Lambda functions found"
         
         elif check.name == "EC2 Instances":
             instances = []
             for reservation in check.result.get('Reservations', []):
                 instances.extend(reservation.get('Instances', []))
             if instances:
-                summary = f"{base_info} | Found {len(instances)} EC2 instances"
+                summary = f"Found {len(instances)} EC2 instances"
                 details = ""
                 for instance in instances[:15]:
                     instance_id = instance.get('InstanceId', 'Unknown')
@@ -1110,39 +1108,62 @@ class ComprehensiveObservabilityAssessment:
                 if len(instances) > 15:
                     details += f"... and {len(instances) - 15} more instances"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No EC2 instances found"
+            return f"No EC2 instances found"
         
-        elif check.name == "Top 10 Log Groups Retention Analysis":
+        elif check.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?":
             if check.result:
                 top_groups = check.result.get('top_log_groups', [])
                 groups_with_retention = check.result.get('groups_with_retention', 0)
                 total_size_gb = check.result.get('total_size_gb', 0)
                 
                 if top_groups:
-                    summary = f"{base_info} | Analyzed top 10 largest log groups ({total_size_gb:.1f} GB total) | {groups_with_retention}/10 have retention policies"
+                    summary = f"Analyzed top 10 largest log groups ({total_size_gb:.1f} GB total) | {groups_with_retention}/10 have retention policies"
                     
                     # Create detailed breakdown
                     details = ""
                     for i, group in enumerate(top_groups, 1):
                         name = group.get('name', 'Unknown')
-                        size_gb = group.get('size_gb', 0)
+                        size_mb = group.get('size_mb', 0)
                         retention = group.get('retention_days', 'Never expire')
                         retention_str = f"{retention} days" if retention != 'Never expire' else retention
-                        details += f"{i}. {name}<br>   Size: {size_gb:.2f} GB | Retention: {retention_str}<br><br>"
+                        details += f"{i}. {name}<br>   Size: {size_mb:.1f} MB | Retention: {retention_str}<br><br>"
                     
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 return f"{base_info} | No large log groups found for retention analysis"
             return f"{base_info} - No retention analysis performed"
         
+        elif check.name == "X-Ray Sampling Rules":
+            sampling_rules = check.result.get('SamplingRuleRecords', []) if check.result else []
+            custom_rules = [rule for rule in sampling_rules if rule.get('SamplingRule', {}).get('RuleName') != 'Default']
+            
+            if custom_rules:
+                summary = f"{base_info} | Found {len(custom_rules)} custom sampling rules"
+                details = ""
+                for i, record in enumerate(custom_rules, 1):
+                    rule = record.get('SamplingRule', {})
+                    name = rule.get('RuleName', 'Unknown')
+                    priority = rule.get('Priority', 'Unknown')
+                    fixed_rate = rule.get('FixedRate', 0)
+                    service = rule.get('ServiceName', '*')
+                    details += f"{i}. <strong>{name}</strong><br>"
+                    details += f"   Priority: {priority}<br>"
+                    details += f"   Fixed Rate: {fixed_rate * 100}%<br>"
+                    details += f"   Service: {service}<br><br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            else:
+                default_count = len(sampling_rules)
+                return f"{base_info} | No custom sampling rules configured (only {default_count} default rule exists)"
+        
         # Default handler for other checks
         else:
             # Provide specific context for known checks that might return empty results
-            if check.name == "EKS CloudWatch Observability Add-on":
+            if check.name == "Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?":
                 return f"{base_info} | {command_info} | CloudWatch Observability add-on not found - EKS cluster may not have Amazon CloudWatch Observability add-on installed"
-            elif check.name == "Log Anomaly Detection":
-                return f"{base_info} | {command_info} | No log anomaly detectors found - CloudWatch Logs anomaly detection not configured"
-            elif check.name == "OAM Links for Log Centralization":
-                return f"{base_info} | {command_info} | No OAM links found - CloudWatch Observability Access Manager not configured for cross-account log access"
+            elif check.name == "Have you enabled anomaly detection?":
+                return f"{command_info} | No log anomaly detectors found - CloudWatch Logs anomaly detection not configured"
+            elif check.name == "Are you using CloudWatch cross-account observability?":
+                return f"{command_info} | No OAM links found - CloudWatch Observability Access Manager not configured for cross-account log access"
             
             # Try to find common patterns in the result
             if isinstance(check.result, dict):
@@ -1158,7 +1179,7 @@ class ComprehensiveObservabilityAssessment:
                         break
                 
                 if item_count > 0:
-                    summary = f"{base_info} | Found {item_count} items"
+                    summary = f"Found {item_count} items"
                     # Try to extract names or IDs
                     details = ""
                     for i, item in enumerate(items[:15]):
@@ -1172,9 +1193,9 @@ class ComprehensiveObservabilityAssessment:
                         details += f"... and {len(items) - 15} more items"
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
-                    return f"{base_info} | No items found"
+                    return f"No items found"
             else:
-                return f"{base_info} | Command executed successfully"
+                return f"Command executed successfully"
 
         if check.name == "Saved Log Insights Queries":
             query_definitions = check.result.get('queryDefinitions', [])
@@ -1187,8 +1208,8 @@ class ComprehensiveObservabilityAssessment:
                     log_group_info = f"Groups: {', '.join(log_groups[:2])}" if log_groups else "No log groups"
                     query_details.append(f"Name:{name} Query:{query_string} {log_group_info}")
                 
-                return f"{base_info} | {command_info} | Found {len(query_definitions)} saved query definitions | Details: {' | '.join(query_details)}"
-            return f"{base_info} | {command_info} | No saved query definitions found"
+                return f"{command_info} | Found {len(query_definitions)} saved query definitions | Details: {' | '.join(query_details)}"
+            return f"{command_info} | No saved query definitions found"
         
         elif check.name == "Log Insights Query History":
             queries = check.result.get('queries', [])
@@ -1212,10 +1233,10 @@ class ComprehensiveObservabilityAssessment:
                         status = query.get('status', 'Unknown')
                         query_details.append(f"ID:{query_id} Status:{status} Query:{query_string}")
                     
-                    return f"{base_info} | {command_info} | Found {len(custom_queries)} custom queries (filtered from {len(queries)} total) | Details: {' | '.join(query_details)}"
+                    return f"{command_info} | Found {len(custom_queries)} custom queries (filtered from {len(queries)} total) | Details: {' | '.join(query_details)}"
                 else:
-                    return f"{base_info} | {command_info} | Found {len(queries)} total queries but no custom user-generated queries (all appear to be system/auto-generated)"
-            return f"{base_info} | {command_info} | No query history found - no CloudWatch Logs Insights queries have been executed recently"
+                    return f"{command_info} | Found {len(queries)} total queries but no custom user-generated queries (all appear to be system/auto-generated)"
+            return f"{command_info} | No query history found - no CloudWatch Logs Insights queries have been executed recently"
         
         
         
@@ -1225,66 +1246,66 @@ class ComprehensiveObservabilityAssessment:
                 instances.extend(reservation.get('Instances', []))
             if instances:
                 sample_ids = [inst.get('InstanceId', 'Unknown') for inst in instances[:3]]
-                return f"{base_info} - Found {len(instances)} EC2 instances (e.g., {', '.join(sample_ids)})"
-            return f"{base_info} - No EC2 instances found"
+                return f"Found {len(instances)} EC2 instances (e.g., {', '.join(sample_ids)})"
+            return f"No EC2 instances found"
         
         elif check.name == "EKS Clusters":
             clusters = check.result.get('clusters', [])
             if clusters:
                 sample_names = clusters[:3]
-                return f"{base_info} - Found {len(clusters)} EKS clusters (e.g., {', '.join(sample_names)})"
-            return f"{base_info} - No EKS clusters found"
+                return f"Found {len(clusters)} EKS clusters (e.g., {', '.join(sample_names)})"
+            return f"No EKS clusters found"
         
         elif check.name == "Lambda Functions":
             functions = check.result.get('Functions', [])
             if functions:
                 sample_names = [func.get('FunctionName', 'Unknown') for func in functions[:3]]
-                return f"{base_info} - Found {len(functions)} Lambda functions (e.g., {', '.join(sample_names)})"
-            return f"{base_info} - No Lambda functions found"
+                return f"Found {len(functions)} Lambda functions (e.g., {', '.join(sample_names)})"
+            return f"No Lambda functions found"
         
         elif check.name == "CloudWatch Alarms":
             metric_alarms = check.result.get('MetricAlarms', [])
             composite_alarms = check.result.get('CompositeAlarms', [])
             total_alarms = len(metric_alarms) + len(composite_alarms)
             if total_alarms > 0:
-                summary = f"{base_info} | Found {total_alarms} alarms ({len(metric_alarms)} metric, {len(composite_alarms)} composite)"
+                summary = f"Found {total_alarms} alarms ({len(metric_alarms)} metric, {len(composite_alarms)} composite)"
                 details = "<strong>Metric Alarms:</strong><br>" + "<br>".join([alarm.get('AlarmName', 'Unknown') for alarm in metric_alarms[:10]])
                 if len(metric_alarms) > 10:
                     details += f"<br>... and {len(metric_alarms) - 10} more metric alarms"
                 if composite_alarms:
                     details += "<br><br><strong>Composite Alarms:</strong><br>" + "<br>".join([alarm.get('AlarmName', 'Unknown') for alarm in composite_alarms[:10]])
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"{base_info} | No alarms found"
+            return f"No alarms found"
         
         elif check.name == "CloudWatch Dashboards":
             dashboards = check.result.get('DashboardEntries', [])
             if dashboards:
                 sample_names = [dash.get('DashboardName', 'Unknown') for dash in dashboards[:3]]
-                return f"{base_info} - Found {len(dashboards)} dashboards (e.g., {', '.join(sample_names)})"
-            return f"{base_info} - No dashboards found"
+                return f"Found {len(dashboards)} dashboards (e.g., {', '.join(sample_names)})"
+            return f"No dashboards found"
         
         elif check.name == "SNS Topics":
             topics = check.result.get('Topics', [])
             if topics:
                 sample_arns = [topic.get('TopicArn', 'Unknown').split(':')[-1] for topic in topics[:3]]
-                return f"{base_info} - Found {len(topics)} SNS topics (e.g., {', '.join(sample_arns)})"
-            return f"{base_info} - No SNS topics found"
+                return f"Found {len(topics)} SNS topics (e.g., {', '.join(sample_arns)})"
+            return f"No SNS topics found"
         
         elif check.name == "VPC Flow Logs":
             flow_logs = check.result.get('FlowLogs', [])
             if flow_logs:
                 sample_ids = [fl.get('FlowLogId', 'Unknown') for fl in flow_logs[:3]]
-                return f"{base_info} - Found {len(flow_logs)} VPC flow logs (e.g., {', '.join(sample_ids)})"
-            return f"{base_info} - No VPC flow logs found"
+                return f"Found {len(flow_logs)} VPC flow logs (e.g., {', '.join(sample_ids)})"
+            return f"No VPC flow logs found"
         
         elif check.name == "CloudTrail Trails":
             trails = check.result.get('trailList', [])
             if trails:
                 sample_names = [trail.get('Name', 'Unknown') for trail in trails[:3]]
-                return f"{base_info} - Found {len(trails)} CloudTrail trails (e.g., {', '.join(sample_names)})"
-            return f"{base_info} - No CloudTrail trails found"
+                return f"Found {len(trails)} CloudTrail trails (e.g., {', '.join(sample_names)})"
+            return f"No CloudTrail trails found"
         
-        elif check.name == "Lambda Log Groups":
+        elif check.name == "Are all Lambda functions logging to CloudWatch?":
             log_groups = check.result.get('logGroups', [])
             if log_groups:
                 # Get Lambda function count for comparison
@@ -1301,9 +1322,9 @@ class ComprehensiveObservabilityAssessment:
                     # Calculate coverage (cap at 100% since there can be old log groups)
                     coverage_count = min(function_log_count, lambda_count)
                     percentage = int((coverage_count / lambda_count) * 100)
-                    return f"{base_info} | {command_info} | {coverage_count}/{lambda_count} Lambda functions ({percentage}%) have log groups configured | Total log groups: {len(log_groups)}"
+                    return f"{command_info} | {coverage_count}/{lambda_count} Lambda functions ({percentage}%) have log groups configured | Total log groups: {len(log_groups)}"
                 else:
-                    return f"{base_info} | {command_info} | Found {len(log_groups)} Lambda log groups but no Lambda functions detected"
+                    return f"{command_info} | Found {len(log_groups)} Lambda log groups but no Lambda functions detected"
             else:
                 # Check if there are Lambda functions without log groups
                 lambda_functions_result = self.run_aws_command("aws lambda list-functions --output json")
@@ -1312,11 +1333,11 @@ class ComprehensiveObservabilityAssessment:
                     lambda_count = len(lambda_functions_result['Functions'])
                 
                 if lambda_count > 0:
-                    return f"{base_info} | {command_info} | No Lambda log groups found but {lambda_count} Lambda functions exist (functions may not have been invoked yet to create log groups)"
+                    return f"{command_info} | No Lambda log groups found but {lambda_count} Lambda functions exist (functions may not have been invoked yet to create log groups)"
                 else:
-                    return f"{base_info} | {command_info} | No Lambda log groups found and no Lambda functions deployed"
+                    return f"{command_info} | No Lambda log groups found and no Lambda functions deployed"
         
-        elif check.name == "ECS Task Log Configuration":
+        elif check.name == "What percentage of ECS tasks use structured logging (JSON)?":
             clusters = check.result.get('clusters', [])
             running_tasks = check.result.get('running_tasks', [])
             tasks_with_logging = check.result.get('tasks_with_logging', [])
@@ -1345,27 +1366,27 @@ class ComprehensiveObservabilityAssessment:
                     config_details.append(f"{task_def}[{','.join(containers_info)}]")
                 
                 configs_summary = " | ".join(config_details[:3])  # Show first 3
-                return f"{base_info} | Command: Multi-step ECS task logging analysis | {logging_count}/{total_running} running tasks ({percentage}%) have logging configured | Configs: {configs_summary}"
+                return f"Command: Multi-step ECS task logging analysis | {logging_count}/{total_running} running tasks ({percentage}%) have logging configured | Configs: {configs_summary}"
             elif clusters:
-                return f"{base_info} | Command: Multi-step ECS task logging analysis | No running tasks found | Clusters checked: {len(clusters)}"
+                return f"Command: Multi-step ECS task logging analysis | No running tasks found | Clusters checked: {len(clusters)}"
             else:
-                return f"{base_info} | Command: Multi-step ECS task logging analysis | No ECS clusters found"
+                return f"Command: Multi-step ECS task logging analysis | No ECS clusters found"
         
-        elif check.name == "EKS Control Plane Logs":
+        elif check.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?":
             log_groups = check.result.get('logGroups', [])
             if log_groups:
                 sample_names = [lg.get('logGroupName', 'Unknown') for lg in log_groups[:3]]
-                return f"{base_info} - Found {len(log_groups)} EKS control plane log groups (e.g., {', '.join(sample_names)})"
-            return f"{base_info} - No EKS control plane log groups found"
+                return f"Found {len(log_groups)} EKS control plane log groups (e.g., {', '.join(sample_names)})"
+            return f"No EKS control plane log groups found"
         
         elif check.name == "EC2 CloudWatch Agent IAM":
             policies = check.result.get('AttachedPolicies', [])
             if policies:
                 policy_names = [p.get('PolicyName', 'Unknown') for p in policies[:3]]
-                return f"{base_info} - Found {len(policies)} IAM policies for CloudWatch Agent (e.g., {', '.join(policy_names)})"
-            return f"{base_info} - No CloudWatch Agent IAM policies found"
+                return f"Found {len(policies)} IAM policies for CloudWatch Agent (e.g., {', '.join(policy_names)})"
+            return f"No CloudWatch Agent IAM policies found"
         
-        elif check.name == "Log Anomaly Detection":
+        elif check.name == "Have you enabled anomaly detection?":
             anomaly_detectors = check.result.get('anomalyDetectors', [])
             if anomaly_detectors:
                 detector_details = []
@@ -1384,8 +1405,8 @@ class ComprehensiveObservabilityAssessment:
                     detector_details.append(f"{detector_name}({status})->{groups_summary}")
                 
                 detectors_summary = " | ".join(detector_details)
-                return f"{base_info} | {command_info} | Found {len(anomaly_detectors)} log anomaly detectors | Details: {detectors_summary}"
-            return f"{base_info} | {command_info} | No log anomaly detectors found"
+                return f"{command_info} | Found {len(anomaly_detectors)} log anomaly detectors | Details: {detectors_summary}"
+            return f"{command_info} | No log anomaly detectors found"
         
         elif check.name == "Log Export Tasks Per Log Group":
             if check.result:
@@ -1395,11 +1416,11 @@ class ComprehensiveObservabilityAssessment:
                 
                 if exported_groups > 0:
                     sample_info = f"Examples: {', '.join(sample_groups[:3])}" if sample_groups else ""
-                    return f"{base_info} | Found {exported_groups}/{total_groups} log groups with export task history | {sample_info}"
-                return f"{base_info} | Checked {total_groups} log groups - {exported_groups}/{total_groups} have export task history"
-            return f"{base_info} - No log groups checked for export tasks"
+                    return f"Found {exported_groups}/{total_groups} log groups with export task history | {sample_info}"
+                return f"Checked {total_groups} log groups - {exported_groups}/{total_groups} have export task history"
+            return f"No log groups checked for export tasks"
         
-        elif check.name == "Log Centralization Analysis":
+        elif check.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?":
             if check.result:
                 patterns = check.result.get('centralization_patterns', [])
                 account_type = check.result.get('account_type', 'Unknown')
@@ -1407,11 +1428,11 @@ class ComprehensiveObservabilityAssessment:
                 
                 if patterns:
                     pattern_summary = ', '.join(patterns)
-                    return f"{base_info} | Account type: {account_type} | Organization: {org_status} | Centralization patterns: {pattern_summary}"
-                return f"{base_info} | Account type: {account_type} | Organization: {org_status} | No centralization patterns detected"
-            return f"{base_info} - No centralization analysis performed"
+                    return f"Account type: {account_type} | Organization: {org_status} | Centralization patterns: {pattern_summary}"
+                return f"Account type: {account_type} | Organization: {org_status} | No centralization patterns detected"
+            return f"No centralization analysis performed"
         
-        elif check.name == "JSON Structured Logs Analysis":
+        elif check.name == "What percentage of application logs use structured JSON format for easier parsing and analysis?":
             if check.result:
                 total_checked = check.result.get('total_groups_checked', 0)
                 pure_json = check.result.get('pure_json_groups', 0)
@@ -1427,9 +1448,9 @@ class ComprehensiveObservabilityAssessment:
                         structure_details.append(f"{embedded_json} embedded JSON")
                     
                     sample_info = f"Examples: {', '.join(sample_groups[:3])}" if sample_groups else ""
-                    return f"{base_info} | Analyzed {total_checked} largest log groups | {total_structured}/{total_checked} have structured logs ({', '.join(structure_details)}) | {sample_info}"
-                return f"{base_info} | Analyzed {total_checked} largest log groups | {total_structured}/{total_checked} have structured logs"
-            return f"{base_info} - No JSON structured log analysis performed"
+                    return f"Analyzed {total_checked} largest log groups | {total_structured}/{total_checked} have structured logs ({', '.join(structure_details)}) | {sample_info}"
+                return f"Analyzed {total_checked} largest log groups | {total_structured}/{total_checked} have structured logs"
+            return f"No JSON structured log analysis performed"
         
 
         elif check.name == "Field Index Policies Per Log Group":
@@ -1440,11 +1461,11 @@ class ComprehensiveObservabilityAssessment:
                 
                 if indexed_groups > 0:
                     sample_info = f"Examples: {', '.join(sample_groups[:3])}" if sample_groups else ""
-                    return f"{base_info} | Checked {total_groups} largest log groups by size - {indexed_groups}/{total_groups} have field index policies | {sample_info}"
-                return f"{base_info} | Checked {total_groups} largest log groups by size - {indexed_groups}/{total_groups} have field index policies"
-            return f"{base_info} - No largest log groups checked for field indexes"
+                    return f"Checked {total_groups} largest log groups by size - {indexed_groups}/{total_groups} have field index policies | {sample_info}"
+                return f"Checked {total_groups} largest log groups by size - {indexed_groups}/{total_groups} have field index policies"
+            return f"No largest log groups checked for field indexes"
 
-        elif check.name == "EKS Add-ons":
+        elif check.name == "List of EKS clusters enabled with CloudWatch Observability EKS add-on?":
             if check.result:
                 total_clusters = check.result.get('total_clusters', 0)
                 observability_clusters = check.result.get('observability_clusters', 0)
@@ -1452,16 +1473,40 @@ class ComprehensiveObservabilityAssessment:
                 
                 if observability_clusters > 0:
                     examples = f"Examples: {', '.join(clusters_with_obs[:3])}" if clusters_with_obs else ""
-                    return f"{base_info} | {observability_clusters}/{total_clusters} EKS clusters have amazon-cloudwatch-observability add-on | {examples}"
-                return f"{base_info} | {observability_clusters}/{total_clusters} EKS clusters have amazon-cloudwatch-observability add-on"
-            return f"{base_info} - No EKS clusters found"
+                    return f"{observability_clusters}/{total_clusters} EKS clusters have amazon-cloudwatch-observability add-on | {examples}"
+                return f"{observability_clusters}/{total_clusters} EKS clusters have amazon-cloudwatch-observability add-on"
+            return f"{base_info} | No EKS clusters found"
 
         elif check.name == "X-Ray Service Map":
             services = check.result.get('Services', [])
             if services:
                 sample_names = [svc.get('Name', 'Unknown') for svc in services[:3]]
-                return f"{base_info} - Found {len(services)} X-Ray services (e.g., {', '.join(sample_names)})"
-            return f"{base_info} - No X-Ray services found"
+                return f"{base_info} | Found {len(services)} X-Ray services (e.g., {', '.join(sample_names)})"
+            return f"{base_info} | No X-Ray services found"
+        
+        elif check.name == "Dashboard Variables":
+            if check.result:
+                total_dashboards = check.result.get('total_dashboards', 0)
+                dashboards_with_variables = check.result.get('dashboards_with_variables', 0)
+                dashboards_with_variables_details = check.result.get('dashboards_with_variables_details', [])
+                
+                if dashboards_with_variables > 0:
+                    summary = f"{base_info} | {dashboards_with_variables}/{total_dashboards} dashboards have dynamic variables"
+                    
+                    # Create detailed breakdown
+                    details = f"<strong>Dashboards with Variables ({dashboards_with_variables}):</strong><br>"
+                    for i, dashboard in enumerate(dashboards_with_variables_details, 1):
+                        name = dashboard.get('DashboardName', 'Unknown')
+                        indicators = dashboard.get('VariableIndicators', [])
+                        size = dashboard.get('Size', 0)
+                        details += f"{i}. <strong>{name}</strong><br>"
+                        details += f"   Variable Features: {', '.join(indicators)}<br>"
+                        details += f"   Size: {size} bytes<br><br>"
+                    
+                    return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+                
+                return f"{base_info} | {dashboards_with_variables}/{total_dashboards} dashboards have dynamic variables"
+            return f"{base_info} | No dashboards found"
         
         # Generic handling for other checks
         elif isinstance(check.result, dict):
@@ -1470,33 +1515,33 @@ class ComprehensiveObservabilityAssessment:
                 if key in check.result:
                     items = check.result[key]
                     if items:
-                        return f"{base_info} | {command_info} | Found {len(items)} {key.lower()}"
-                    return f"{base_info} | {command_info} | No {key.lower()} found"
+                        return f"{command_info} | Found {len(items)} {key.lower()}"
+                    return f"{command_info} | No {key.lower()} found"
             
             # Check for specific response patterns
             if 'EncryptionConfig' in check.result:
-                return f"{base_info} | {command_info} | X-Ray encryption configuration retrieved"
+                return f"{command_info} | X-Ray encryption configuration retrieved"
             elif 'Organization' in check.result:
-                return f"{base_info} | {command_info} | Organization configuration retrieved"
+                return f"{command_info} | Organization configuration retrieved"
             elif 'AccountHealth' in check.result:
-                return f"{base_info} | {command_info} | DevOps Guru account health retrieved"
+                return f"{command_info} | DevOps Guru account health retrieved"
             
             # If it's a dict with meaningful data, be more specific
             if check.result and len(check.result) > 0:
                 # Count non-empty values
                 non_empty_keys = [k for k, v in check.result.items() if v]
                 if non_empty_keys:
-                    return f"{base_info} | {command_info} | Configuration retrieved ({len(non_empty_keys)} properties)"
+                    return f"{command_info} | Configuration retrieved ({len(non_empty_keys)} properties)"
                 else:
-                    return f"{base_info} | {command_info} | Empty configuration returned"
-            return f"{base_info} | {command_info} | No configuration found"
+                    return f"{command_info} | Empty configuration returned"
+            return f"{command_info} | No configuration found"
         
         elif isinstance(check.result, list):
             if check.result:
-                return f"{base_info} | {command_info} | Found {len(check.result)} items"
-            return f"{base_info} | {command_info} | No items found"
+                return f"{command_info} | Found {len(check.result)} items"
+            return f"{command_info} | No items found"
         
-        return f"{base_info} | {command_info} | Data retrieved successfully"
+        return f"{command_info} | Data retrieved successfully"
 
     def setup_discovery_checks(self):
         """Setup all discovery checks across all categories"""
@@ -1509,45 +1554,45 @@ class ComprehensiveObservabilityAssessment:
         print(f"   Found {total_groups} largest log groups: EC2({len(self.largest_log_groups['EC2'])}), ECS({len(self.largest_log_groups['ECS'])}), Lambda({len(self.largest_log_groups['Lambda'])}), EKS({len(self.largest_log_groups['EKS'])})")
         
         # Logs Discovery Checks (Enhanced)
-        self.add_discovery_check("CloudWatch Log Groups", "Logs", "aws logs describe-log-groups --output json")
-        self.add_discovery_check("Top 10 Log Groups Retention Analysis", "Logs", "custom_top_log_groups_retention_check")
-        self.add_discovery_check("Saved Log Insights Queries", "Logs", "aws logs describe-query-definitions --output json")
+        self.add_discovery_check("What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)", "Logs", "aws logs describe-log-groups --output json")
+        self.add_discovery_check("What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?", "Logs", "custom_top_log_groups_retention_check")
+        self.add_discovery_check("Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?", "Logs", "aws logs describe-query-definitions --output json")
         self.add_discovery_check("Log Insights Query History", "Logs", "aws logs describe-queries --output json")
-        self.add_discovery_check("Log Metric Filters", "Logs", "aws logs describe-metric-filters --output json")
-        self.add_discovery_check("Log Subscription Filters Coverage", "Logs", "custom_subscription_filters_coverage_check")
+        self.add_discovery_check("Have you created metric filters to extract KPIs from logs?", "Logs", "aws logs describe-metric-filters --output json")
+        self.add_discovery_check("What percentage of log groups have subscription filters for real-time processing?", "Logs", "custom_subscription_filters_coverage_check")
         
         # Service-Specific Log Collection
-        self.add_discovery_check("EC2 CloudWatch Agent Status", "Logs", "custom_ec2_cloudwatch_agent_check")
-        self.add_discovery_check("Lambda Log Groups", "Logs", "aws logs describe-log-groups --log-group-name-prefix /aws/lambda --output json")
-        self.add_discovery_check("ECS Task Log Configuration", "Logs", "custom_ecs_task_log_check")
-        self.add_discovery_check("EKS Control Plane Logs", "Logs", "aws logs describe-log-groups --log-group-name-prefix /aws/eks --output json")
-        self.add_discovery_check("EKS CloudWatch Observability Add-on", "Logs", "aws eks describe-addon --cluster-name PetsiteEKS-cluster --addon-name amazon-cloudwatch-observability --output json")
+        self.add_discovery_check("What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?", "Logs", "custom_ec2_cloudwatch_agent_check")
+        self.add_discovery_check("Are all Lambda functions logging to CloudWatch?", "Logs", "aws logs describe-log-groups --log-group-name-prefix /aws/lambda --output json")
+        self.add_discovery_check("What percentage of ECS tasks use structured logging (JSON)?", "Logs", "custom_ecs_task_log_check")
+        self.add_discovery_check("Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?", "Logs", "aws logs describe-log-groups --log-group-name-prefix /aws/eks --output json")
+        self.add_discovery_check("Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?", "Logs", "aws eks describe-addon --cluster-name PetsiteEKS-cluster --addon-name amazon-cloudwatch-observability --output json")
         
         # Advanced Log Analysis
-        self.add_discovery_check("Log Anomaly Detection", "Logs", "aws logs list-log-anomaly-detectors --output json")
+        self.add_discovery_check("Have you enabled anomaly detection?", "Logs", "aws logs list-log-anomaly-detectors --output json")
         self.add_discovery_check("Log Export Tasks Per Log Group", "Logs", "custom_log_export_tasks_per_log_group_check")
-        self.add_discovery_check("Log Centralization Analysis", "Logs", "custom_log_centralization_analysis_check")
-        self.add_discovery_check("OAM Links for Log Centralization", "Logs", "custom_oam_links_and_sinks_check")
-        self.add_discovery_check("JSON Structured Logs Analysis", "Logs", "custom_json_structured_logs_check")
+        self.add_discovery_check("Have you implemented Cross-Account and Cross-Region Log Centralization?", "Logs", "custom_log_centralization_analysis_check")
+        self.add_discovery_check("Are you using CloudWatch cross-account observability?", "Logs", "custom_oam_links_and_sinks_check")
+        self.add_discovery_check("What percentage of application logs use structured JSON format for easier parsing and analysis?", "Logs", "custom_json_structured_logs_check")
         self.add_discovery_check("Field Index Policies Per Log Group", "Logs", "custom_field_indexes_per_log_group_check")
         
         # Metrics Discovery Checks (Detailed)
         self.add_discovery_check("EC2 Instances", "Metrics", "aws ec2 describe-instances --output json")
-        self.add_discovery_check("EC2 Detailed Monitoring", "Metrics", "aws ec2 describe-instances --query 'Reservations[].Instances[?Monitoring.State==`enabled`]' --output json")
-        self.add_discovery_check("ECS Clusters", "Metrics", "aws ecs list-clusters --output json")
-        self.add_discovery_check("ECS Container Insights", "Metrics", "aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json")
+        self.add_discovery_check("What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?", "Metrics", "aws ec2 describe-instances --query 'Reservations[].Instances[?Monitoring.State==`enabled`]' --output json")
+        self.add_discovery_check("What percentage of ECS Clusters have monitoring enabled?", "Metrics", "aws ecs list-clusters --output json")
+        self.add_discovery_check("List of ECS clusters with Container Insights enabled?", "Metrics", "aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json")
         self.add_discovery_check("EKS Clusters", "Metrics", "aws eks list-clusters --output json")
-        self.add_discovery_check("EKS Add-ons", "Metrics", "custom_eks_addons_check")
+        self.add_discovery_check("List of EKS clusters enabled with CloudWatch Observability EKS add-on?", "Metrics", "custom_eks_addons_check")
         self.add_discovery_check("Lambda Functions", "Metrics", "aws lambda list-functions --output json")
-        self.add_discovery_check("Lambda Insights", "Metrics", "custom_lambda_insights_check")
+        self.add_discovery_check("What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?", "Metrics", "custom_lambda_insights_check")
 
-        self.add_discovery_check("Custom Metrics Namespaces", "Metrics", "custom_metrics_namespaces_check")
-        self.add_discovery_check("CloudWatch Agent Metrics", "Metrics", "aws cloudwatch list-metrics --namespace CWAgent --output json")
-        self.add_discovery_check("Metric Streams", "Metrics", "aws cloudwatch list-metric-streams --output json")
+        self.add_discovery_check("Are you publishing custom business and application metrics to CloudWatch?", "Metrics", "custom_metrics_namespaces_check")
+        self.add_discovery_check("Are CloudWatch Agents configured to collect system-level metrics?", "Metrics", "aws cloudwatch list-metrics --namespace CWAgent --output json")
+        self.add_discovery_check("Have you configured metric streams for real-time export to third-party tools or data lakes?", "Metrics", "aws cloudwatch list-metric-streams --output json")
         
         # Traces Discovery Checks (Detailed)
-        self.add_discovery_check("X-Ray Service Map", "Traces", "aws xray get-service-graph --output json")
-        self.add_discovery_check("X-Ray Sampling Rules", "Traces", "aws xray get-sampling-rules --output json")
+        self.add_discovery_check("X-Ray Service Map", "Traces", "custom_xray_service_graph_check")
+        self.add_discovery_check("X-Ray Sampling Rules", "Traces", "custom_xray_sampling_rules_check")
         self.add_discovery_check("X-Ray Encryption Config", "Traces", "aws xray get-encryption-config --output json")
         self.add_discovery_check("Lambda Tracing Config", "Traces", "aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json")
         self.add_discovery_check("X-Ray Insights", "Traces", "aws xray get-insight-summaries --output json")
@@ -1570,13 +1615,14 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Alarm Lambda Actions", "Alarms", "custom_alarm_lambda_actions_check")
         self.add_discovery_check("Alarm Investigations Actions", "Alarms", "custom_alarm_investigations_actions_check")
         self.add_discovery_check("Alarm EC2 Actions", "Alarms", "custom_alarm_ec2_actions_check")
+        self.add_discovery_check("Dashboard Variables", "Dashboards", "custom_dashboard_variables_check")
         
         # Cross-Category Checks (checks that apply to multiple categories)
         # Application Signals - applies to Metrics, Traces, and Organization
         self.add_discovery_check("Application Signals Services", "Metrics", "aws application-signals list-services --output json")
         self.add_discovery_check("Application Signals Services", "Traces", "aws application-signals list-services --output json")
-        self.add_discovery_check("Application Signals SLOs", "Metrics", "aws application-signals list-service-level-objectives --output json")
-        self.add_discovery_check("Application Signals SLOs", "Organization", "aws application-signals list-service-level-objectives --output json")
+        self.add_discovery_check("Have you defined Service Level Objectives (SLOs) for critical application services?", "Metrics", "aws application-signals list-service-level-objectives --output json")
+        self.add_discovery_check("Have you defined Service Level Objectives (SLOs) for critical application services?", "Organization", "aws application-signals list-service-level-objectives --output json")
         
         # CloudWatch Dashboards - applies to Logs, Metrics, Traces access
         self.add_discovery_check("CloudWatch Dashboards", "Logs", "aws cloudwatch list-dashboards --output json")
@@ -2552,14 +2598,14 @@ class ComprehensiveObservabilityAssessment:
         for check in log_checks:
             if check.question_id == 1:  # How do you collect logs?
                 # Map to discovery checks for log collection
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Log Groups"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
                 vpc_flow_check = next((c for c in self.results.discovery_checks if c.name == "VPC Flow Logs"), None)
                 cloudtrail_check = next((c for c in self.results.discovery_checks if c.name == "CloudTrail Trails"), None)
                 config_recorders_check = next((c for c in self.results.discovery_checks if c.name == "Config Recorders"), None)
                 ec2_agent_check = next((c for c in self.results.discovery_checks if c.name == "EC2 CloudWatch Agent IAM"), None)
-                lambda_logs_check = next((c for c in self.results.discovery_checks if c.name == "Lambda Log Groups"), None)
-                ecs_logs_check = next((c for c in self.results.discovery_checks if c.name == "ECS Task Log Configuration"), None)
-                eks_logs_check = next((c for c in self.results.discovery_checks if c.name == "EKS Control Plane Logs"), None)
+                lambda_logs_check = next((c for c in self.results.discovery_checks if c.name == "Are all Lambda functions logging to CloudWatch?"), None)
+                ecs_logs_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of ECS tasks use structured logging (JSON)?"), None)
+                eks_logs_check = next((c for c in self.results.discovery_checks if c.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [log_groups_check, vpc_flow_check, cloudtrail_check, config_recorders_check, ec2_agent_check, lambda_logs_check, ecs_logs_check, eks_logs_check] if c]
                 
@@ -2608,9 +2654,9 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 2:  # How do you use logs?
                 # Map to discovery checks for log usage
-                metric_filters_check = next((c for c in self.results.discovery_checks if c.name == "Log Metric Filters"), None)
-                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "Log Subscription Filters Coverage"), None)
-                anomaly_detection_check = next((c for c in self.results.discovery_checks if c.name == "Log Anomaly Detection"), None)
+                metric_filters_check = next((c for c in self.results.discovery_checks if c.name == "Have you created metric filters to extract KPIs from logs?"), None)
+                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
+                anomaly_detection_check = next((c for c in self.results.discovery_checks if c.name == "Have you enabled anomaly detection?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [metric_filters_check, subscription_filters_check, anomaly_detection_check] if c]
                 
@@ -2642,10 +2688,10 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 3:  # How do you access logs?
                 # Map to discovery checks for log access
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Log Groups"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
-                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "Log Subscription Filters Coverage"), None)
-                centralization_check = next((c for c in self.results.discovery_checks if c.name == "Log Centralization Analysis"), None)
+                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
+                centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [log_groups_check, dashboards_check, subscription_filters_check, centralization_check] if c]
                 
@@ -2679,8 +2725,8 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 4:  # What is your log retention policy?
                 # Map to discovery checks for log retention
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Log Groups"), None)
-                top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "Top 10 Log Groups Retention Analysis"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
+                top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
                 export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Log Export Tasks Per Log Group"), None)
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
                 
@@ -2717,7 +2763,7 @@ class ComprehensiveObservabilityAssessment:
                     check.current_level = 1
                     check.explanation = "Log retention appears to use default settings without enterprise-wide policy coordination, compliance-driven retention strategies, or systematic cost optimization approaches."
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
-                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "Log Subscription Filters Coverage"), None)
+                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [log_groups_check, dashboards_check, subscription_filters_check] if c]
                 
@@ -2745,7 +2791,7 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 4:  # What is your log retention policy?
                 # Required checks: CloudWatch retention settings, S3 lifecycle policies, Compliance tagging, Cost optimization
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Log Groups"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
                 
                 check.evidence_check_ids = [c.id for c in [log_groups_check, tags_check] if c]
@@ -2778,7 +2824,7 @@ class ComprehensiveObservabilityAssessment:
         for check in metrics_checks:
             if check.question_id == 5:  # What type of metrics do you collect?
                 ec2_check = next((c for c in self.results.discovery_checks if c.name == "EC2 Instances"), None)
-                custom_metrics_check = next((c for c in self.results.discovery_checks if c.name == "Custom Metrics Namespaces"), None)
+                custom_metrics_check = next((c for c in self.results.discovery_checks if c.name == "Are you publishing custom business and application metrics to CloudWatch?"), None)
                 eks_check = next((c for c in self.results.discovery_checks if c.name == "EKS Clusters"), None)
                 lambda_check = next((c for c in self.results.discovery_checks if c.name == "Lambda Functions"), None)
                 
@@ -2833,7 +2879,7 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 7:  # How do you access metrics?
                 metrics_check = None
-                streams_check = next((c for c in self.results.discovery_checks if c.name == "Metric Streams"), None)
+                streams_check = next((c for c in self.results.discovery_checks if c.name == "Have you configured metric streams for real-time export to third-party tools or data lakes?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [metrics_check, streams_check] if c]
                 
@@ -3018,7 +3064,7 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "Limited evidence of enterprise observability strategy. Appears to focus primarily on data collection without comprehensive organizational alignment or standardization."
             
             elif check.question_id == 14:  # How do you use SLOs?
-                app_signals_slo_check = next((c for c in self.results.discovery_checks if c.name == "Application Signals SLOs"), None)
+                app_signals_slo_check = next((c for c in self.results.discovery_checks if c.name == "Have you defined Service Level Objectives (SLOs) for critical application services?"), None)
                 
                 check.evidence_check_ids = [app_signals_slo_check.id] if app_signals_slo_check else []
                 
@@ -3835,6 +3881,46 @@ class ComprehensiveObservabilityAssessment:
                 'regions_checked': []
             }
 
+    def execute_xray_service_graph_check(self):
+        """Check X-Ray service graph with time range"""
+        try:
+            import time
+            end_time = int(time.time())
+            start_time = end_time - (6 * 60 * 60)  # 6 hours ago (X-Ray limit)
+            
+            result = self.run_aws_command(f"aws xray get-service-graph --start-time {start_time} --end-time {end_time} --output json")
+            return result
+            
+        except Exception as e:
+            return None
+
+    def execute_xray_sampling_rules_check(self):
+        """Check X-Ray sampling rules, excluding default rule"""
+        try:
+            result = self.run_aws_command("aws xray get-sampling-rules --output json")
+            if result and 'SamplingRuleRecords' in result:
+                # Filter out the default rule
+                custom_rules = [rule for rule in result['SamplingRuleRecords'] 
+                               if rule.get('SamplingRule', {}).get('RuleName') != 'Default']
+                
+                if custom_rules:
+                    # Return only custom rules
+                    return {'SamplingRuleRecords': custom_rules}
+                else:
+                    # Return None to indicate no custom rules (check will fail)
+                    return None
+            return None
+            
+        except Exception as e:
+            return None
+            
+        except Exception as e:
+            return {
+                'total_spaces': 0,
+                'spaces_details': [],
+                'regions_checked': []
+            }
+
     def execute_alarm_lambda_actions_check(self):
         """Check first 50 alarms for Lambda function invocation actions"""
         try:
@@ -4013,6 +4099,81 @@ class ComprehensiveObservabilityAssessment:
                 'alarms_without_ec2': 0,
                 'alarms_with_ec2_details': [],
                 'alarms_without_ec2_details': []
+            }
+
+    def execute_dashboard_variables_check(self):
+        """Check dashboards for dynamic variables and templating"""
+        try:
+            # Get list of dashboards
+            dashboards_result = self.run_aws_command("aws cloudwatch list-dashboards --output json")
+            dashboards = dashboards_result.get('DashboardEntries', []) if dashboards_result else []
+            
+            dashboards_with_variables = []
+            dashboards_without_variables = []
+            
+            for dashboard in dashboards:
+                dashboard_name = dashboard.get('DashboardName', 'Unknown')
+                
+                try:
+                    # Get dashboard body
+                    dashboard_body_result = self.run_aws_command(f"aws cloudwatch get-dashboard --dashboard-name \"{dashboard_name}\" --output json")
+                    dashboard_body = dashboard_body_result.get('DashboardBody', '') if dashboard_body_result else ''
+                    
+                    # Check for dashboard variables indicators
+                    has_variables = False
+                    variable_indicators = []
+                    
+                    # Look for common variable patterns in CloudWatch dashboards
+                    if '"variables"' in dashboard_body:
+                        has_variables = True
+                        variable_indicators.append("variables section")
+                    
+                    if '"templateFields"' in dashboard_body:
+                        has_variables = True
+                        variable_indicators.append("template fields")
+                    
+                    if '${' in dashboard_body:
+                        has_variables = True
+                        variable_indicators.append("variable substitution")
+                    
+                    if '"inputs"' in dashboard_body:
+                        has_variables = True
+                        variable_indicators.append("input fields")
+                    
+                    if has_variables:
+                        dashboards_with_variables.append({
+                            'DashboardName': dashboard_name,
+                            'VariableIndicators': variable_indicators,
+                            'Size': dashboard.get('Size', 0)
+                        })
+                    else:
+                        dashboards_without_variables.append({
+                            'DashboardName': dashboard_name,
+                            'Size': dashboard.get('Size', 0)
+                        })
+                        
+                except Exception as e:
+                    # If we can't get dashboard body, assume no variables
+                    dashboards_without_variables.append({
+                        'DashboardName': dashboard_name,
+                        'Size': dashboard.get('Size', 0)
+                    })
+            
+            return {
+                'total_dashboards': len(dashboards),
+                'dashboards_with_variables': len(dashboards_with_variables),
+                'dashboards_without_variables': len(dashboards_without_variables),
+                'dashboards_with_variables_details': dashboards_with_variables,
+                'dashboards_without_variables_details': dashboards_without_variables
+            }
+            
+        except Exception as e:
+            return {
+                'total_dashboards': 0,
+                'dashboards_with_variables': 0,
+                'dashboards_without_variables': 0,
+                'dashboards_with_variables_details': [],
+                'dashboards_without_variables_details': []
             }
 
 def main():
