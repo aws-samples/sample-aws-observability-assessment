@@ -104,6 +104,10 @@ class ComprehensiveObservabilityAssessment:
         if not check:
             return
         
+        from datetime import datetime
+        start_time = datetime.now().strftime('%H:%M:%S')
+        print(f"  [{start_time}] Running check #{check.id}: {check.name}...", flush=True)
+        
         try:
             if check.command == "custom_ec2_cloudwatch_agent_check":
                 check.result = self.execute_ec2_cloudwatch_agent_check()
@@ -151,6 +155,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_xray_service_graph_check()
             elif check.command == "custom_xray_sampling_rules_check":
                 check.result = self.execute_xray_sampling_rules_check()
+            elif check.command == "custom_log_groups_categorization_check":
+                check.result = self.execute_log_groups_categorization_check()
             else:
                 check.result = self.run_aws_command(check.command)
             
@@ -164,10 +170,10 @@ class ComprehensiveObservabilityAssessment:
                     check.evidence = f"Account: {self.results.account_id}, Region: {self.region} - Evidence generation failed: {str(e)}"
             else:
                 check.status = "failed"
-                check.evidence = f"Account: {self.results.account_id}, Region: {self.region} - No resources found"
+                check.evidence = f"No resources found"
         except Exception as e:
             check.status = "failed"
-            check.evidence = f"Account: {self.results.account_id}, Region: {self.region} - No resources found"
+            check.evidence = f"No resources found"
 
     def generate_detailed_evidence(self, check: DiscoveryCheck) -> str:
         """Generate detailed evidence with summary and expandable details"""
@@ -353,7 +359,7 @@ class ComprehensiveObservabilityAssessment:
             logging_count = len(logging_configured_instances)
             
             if total_instances > 0:
-                summary = f"Command: Multi-step EC2 CloudWatch agent analysis | Total: {total_instances} instances | SSM: {ssm_count}/{total_instances} | CW Agent: {cw_agent_count}/{ssm_count if ssm_count > 0 else 0} | Logging: {logging_count}/{total_instances}"
+                summary = f"Total: {total_instances} instances | SSM: {ssm_count}/{total_instances} | CW Agent: {cw_agent_count}/{ssm_count if ssm_count > 0 else 0} | Logging: {logging_count}/{total_instances}"
                 
                 # Create detailed breakdown
                 details = ""
@@ -382,7 +388,7 @@ class ComprehensiveObservabilityAssessment:
                     details += f"... and {len(logging_configured_instances) - 10} more instances<br>"
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"Command: Multi-step EC2 CloudWatch agent analysis | No EC2 instances found"
+            return f"No EC2 instances found"
         
         elif check.name == "Are all Lambda functions logging to CloudWatch?":
             log_groups = check.result.get('logGroups', [])
@@ -747,16 +753,6 @@ class ComprehensiveObservabilityAssessment:
             return f"No EKS clusters checked for add-ons"
         
         # Handle different AWS service responses with expandable details
-        elif check.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)":
-            log_groups = check.result.get('logGroups', [])
-            if log_groups:
-                summary = f"Found {len(log_groups)} log groups"
-                details = "<br>".join([lg.get('logGroupName', 'Unknown') for lg in log_groups[:20]])
-                if len(log_groups) > 20:
-                    details += f"<br>... and {len(log_groups) - 20} more"
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No log groups found"
-        
         if check.name == "Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?":
             query_definitions = check.result.get('queryDefinitions', [])
             if query_definitions:
@@ -1137,7 +1133,7 @@ class ComprehensiveObservabilityAssessment:
             custom_rules = [rule for rule in sampling_rules if rule.get('SamplingRule', {}).get('RuleName') != 'Default']
             
             if custom_rules:
-                summary = f"{base_info} | Found {len(custom_rules)} custom sampling rules"
+                summary = f"Found {len(custom_rules)} custom sampling rules"
                 details = ""
                 for i, record in enumerate(custom_rules, 1):
                     rule = record.get('SamplingRule', {})
@@ -1153,7 +1149,33 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             else:
                 default_count = len(sampling_rules)
-                return f"{base_info} | No custom sampling rules configured (only {default_count} default rule exists)"
+                return f"No custom sampling rules configured (only {default_count} default rule exists)"
+        
+        elif check.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)":
+            if isinstance(check.result, dict):
+                total = check.result.get('total_log_groups', 0)
+                vended_count = check.result.get('vended_count', 0)
+                custom_count = check.result.get('custom_count', 0)
+                vended_logs = check.result.get('vended_logs', [])
+                custom_logs = check.result.get('custom_logs', [])
+                
+                summary = f"Total: {total} log groups | Vended: {vended_count} | Custom: {custom_count}"
+                details = ""
+                
+                if vended_logs:
+                    details += "<strong>AWS Vended/Service Logs:</strong><br>"
+                    for log in vended_logs:
+                        details += f"  • {log}<br>"
+                    details += "<br>"
+                
+                if custom_logs:
+                    details += "<strong>Custom Application Logs:</strong><br>"
+                    for log in custom_logs:
+                        details += f"  • {log}<br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            else:
+                return "No log groups found"
         
         # Default handler for other checks
         else:
@@ -1554,7 +1576,7 @@ class ComprehensiveObservabilityAssessment:
         print(f"   Found {total_groups} largest log groups: EC2({len(self.largest_log_groups['EC2'])}), ECS({len(self.largest_log_groups['ECS'])}), Lambda({len(self.largest_log_groups['Lambda'])}), EKS({len(self.largest_log_groups['EKS'])})")
         
         # Logs Discovery Checks (Enhanced)
-        self.add_discovery_check("What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)", "Logs", "aws logs describe-log-groups --output json")
+        self.add_discovery_check("What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)", "Logs", "custom_log_groups_categorization_check")
         self.add_discovery_check("What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?", "Logs", "custom_top_log_groups_retention_check")
         self.add_discovery_check("Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?", "Logs", "aws logs describe-query-definitions --output json")
         self.add_discovery_check("Log Insights Query History", "Logs", "aws logs describe-queries --output json")
@@ -2034,33 +2056,29 @@ class ComprehensiveObservabilityAssessment:
             return {'top_log_groups': [], 'groups_with_retention': 0, 'total_size_gb': 0}
 
     def execute_subscription_filters_coverage_check(self):
-        """Custom check for subscription filter coverage across ALL log groups"""
+        """Custom check for subscription filter coverage across top log groups"""
         try:
-            # Step 1: Get all log groups
-            log_groups_result = self.run_aws_command("aws logs describe-log-groups --output json")
-            if not log_groups_result or 'logGroups' not in log_groups_result:
+            # Use the pre-identified largest log groups instead of all log groups
+            if not self.largest_log_groups:
                 return {'total_log_groups': 0, 'groups_with_subscription_filters': 0, 'sample_filtered_groups': []}
             
-            log_groups = log_groups_result['logGroups']
-            total_groups = len(log_groups)
+            # Flatten the largest log groups from all compute types
+            top_log_groups = []
+            for compute_type, groups in self.largest_log_groups.items():
+                top_log_groups.extend(groups)
+            
+            total_groups = len(top_log_groups)
             filtered_groups = []
             
-            # Step 2: Check ALL log groups for subscription filters (with rate limiting)
-            for i, log_group in enumerate(log_groups):
-                log_group_name = log_group.get('logGroupName', '')
+            # Check only the top log groups for subscription filters
+            for log_group_name in top_log_groups:
                 try:
                     # Check for subscription filters on this log group
-                    # Use shlex.quote to properly escape log group names
                     import shlex
                     escaped_name = shlex.quote(log_group_name)
                     filters_result = self.run_aws_command(f'aws logs describe-subscription-filters --log-group-name {escaped_name} --output json')
                     if filters_result and filters_result.get('subscriptionFilters'):
                         filtered_groups.append(log_group_name)
-                    
-                    # Rate limiting: small delay every 10 requests to avoid throttling
-                    if (i + 1) % 10 == 0:
-                        time.sleep(0.5)
-                        
                 except Exception as e:
                     continue  # Skip groups that fail
             
@@ -2365,7 +2383,6 @@ class ComprehensiveObservabilityAssessment:
         print(f"🚀 Executing {len(self.results.discovery_checks)} discovery checks...")
         
         for i, check in enumerate(self.results.discovery_checks, 1):
-            print(f"  [{i}/{len(self.results.discovery_checks)}] {check.name}...")
             self.execute_discovery_check(check.id)
         
         successful_checks = len([c for c in self.results.discovery_checks if c.status == "success"])
@@ -3910,6 +3927,38 @@ class ComprehensiveObservabilityAssessment:
                     # Return None to indicate no custom rules (check will fail)
                     return None
             return None
+            
+        except Exception as e:
+            return None
+
+    def execute_log_groups_categorization_check(self):
+        """Categorize log groups by source type: Vended/AWS Service Logs vs Custom Logs"""
+        try:
+            result = self.run_aws_command("aws logs describe-log-groups --output json")
+            if not result or 'logGroups' not in result:
+                return None
+            
+            log_groups = result['logGroups']
+            vended_logs = []
+            custom_logs = []
+            
+            # AWS vended log prefixes
+            aws_prefixes = ['/aws/', '/aws-']
+            
+            for lg in log_groups:
+                name = lg.get('logGroupName', '')
+                if any(name.startswith(prefix) for prefix in aws_prefixes):
+                    vended_logs.append(name)
+                else:
+                    custom_logs.append(name)
+            
+            return {
+                'total_log_groups': len(log_groups),
+                'vended_logs': vended_logs,
+                'custom_logs': custom_logs,
+                'vended_count': len(vended_logs),
+                'custom_count': len(custom_logs)
+            }
             
         except Exception as e:
             return None
