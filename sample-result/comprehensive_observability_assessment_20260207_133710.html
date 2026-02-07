@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Observability Assessment Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; text-align: center; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .summary-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; }
+        .tabs { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 2rem; }
+        .tab-buttons { display: flex; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+        .tab-button { flex: 1; padding: 1rem; background: none; border: none; cursor: pointer; font-size: 1rem; font-weight: 500; color: #6b7280; }
+        .tab-button.active { background: white; color: #667eea; border-bottom: 3px solid #667eea; }
+        .tab-content { display: none; padding: 2rem; }
+        .tab-content.active { display: block; }
+        .discovery-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .discovery-table th, .discovery-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        .discovery-table th { background-color: #f8fafc; font-weight: 600; }
+        .status-success { color: #10b981; font-weight: bold; }
+        .status-failed { color: #ef4444; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 AWS Observability Assessment</h1>
+            <p>Account:  | Generated: February 07, 2026 at 01:38 PM</p>
+        </div>
+        
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Overall Score</h3>
+                <div class="number total">1.0/4.0</div>
+                <p>Maturity Level: Initial</p>
+            </div>
+            <div class="summary-card">
+                <h3>Discovery Checks</h3>
+                <div class="number complete">21</div>
+                <p>of 51 successful</p>
+            </div>
+            <div class="summary-card">
+                <h3>Assessment Questions</h3>
+                <div class="number total">17</div>
+                <p>Evaluated</p>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="showTab('discovery')">Discovery</button>
+                <button class="tab-button" onclick="showTab('logs')">Logs</button>
+                <button class="tab-button" onclick="showTab('metrics')">Metrics</button>
+                <button class="tab-button" onclick="showTab('traces')">Traces</button>
+                <button class="tab-button" onclick="showTab('dashboards')">Dashboards & Alarms</button>
+                <button class="tab-button" onclick="showTab('organization')">Organization</button>
+            </div>
+            
+            <div id="discovery" class="tab-content active">
+                <h2>🔍 Discovery Section</h2>
+                <p>Comprehensive list of all AWS service checks performed across all assessment categories.</p>
+                <table class="discovery-table">
+                    <thead>
+                        <tr>
+                            <th>Check #</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Command</th>
+                            <th>Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-log-groups --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_top_log_groups_retention_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-query-definitions --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Log Insights Query History</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-queries --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>Have you created metric filters to extract KPIs from logs?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-metric-filters --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>6</td>
+                            <td>What percentage of log groups have subscription filters for real-time processing?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_subscription_filters_coverage_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
+                            <td>What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_ec2_cloudwatch_agent_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>8</td>
+                            <td>Are all Lambda functions logging to CloudWatch?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-log-groups --log-group-name-prefix /aws/lambda --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>What percentage of ECS tasks use structured logging (JSON)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_ecs_task_log_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-log-groups --log-group-name-prefix /aws/eks --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>11</td>
+                            <td>Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws eks describe-addon --cluster-name PetsiteEKS-cluster --addon-name amazon-cloudwatch-observability --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>12</td>
+                            <td>Have you enabled anomaly detection?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs list-log-anomaly-detectors --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>13</td>
+                            <td>Log Export Tasks Per Log Group</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_log_export_tasks_per_log_group_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | Checked 0 log groups - 0/0 have export history</td>
+                        </tr>
+                        <tr>
+                            <td>14</td>
+                            <td>Have you implemented Cross-Account and Cross-Region Log Centralization?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_log_centralization_analysis_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>15</td>
+                            <td>Are you using CloudWatch cross-account observability?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_oam_links_and_sinks_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>16</td>
+                            <td>What percentage of application logs use structured JSON format for easier parsing and analysis?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_json_structured_logs_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>17</td>
+                            <td>Field Index Policies Per Log Group</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_field_indexes_per_log_group_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | Checked 0 log groups (top 20 largest by size) - 0/0 have field indexes</td>
+                        </tr>
+                        <tr>
+                            <td>18</td>
+                            <td>EC2 Instances</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ec2 describe-instances --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>19</td>
+                            <td>What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ec2 describe-instances --query 'Reservations[].Instances[?Monitoring.State==`enabled`]' --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>20</td>
+                            <td>What percentage of ECS Clusters have monitoring enabled?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ecs list-clusters --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>21</td>
+                            <td>List of ECS clusters with Container Insights enabled?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>22</td>
+                            <td>EKS Clusters</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws eks list-clusters --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>23</td>
+                            <td>List of EKS clusters enabled with CloudWatch Observability EKS add-on?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_eks_addons_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>24</td>
+                            <td>Lambda Functions</td>
+                            <td>Logs, Metrics, Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws lambda list-functions --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>25</td>
+                            <td>What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_lambda_insights_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>26</td>
+                            <td>Are you publishing custom business and application metrics to CloudWatch?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_metrics_namespaces_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>27</td>
+                            <td>Are CloudWatch Agents configured to collect system-level metrics?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-metrics --namespace CWAgent --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>28</td>
+                            <td>Have you configured metric streams for real-time export to third-party tools or data lakes?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-metric-streams --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>29</td>
+                            <td>X-Ray Service Map</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws xray get-service-graph --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>30</td>
+                            <td>X-Ray Sampling Rules</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws xray get-sampling-rules --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>31</td>
+                            <td>X-Ray Encryption Config</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws xray get-encryption-config --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>32</td>
+                            <td>Lambda Tracing Config</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>33</td>
+                            <td>X-Ray Insights</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws xray get-insight-summaries --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>34</td>
+                            <td>CloudWatch Dashboards</td>
+                            <td>Dashboards, Logs, Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-dashboards --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>35</td>
+                            <td>CloudWatch Alarms</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_cloudwatch_alarms_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No alarms found</td>
+                        </tr>
+                        <tr>
+                            <td>36</td>
+                            <td>Metric Alarms</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>37</td>
+                            <td>Composite Alarms</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>38</td>
+                            <td>Anomaly Detector Alarms</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch describe-alarms --query 'MetricAlarms[?contains(MetricName, `ANOMALY_DETECTION_FUNCTION`)]' --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>39</td>
+                            <td>Alarm SNS Configuration</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_sns_configuration_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | SNS configured for 0 of 0 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with SNS Configuration (0):</strong><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>40</td>
+                            <td>Anomaly Detection Bands</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_anomaly_detection_bands_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No anomaly detection bands configured</td>
+                        </tr>
+                        <tr>
+                            <td>41</td>
+                            <td>Resource Tags</td>
+                            <td>Logs, Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws resourcegroupstaggingapi get-resources --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>42</td>
+                            <td>CloudWatch Synthetics Canaries</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws synthetics describe-canaries --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>43</td>
+                            <td>RUM Applications</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws rum list-app-monitors --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>44</td>
+                            <td>Alarm OpsItem Actions</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_opsitem_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | OpsItem actions configured for 0 of 0 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with OpsItem Actions (0):</strong><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>45</td>
+                            <td>DevOps Agent Spaces</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_devops_agent_spaces_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No DevOps Agent spaces found (checked regions: us-east-1, us-west-2)</td>
+                        </tr>
+                        <tr>
+                            <td>46</td>
+                            <td>Alarm Lambda Actions</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_lambda_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | Lambda actions configured for 0 of 0 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with Lambda Actions (0):</strong><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>47</td>
+                            <td>Alarm Investigations Actions</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_investigations_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | CloudWatch Investigations actions configured for 0 of 0 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with CloudWatch Investigations Actions (0):</strong><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>48</td>
+                            <td>Alarm EC2 Actions</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_ec2_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | EC2 actions configured for 0 of 0 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with EC2 Actions (0):</strong><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>49</td>
+                            <td>Dashboard Variables</td>
+                            <td>Dashboards</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_dashboard_variables_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 | No items found</td>
+                        </tr>
+                        <tr>
+                            <td>50</td>
+                            <td>Application Signals Services</td>
+                            <td>Metrics, Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws application-signals list-services --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>51</td>
+                            <td>Have you defined Service Level Objectives (SLOs) for critical application services?</td>
+                            <td>Metrics, Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws application-signals list-service-level-objectives --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: , Region: us-west-2 - No resources found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="logs" class="tab-content">
+                <h2>📝 Logs Assessment</h2>
+                <p>Assessment of log collection, usage, access, and retention practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q1: How do you collect logs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Basic log groups exist, some services logging</li><li style="">Level 2: Centralized collection with analytics (Logs Insights queries)</li><li style="">Level 3: Correlation patterns, anomaly detection models</li><li style="">Level 4: Automated insights, ML-based analysis</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Minimal log collection detected. Basic logging may be present but lacks centralized collection mechanisms across AWS services.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q2: How do you use logs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Manual log searches and basic queries</li><li style="">Level 2: Structured queries with faster analysis</li><li style="">Level 3: Automated correlation and anomaly detection</li><li style="">Level 4: Automated resolution and MTTR reduction</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Log usage appears limited to basic manual searches and troubleshooting. No evidence of structured log analysis, automated monitoring patterns, or real-time log processing.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q3: How do you access logs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Basic centralized collection</li><li style="">Level 2: Enterprise-wide visibility with prioritization</li><li style="">Level 3: Single pane correlation and anomaly detection</li><li style="">Level 4: Automated insights with proactive root cause</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Log access appears fragmented across different systems without centralized management, unified access patterns, or comprehensive visualization capabilities.<br>
+                        <strong>Discovery Checks:</strong> #34
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q4: What is your log retention policy?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Disparate retention policies</li><li style="">Level 2: Enterprise-wide compliance-based policies</li><li style="">Level 3: Automated archival with cost optimization</li><li style="">Level 4: Easy retrieval with metadata-based search</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Log access appears fragmented across different systems without centralized management, unified access patterns, or comprehensive visualization capabilities.<br>
+                        <strong>Discovery Checks:</strong> #34
+                    </div>
+                </div>
+            </div>
+            
+            <div id="metrics" class="tab-content">
+                <h2>📊 Metrics Assessment</h2>
+                <p>Assessment of metric collection, usage, and access patterns.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q5: What type of metrics do you collect?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Infrastructure metrics only (cpu, memory, disk utilization)</li><li style="">Level 2: Infrastructure and application metrics (latency, errors, volume)</li><li style="">Level 3: Infrastructure, application, and custom metrics</li><li style="">Level 4: All metrics with dimensions for critical metadata</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited metrics collection detected, primarily basic infrastructure monitoring without comprehensive application or custom business metrics.<br>
+                        <strong>Discovery Checks:</strong> #18, #22, #24
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q6: How do you use metrics?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Manually explore metrics when diagnosing issues</li><li style="">Level 2: Dashboards and alerting for manual reaction</li><li style="">Level 3: Infrastructure automation and operational reviews</li><li style="">Level 4: AI/ML capabilities for proactive issue identification</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Basic metrics usage limited to manual exploration and ad-hoc analysis without systematic dashboards or automated alerting.<br>
+                        <strong>Discovery Checks:</strong> #34, #35
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q7: How do you access metrics?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Centralized metric collection mechanism</li><li style="">Level 2: Enterprise-wide visibility for analysis and troubleshooting</li><li style="">Level 3: Correlation and anomaly detection for root cause</li><li style="">Level 4: Automated insights with proactive resolution options</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Basic metrics access without centralized management or unified visibility across services.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+            </div>
+            
+            <div id="traces" class="tab-content">
+                <h2>🔍 Traces Assessment</h2>
+                <p>Assessment of trace collection and usage practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q8: How do you collect traces?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Auto-instrumented SDKs for monitoring</li><li style="">Level 2: Auto + manual instrumentation</li><li style="">Level 3: End-to-end visibility with correlation</li><li style="">Level 4: Automatic injection with proactive alerts</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited or no distributed tracing detected. Basic auto-instrumented SDKs may be present but without comprehensive trace collection.<br>
+                        <strong>Discovery Checks:</strong> #29, #32, #30
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q9: How do you use traces?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Centralized trace collection mechanism</li><li style="">Level 2: Analyze and troubleshoot issues based on captured information</li><li style="">Level 3: 360 view for correlation and anomaly detection</li><li style="">Level 4: Cross-boundary insights with proactive root cause identification</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Basic trace collection without advanced analysis capabilities. Traces may be collected but not actively used for systematic troubleshooting or performance optimization.<br>
+                        <strong>Discovery Checks:</strong> #29, #33, #50
+                    </div>
+                </div>
+            </div>
+            
+            <div id="dashboards" class="tab-content">
+                <h2>📈 Dashboards & Alarms Assessment</h2>
+                <p>Assessment of dashboard and alerting practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q10: How do you use alarms?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Alarms with notifications when metrics meet triggers</li><li style="">Level 2: Clear priority for alerts with urgency and customer impact</li><li style="">Level 3: Actionable alarms based on anomaly detection</li><li style="">Level 4: Composite alarms for aggregated health indicators</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Basic or no alerting infrastructure detected. Limited ability to proactively notify operators when metrics meet alarm triggers.<br>
+                        <strong>Discovery Checks:</strong> #35, #37
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q11: How do you use dashboards?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Basic resource monitoring</li><li style="">Level 2: Single pane of glass with visibility into various data sources</li><li style="">Level 3: Flexible dashboards with dynamic content based on input fields</li><li style="">Level 4: Automatically created dynamic visualizations relevant to issues</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited dashboard usage, primarily basic resource monitoring without comprehensive operational visibility or systematic visualization strategies.<br>
+                        <strong>Discovery Checks:</strong> #34
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q12: How adaptive are your alarm thresholds?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Alarms triggered immediately when metric exceeds static threshold</li><li style="">Level 2: Alarms triggered when metric exceeds threshold for a period of time</li><li style="">Level 3: Alarms triggered when metric exhibits anomalous behavior</li><li style="">Level 4: Continuously analyze metrics, determine baselines, surface anomalies</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> No adaptive threshold mechanisms detected. Reliance on manual threshold setting without automated baseline determination or anomaly detection.<br>
+                        <strong>Discovery Checks:</strong> #35
+                    </div>
+                </div>
+            </div>
+            
+            <div id="organization" class="tab-content">
+                <h2>🏢 Organization Assessment</h2>
+                <p>Assessment of enterprise observability strategy and practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q13: Do you have an enterprise observability strategy?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Data collection strategy only</li><li style="">Level 2: Unified tools and technologies</li><li style="">Level 3: Best practices and training</li><li style="">Level 4: Culture of continuous improvement</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited evidence of enterprise observability strategy. Appears to focus primarily on data collection without comprehensive organizational alignment or standardization.<br>
+                        <strong>Discovery Checks:</strong> #41
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q14: How do you use SLOs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Team experimentation without adoption</li><li style="">Level 2: Enterprise adoption for reliability</li><li style="">Level 3: Prioritization for users and business</li><li style="">Level 4: Integrated platforms with error budgets</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> No formal SLO implementation detected. May have team-level experimentation but lacks enterprise adoption for systematic reliability management.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q15: Are you getting ROI from your observability tools?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Want optimization without knowledge</li><li style="">Level 2: Vendor consolidation attempts</li><li style="">Level 3: Established validation policies</li><li style="">Level 4: Business value and cost optimization</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited evidence of ROI optimization. Observability tools may be present but without clear consolidation or cost optimization strategies.<br>
+                        <strong>Discovery Checks:</strong> #34, #35
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q16: Do you use any AI/ML capability today?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ No AI/ML features</li><li style="">Level 2: Natural language query capability</li><li style="">Level 3: Automatic correlation and patterns</li><li style="">Level 4: Comprehensive AI/ML with real-time insights</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> No AI/ML features detected in the observability stack. Reliance on traditional threshold-based monitoring without machine learning capabilities.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q17: Do you have real end-user monitoring?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Test users for validation</li><li style="">Level 2: Synthetic scripts on schedule</li><li style="">Level 3: Scripted interaction tests with correlation</li><li style="">Level 4: Real user monitoring with proactive anomalies</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> No end-user monitoring detected. Reliance on test users or manual validation without systematic monitoring of actual user experience or synthetic user journey testing.<br>
+                        <strong>Discovery Checks:</strong> #43, #42
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            function showTab(tabName) {
+                // Hide all tab contents
+                const contents = document.querySelectorAll('.tab-content');
+                contents.forEach(content => content.classList.remove('active'));
+                
+                // Remove active class from all buttons
+                const buttons = document.querySelectorAll('.tab-button');
+                buttons.forEach(button => button.classList.remove('active'));
+                
+                // Show selected tab and activate button
+                document.getElementById(tabName).classList.add('active');
+                event.target.classList.add('active');
+            }
+        </script>
+    </div>
+</body>
+</html>

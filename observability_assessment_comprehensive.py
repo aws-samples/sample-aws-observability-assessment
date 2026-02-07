@@ -206,7 +206,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No metric streams found"
         
-        elif check.name == "Composite Alarms":
+        elif check.name == "Do you use composite alarms to reduce alarm noise?":
             composite_alarms = check.result.get('CompositeAlarms', [])
             if composite_alarms:
                 summary = f"Found {len(composite_alarms)} composite alarms"
@@ -769,7 +769,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No saved query definitions found - users haven't saved any custom CloudWatch Logs Insights queries for reuse"
         
-        elif check.name == "CloudWatch Alarms":
+        elif check.name == "Do you have CloudWatch alarms configured for your resources?":
             metric_alarms = check.result.get('MetricAlarms', [])
             composite_alarms = check.result.get('CompositeAlarms', [])
             total_alarms = len(metric_alarms) + len(composite_alarms)
@@ -783,7 +783,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found"
         
-        elif check.name == "CloudWatch Dashboards":
+        elif check.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?":
             dashboards = check.result.get('DashboardEntries', [])
             if dashboards:
                 summary = f"Found {len(dashboards)} dashboards"
@@ -793,7 +793,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No dashboards found"
         
-        elif check.name == "Alarm SNS Configuration":
+        elif check.name == "Do your alarms send notifications to SNS topics?":
             if check.result:
                 total_checked = check.result.get('total_alarms_checked', 0)
                 alarms_with_sns = check.result.get('alarms_with_sns', 0)
@@ -828,7 +828,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "Anomaly Detection Bands":
+        elif check.name == "Do you use anomaly detection models for adaptive alarming?":
             if check.result:
                 total_bands = check.result.get('total_bands', 0)
                 bands_details = check.result.get('bands_details', [])
@@ -855,7 +855,7 @@ class ComprehensiveObservabilityAssessment:
                     return f"No anomaly detection bands configured"
             return f"No anomaly detection bands found"
         
-        elif check.name == "Resource Tags":
+        elif check.name == "Do you use resource tags for organizing and managing AWS resources?":
             resources = check.result.get('ResourceTagMappingList', []) if check.result else []
             if resources:
                 summary = f"Found {len(resources)} tagged resources"
@@ -872,7 +872,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No tagged resources found"
         
-        elif check.name == "CloudWatch Synthetics Canaries":
+        elif check.name == "Do you use CloudWatch Synthetics to monitor application endpoints?":
             canaries = check.result.get('Canaries', []) if check.result else []
             if canaries:
                 summary = f"Found {len(canaries)} synthetic canaries"
@@ -885,7 +885,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No synthetic canaries found"
         
-        elif check.name == "RUM Applications":
+        elif check.name == "Do you use CloudWatch RUM to monitor real user experiences?":
             apps = check.result.get('AppMonitorSummaries', []) if check.result else []
             if apps:
                 summary = f"Found {len(apps)} RUM applications"
@@ -898,7 +898,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No RUM applications found"
         
-        elif check.name == "Alarm OpsItem Actions":
+        elif check.name == "Do you have any Systems Manager OpsCenter actions configured with your alarms?":
             if check.result:
                 total_checked = check.result.get('total_alarms_checked', 0)
                 alarms_with_opsitem = check.result.get('alarms_with_opsitem', 0)
@@ -930,7 +930,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "Application Signals Services":
+        elif check.name == "Do you use AWS Application Signals to monitor application services?":
             services = check.result.get('Services', []) if check.result else []
             if services:
                 summary = f"Found {len(services)} Application Signals services"
@@ -976,7 +976,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No anomaly detectors found"
         
-        elif check.name == "DevOps Agent Spaces":
+        elif check.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?":
             if check.result:
                 total_spaces = check.result.get('total_spaces', 0)
                 spaces_details = check.result.get('spaces_details', [])
@@ -1007,7 +1007,7 @@ class ComprehensiveObservabilityAssessment:
                     return f"No DevOps Agent spaces found (checked regions: {regions_str})"
             return f"DevOps Agent service not accessible"
         
-        elif check.name == "Alarm Lambda Actions":
+        elif check.name == "Do you have any Lambda actions configured with your alarms?":
             if check.result:
                 total_checked = check.result.get('total_alarms_checked', 0)
                 alarms_with_lambda = check.result.get('alarms_with_lambda', 0)
@@ -1033,7 +1033,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "Alarm Investigations Actions":
+        elif check.name == "Have you configured CloudWatch Investigations action for any alarms?":
             if check.result:
                 total_checked = check.result.get('total_alarms_checked', 0)
                 alarms_with_investigations = check.result.get('alarms_with_investigations', 0)
@@ -1057,7 +1057,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "Alarm EC2 Actions":
+        elif check.name == "Do you have any EC2 actions configured with your alarms?":
             if check.result:
                 total_checked = check.result.get('total_alarms_checked', 0)
                 alarms_with_ec2 = check.result.get('alarms_with_ec2', 0)
@@ -1151,7 +1151,7 @@ class ComprehensiveObservabilityAssessment:
                 default_count = len(sampling_rules)
                 return f"No custom sampling rules configured (only {default_count} default rule exists)"
         
-        elif check.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)":
+        elif check.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)":
             if isinstance(check.result, dict):
                 total = check.result.get('total_log_groups', 0)
                 vended_count = check.result.get('vended_count', 0)
@@ -1285,7 +1285,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"Found {len(functions)} Lambda functions (e.g., {', '.join(sample_names)})"
             return f"No Lambda functions found"
         
-        elif check.name == "CloudWatch Alarms":
+        elif check.name == "Do you have CloudWatch alarms configured for your resources?":
             metric_alarms = check.result.get('MetricAlarms', [])
             composite_alarms = check.result.get('CompositeAlarms', [])
             total_alarms = len(metric_alarms) + len(composite_alarms)
@@ -1299,7 +1299,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found"
         
-        elif check.name == "CloudWatch Dashboards":
+        elif check.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?":
             dashboards = check.result.get('DashboardEntries', [])
             if dashboards:
                 sample_names = [dash.get('DashboardName', 'Unknown') for dash in dashboards[:3]]
@@ -1457,21 +1457,13 @@ class ComprehensiveObservabilityAssessment:
         elif check.name == "What percentage of application logs use structured JSON format for easier parsing and analysis?":
             if check.result:
                 total_checked = check.result.get('total_groups_checked', 0)
-                pure_json = check.result.get('pure_json_groups', 0)
-                embedded_json = check.result.get('embedded_json_groups', 0)
+                json_groups = check.result.get('json_groups', 0)
                 sample_groups = check.result.get('sample_groups', [])
                 
-                total_structured = pure_json + embedded_json
-                if total_structured > 0:
-                    structure_details = []
-                    if pure_json > 0:
-                        structure_details.append(f"{pure_json} pure JSON")
-                    if embedded_json > 0:
-                        structure_details.append(f"{embedded_json} embedded JSON")
-                    
+                if json_groups > 0:
                     sample_info = f"Examples: {', '.join(sample_groups[:3])}" if sample_groups else ""
-                    return f"Analyzed {total_checked} largest log groups | {total_structured}/{total_checked} have structured logs ({', '.join(structure_details)}) | {sample_info}"
-                return f"Analyzed {total_checked} largest log groups | {total_structured}/{total_checked} have structured logs"
+                    return f"Analyzed {total_checked} largest log groups | {json_groups}/{total_checked} have JSON structured logs | {sample_info}"
+                return f"Analyzed {total_checked} largest log groups | {json_groups}/{total_checked} have JSON structured logs"
             return f"No JSON structured log analysis performed"
         
 
@@ -1506,7 +1498,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{base_info} | Found {len(services)} X-Ray services (e.g., {', '.join(sample_names)})"
             return f"{base_info} | No X-Ray services found"
         
-        elif check.name == "Dashboard Variables":
+        elif check.name == "Do you have dashboards configured with variables?":
             if check.result:
                 total_dashboards = check.result.get('total_dashboards', 0)
                 dashboards_with_variables = check.result.get('dashboards_with_variables', 0)
@@ -1576,7 +1568,7 @@ class ComprehensiveObservabilityAssessment:
         print(f"   Found {total_groups} largest log groups: EC2({len(self.largest_log_groups['EC2'])}), ECS({len(self.largest_log_groups['ECS'])}), Lambda({len(self.largest_log_groups['Lambda'])}), EKS({len(self.largest_log_groups['EKS'])})")
         
         # Logs Discovery Checks (Enhanced)
-        self.add_discovery_check("What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)", "Logs", "custom_log_groups_categorization_check")
+        self.add_discovery_check("What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)", "Logs", "custom_log_groups_categorization_check")
         self.add_discovery_check("What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?", "Logs", "custom_top_log_groups_retention_check")
         self.add_discovery_check("Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?", "Logs", "aws logs describe-query-definitions --output json")
         self.add_discovery_check("Log Insights Query History", "Logs", "aws logs describe-queries --output json")
@@ -1620,42 +1612,42 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("X-Ray Insights", "Traces", "aws xray get-insight-summaries --output json")
         
         # Dashboards & Alarms Discovery Checks (Detailed)
-        self.add_discovery_check("CloudWatch Dashboards", "Dashboards", "aws cloudwatch list-dashboards --output json")
-        self.add_discovery_check("CloudWatch Alarms", "Alarms", "custom_cloudwatch_alarms_check")
-        self.add_discovery_check("Metric Alarms", "Alarms", "aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
-        self.add_discovery_check("Composite Alarms", "Alarms", "aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
+        self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Dashboards", "aws cloudwatch list-dashboards --output json")
+        self.add_discovery_check("Do you have CloudWatch alarms configured for your resources?", "Alarms", "custom_cloudwatch_alarms_check")
+        self.add_discovery_check("Do you have metric-based alarms configured?", "Alarms", "aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
+        self.add_discovery_check("Do you use composite alarms to reduce alarm noise?", "Alarms", "aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
         self.add_discovery_check("Anomaly Detector Alarms", "Alarms", "aws cloudwatch describe-alarms --query 'MetricAlarms[?contains(MetricName, `ANOMALY_DETECTION_FUNCTION`)]' --output json")
-        self.add_discovery_check("Alarm SNS Configuration", "Alarms", "custom_alarm_sns_configuration_check")
-        self.add_discovery_check("Anomaly Detection Bands", "Alarms", "custom_anomaly_detection_bands_check")
+        self.add_discovery_check("Do your alarms send notifications to SNS topics?", "Alarms", "custom_alarm_sns_configuration_check")
+        self.add_discovery_check("Do you use anomaly detection models for adaptive alarming?", "Alarms", "custom_anomaly_detection_bands_check")
         
         # Organization Discovery Checks (Detailed)
-        self.add_discovery_check("Resource Tags", "Organization", "aws resourcegroupstaggingapi get-resources --output json")
-        self.add_discovery_check("CloudWatch Synthetics Canaries", "Organization", "aws synthetics describe-canaries --output json")
-        self.add_discovery_check("RUM Applications", "Organization", "aws rum list-app-monitors --output json")
-        self.add_discovery_check("Alarm OpsItem Actions", "Organization", "custom_alarm_opsitem_actions_check")
-        self.add_discovery_check("DevOps Agent Spaces", "Organization", "custom_devops_agent_spaces_check")
-        self.add_discovery_check("Alarm Lambda Actions", "Alarms", "custom_alarm_lambda_actions_check")
-        self.add_discovery_check("Alarm Investigations Actions", "Alarms", "custom_alarm_investigations_actions_check")
-        self.add_discovery_check("Alarm EC2 Actions", "Alarms", "custom_alarm_ec2_actions_check")
-        self.add_discovery_check("Dashboard Variables", "Dashboards", "custom_dashboard_variables_check")
+        self.add_discovery_check("Do you use resource tags for organizing and managing AWS resources?", "Organization", "aws resourcegroupstaggingapi get-resources --output json")
+        self.add_discovery_check("Do you use CloudWatch Synthetics to monitor application endpoints?", "Organization", "aws synthetics describe-canaries --output json")
+        self.add_discovery_check("Do you use CloudWatch RUM to monitor real user experiences?", "Organization", "aws rum list-app-monitors --output json")
+        self.add_discovery_check("Do you have any Systems Manager OpsCenter actions configured with your alarms?", "Organization", "custom_alarm_opsitem_actions_check")
+        self.add_discovery_check("Do you use AWS DevOps Agent for AI-assisted troubleshooting?", "Organization", "custom_devops_agent_spaces_check")
+        self.add_discovery_check("Do you have any Lambda actions configured with your alarms?", "Alarms", "custom_alarm_lambda_actions_check")
+        self.add_discovery_check("Have you configured CloudWatch Investigations action for any alarms?", "Alarms", "custom_alarm_investigations_actions_check")
+        self.add_discovery_check("Do you have any EC2 actions configured with your alarms?", "Alarms", "custom_alarm_ec2_actions_check")
+        self.add_discovery_check("Do you have dashboards configured with variables?", "Dashboards", "custom_dashboard_variables_check")
         
         # Cross-Category Checks (checks that apply to multiple categories)
         # Application Signals - applies to Metrics, Traces, and Organization
-        self.add_discovery_check("Application Signals Services", "Metrics", "aws application-signals list-services --output json")
-        self.add_discovery_check("Application Signals Services", "Traces", "aws application-signals list-services --output json")
+        self.add_discovery_check("Do you use AWS Application Signals to monitor application services?", "Metrics", "aws application-signals list-services --output json")
+        self.add_discovery_check("Do you use AWS Application Signals to monitor application services?", "Traces", "aws application-signals list-services --output json")
         self.add_discovery_check("Have you defined Service Level Objectives (SLOs) for critical application services?", "Metrics", "aws application-signals list-service-level-objectives --output json")
         self.add_discovery_check("Have you defined Service Level Objectives (SLOs) for critical application services?", "Organization", "aws application-signals list-service-level-objectives --output json")
         
         # CloudWatch Dashboards - applies to Logs, Metrics, Traces access
-        self.add_discovery_check("CloudWatch Dashboards", "Logs", "aws cloudwatch list-dashboards --output json")
-        self.add_discovery_check("CloudWatch Dashboards", "Metrics", "aws cloudwatch list-dashboards --output json")
+        self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Logs", "aws cloudwatch list-dashboards --output json")
+        self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Metrics", "aws cloudwatch list-dashboards --output json")
         
         # Lambda Functions - applies to Logs, Metrics, and Traces
         self.add_discovery_check("Lambda Functions", "Logs", "aws lambda list-functions --output json")
         self.add_discovery_check("Lambda Functions", "Traces", "aws lambda list-functions --output json")
         
         # Resource Tags - applies to Logs retention and Organization strategy
-        self.add_discovery_check("Resource Tags", "Logs", "aws resourcegroupstaggingapi get-resources --output json")
+        self.add_discovery_check("Do you use resource tags for organizing and managing AWS resources?", "Logs", "aws resourcegroupstaggingapi get-resources --output json")
 
     def get_largest_log_groups_by_compute_type(self):
         """Get 10 largest log groups for each compute type (EC2, ECS, Lambda, EKS)"""
@@ -2282,10 +2274,10 @@ class ComprehensiveObservabilityAssessment:
             }
 
     def execute_json_structured_logs_check(self):
-        """Check for JSON structured logs in the 40 largest log groups by compute type"""
+        """Check for JSON structured logs by examining field indexes (fast method)"""
         try:
             if not self.largest_log_groups:
-                return {'total_groups_checked': 0, 'pure_json_groups': 0, 'embedded_json_groups': 0, 'sample_groups': []}
+                return {'total_groups_checked': 0, 'json_groups': 0, 'sample_groups': []}
             
             # Combine all largest log groups
             all_target_groups = []
@@ -2293,60 +2285,36 @@ class ComprehensiveObservabilityAssessment:
                 all_target_groups.extend(groups)
             
             if not all_target_groups:
-                return {'total_groups_checked': 0, 'pure_json_groups': 0, 'embedded_json_groups': 0, 'sample_groups': []}
+                return {'total_groups_checked': 0, 'json_groups': 0, 'sample_groups': []}
             
-            pure_json_groups = []
-            embedded_json_groups = []
+            json_groups = []
             
-            # Check each log group for JSON structured logs
-            for group_name in all_target_groups[:40]:  # Limit to 40 groups
+            # Check each log group for field indexes (indicates JSON structured logs)
+            for group_name in all_target_groups:
                 try:
-                    # Use a recent time window (last 24 hours)
-                    import time
-                    end_time = int(time.time())
-                    start_time = end_time - 86400  # 24 hours ago
+                    import shlex
+                    escaped_name = shlex.quote(group_name)
+                    # Check if log group has field indexes (indicates structured JSON logs)
+                    result = self.run_aws_command(f'aws logs list-log-group-field-indexes --log-group-identifier {escaped_name} --output json')
                     
-                    # Query 1: Check for pure JSON messages (start and end with {})
-                    pure_json_query = f'aws logs start-query --log-group-name "{group_name}" --start-time {start_time} --end-time {end_time} --query-string "fields @timestamp, @message | filter @message like /^\\{{.*\\}}$/ | limit 1" --output json'
-                    pure_json_result = self.run_aws_command(pure_json_query)
-                    
-                    # Query 2: Check for embedded JSON (contains JSON structure)
-                    embedded_json_query = f'aws logs start-query --log-group-name "{group_name}" --start-time {start_time} --end-time {end_time} --query-string "fields @timestamp, @message | filter @message like /\\{{/ | limit 1" --output json'
-                    embedded_json_result = self.run_aws_command(embedded_json_query)
-                    
-                    has_pure_json = False
-                    has_embedded_json = False
-                    
-                    # Check pure JSON results
-                    if pure_json_result and pure_json_result.get('queryId'):
-                        time.sleep(2)
-                        results_command = f'aws logs get-query-results --query-id {pure_json_result["queryId"]} --output json'
-                        results = self.run_aws_command(results_command)
-                        if results and results.get('status') == 'Complete' and results.get('results'):
-                            has_pure_json = True
-                            pure_json_groups.append(group_name)
-                    
-                    # Check embedded JSON results (only if not already pure JSON)
-                    if not has_pure_json and embedded_json_result and embedded_json_result.get('queryId'):
-                        time.sleep(2)
-                        results_command = f'aws logs get-query-results --query-id {embedded_json_result["queryId"]} --output json'
-                        results = self.run_aws_command(results_command)
-                        if results and results.get('status') == 'Complete' and results.get('results'):
-                            has_embedded_json = True
-                            embedded_json_groups.append(group_name)
+                    if result and result.get('fieldIndexes'):
+                        # Filter out default @timestamp and @message indexes
+                        custom_indexes = [idx for idx in result['fieldIndexes'] 
+                                        if idx.get('fieldIndexName') not in ['@timestamp', '@message']]
+                        if custom_indexes:
+                            json_groups.append(group_name)
                             
                 except Exception:
                     continue  # Skip groups that fail
             
             return {
                 'total_groups_checked': len(all_target_groups),
-                'pure_json_groups': len(pure_json_groups),
-                'embedded_json_groups': len(embedded_json_groups),
-                'sample_groups': (pure_json_groups + embedded_json_groups)[:5]  # Show first 5 as examples
+                'json_groups': len(json_groups),
+                'sample_groups': json_groups[:5]  # Show first 5 as examples
             }
             
         except Exception as e:
-            return {'total_groups_checked': 0, 'pure_json_groups': 0, 'embedded_json_groups': 0, 'sample_groups': []}
+            return {'total_groups_checked': 0, 'json_groups': 0, 'sample_groups': []}
         """Custom check for field index policies across log groups"""
         try:
             # Step 1: Get all log groups
@@ -2615,7 +2583,7 @@ class ComprehensiveObservabilityAssessment:
         for check in log_checks:
             if check.question_id == 1:  # How do you collect logs?
                 # Map to discovery checks for log collection
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
                 vpc_flow_check = next((c for c in self.results.discovery_checks if c.name == "VPC Flow Logs"), None)
                 cloudtrail_check = next((c for c in self.results.discovery_checks if c.name == "CloudTrail Trails"), None)
                 config_recorders_check = next((c for c in self.results.discovery_checks if c.name == "Config Recorders"), None)
@@ -2705,7 +2673,7 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 3:  # How do you access logs?
                 # Map to discovery checks for log access
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
                 subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
@@ -2742,7 +2710,7 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 4:  # What is your log retention policy?
                 # Map to discovery checks for log retention
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
                 top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
                 export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Log Export Tasks Per Log Group"), None)
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
@@ -2808,7 +2776,7 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 4:  # What is your log retention policy?
                 # Required checks: CloudWatch retention settings, S3 lifecycle policies, Compliance tagging, Cost optimization
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (Vended Logs, AWS Service Logs, Custom Logs)"), None)
+                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
                 
                 check.evidence_check_ids = [c.id for c in [log_groups_check, tags_check] if c]
@@ -2987,7 +2955,7 @@ class ComprehensiveObservabilityAssessment:
         for check in dashboard_checks:
             if check.question_id == 10:  # How do you use alarms?
                 alarms_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Alarms"), None)
-                composite_check = next((c for c in self.results.discovery_checks if c.name == "Composite Alarms"), None)
+                composite_check = next((c for c in self.results.discovery_checks if c.name == "Do you use composite alarms to reduce alarm noise?"), None)
                 sns_check = next((c for c in self.results.discovery_checks if c.name == "SNS Topics"), None)
                 anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
                 
@@ -3127,8 +3095,8 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "No AI/ML features detected in the observability stack. Reliance on traditional threshold-based monitoring without machine learning capabilities."
             
             elif check.question_id == 17:  # Do you have real end-user monitoring?
-                rum_check = next((c for c in self.results.discovery_checks if c.name == "RUM Applications"), None)
-                synthetics_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Synthetics Canaries"), None)
+                rum_check = next((c for c in self.results.discovery_checks if c.name == "Do you use CloudWatch RUM to monitor real user experiences?"), None)
+                synthetics_check = next((c for c in self.results.discovery_checks if c.name == "Do you use CloudWatch Synthetics to monitor application endpoints?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [rum_check, synthetics_check] if c]
                 
