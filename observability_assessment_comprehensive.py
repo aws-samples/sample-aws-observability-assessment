@@ -1128,7 +1128,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{base_info} | No large log groups found for retention analysis"
             return f"{base_info} - No retention analysis performed"
         
-        elif check.name == "X-Ray Sampling Rules":
+        elif check.name == "Do you have custom X-Ray sampling rules configured?":
             sampling_rules = check.result.get('SamplingRuleRecords', []) if check.result else []
             custom_rules = [rule for rule in sampling_rules if rule.get('SamplingRule', {}).get('RuleName') != 'Default']
             
@@ -1491,7 +1491,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{observability_clusters}/{total_clusters} EKS clusters have amazon-cloudwatch-observability add-on"
             return f"{base_info} | No EKS clusters found"
 
-        elif check.name == "X-Ray Service Map":
+        elif check.name == "Do you use X-Ray service maps to visualize application architecture?":
             services = check.result.get('Services', [])
             if services:
                 sample_names = [svc.get('Name', 'Unknown') for svc in services[:3]]
@@ -1605,18 +1605,18 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Have you configured metric streams for real-time export to third-party tools or data lakes?", "Metrics", "aws cloudwatch list-metric-streams --output json")
         
         # Traces Discovery Checks (Detailed)
-        self.add_discovery_check("X-Ray Service Map", "Traces", "custom_xray_service_graph_check")
-        self.add_discovery_check("X-Ray Sampling Rules", "Traces", "custom_xray_sampling_rules_check")
-        self.add_discovery_check("X-Ray Encryption Config", "Traces", "aws xray get-encryption-config --output json")
-        self.add_discovery_check("Lambda Tracing Config", "Traces", "aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json")
-        self.add_discovery_check("X-Ray Insights", "Traces", "aws xray get-insight-summaries --output json")
+        self.add_discovery_check("Do you use X-Ray service maps to visualize application architecture?", "Traces", "custom_xray_service_graph_check")
+        self.add_discovery_check("Do you have custom X-Ray sampling rules configured?", "Traces", "custom_xray_sampling_rules_check")
+        self.add_discovery_check("Do you have X-Ray encryption configured?", "Traces", "aws xray get-encryption-config --output json")
+        self.add_discovery_check("Do your Lambda functions have X-Ray tracing enabled?", "Traces", "aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json")
+        self.add_discovery_check("Do you have X-Ray Insights configured for anomaly detection?", "Traces", "aws xray get-insight-summaries --output json")
         
         # Dashboards & Alarms Discovery Checks (Detailed)
         self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Dashboards", "aws cloudwatch list-dashboards --output json")
         self.add_discovery_check("Do you have CloudWatch alarms configured for your resources?", "Alarms", "custom_cloudwatch_alarms_check")
-        self.add_discovery_check("Do you have metric-based alarms configured?", "Alarms", "aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json")
+
         self.add_discovery_check("Do you use composite alarms to reduce alarm noise?", "Alarms", "aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json")
-        self.add_discovery_check("Anomaly Detector Alarms", "Alarms", "aws cloudwatch describe-alarms --query 'MetricAlarms[?contains(MetricName, `ANOMALY_DETECTION_FUNCTION`)]' --output json")
+
         self.add_discovery_check("Do your alarms send notifications to SNS topics?", "Alarms", "custom_alarm_sns_configuration_check")
         self.add_discovery_check("Do you use anomaly detection models for adaptive alarming?", "Alarms", "custom_anomaly_detection_bands_check")
         
@@ -2889,9 +2889,9 @@ class ComprehensiveObservabilityAssessment:
         
         for check in traces_checks:
             if check.question_id == 8:  # How do you collect traces?
-                xray_check = next((c for c in self.results.discovery_checks if c.name == "X-Ray Service Map"), None)
-                lambda_tracing_check = next((c for c in self.results.discovery_checks if c.name == "Lambda Tracing Config"), None)
-                sampling_check = next((c for c in self.results.discovery_checks if c.name == "X-Ray Sampling Rules"), None)
+                xray_check = next((c for c in self.results.discovery_checks if c.name == "Do you use X-Ray service maps to visualize application architecture?"), None)
+                lambda_tracing_check = next((c for c in self.results.discovery_checks if c.name == "Do your Lambda functions have X-Ray tracing enabled?"), None)
+                sampling_check = next((c for c in self.results.discovery_checks if c.name == "Do you have custom X-Ray sampling rules configured?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [xray_check, lambda_tracing_check, sampling_check] if c]
                 
@@ -2922,8 +2922,8 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "Limited or no distributed tracing detected. Basic auto-instrumented SDKs may be present but without comprehensive trace collection."
             
             elif check.question_id == 9:  # How do you use traces?
-                xray_check = next((c for c in self.results.discovery_checks if c.name == "X-Ray Service Map"), None)
-                insights_check = next((c for c in self.results.discovery_checks if c.name == "X-Ray Insights"), None)
+                xray_check = next((c for c in self.results.discovery_checks if c.name == "Do you use X-Ray service maps to visualize application architecture?"), None)
+                insights_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray Insights configured for anomaly detection?"), None)
                 app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Application Signals Services"), None)
                 
                 check.evidence_check_ids = [c.id for c in [xray_check, insights_check, app_signals_check] if c]

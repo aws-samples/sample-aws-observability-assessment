@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Observability Assessment Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; text-align: center; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .summary-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; }
+        .tabs { background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 2rem; }
+        .tab-buttons { display: flex; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+        .tab-button { flex: 1; padding: 1rem; background: none; border: none; cursor: pointer; font-size: 1rem; font-weight: 500; color: #6b7280; }
+        .tab-button.active { background: white; color: #667eea; border-bottom: 3px solid #667eea; }
+        .tab-content { display: none; padding: 2rem; }
+        .tab-content.active { display: block; }
+        .discovery-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .discovery-table th, .discovery-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        .discovery-table th { background-color: #f8fafc; font-weight: 600; }
+        .status-success { color: #10b981; font-weight: bold; }
+        .status-failed { color: #ef4444; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 AWS Observability Assessment</h1>
+            <p>Account: 209466560996 | Generated: February 07, 2026 at 05:21 PM</p>
+        </div>
+        
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Overall Score</h3>
+                <div class="number total">1.9/4.0</div>
+                <p>Maturity Level: Developing</p>
+            </div>
+            <div class="summary-card">
+                <h3>Discovery Checks</h3>
+                <div class="number complete">48</div>
+                <p>of 50 successful</p>
+            </div>
+            <div class="summary-card">
+                <h3>Assessment Questions</h3>
+                <div class="number total">17</div>
+                <p>Evaluated</p>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="showTab('discovery')">Discovery</button>
+                <button class="tab-button" onclick="showTab('logs')">Logs</button>
+                <button class="tab-button" onclick="showTab('metrics')">Metrics</button>
+                <button class="tab-button" onclick="showTab('traces')">Traces</button>
+                <button class="tab-button" onclick="showTab('dashboards')">Dashboards & Alarms</button>
+                <button class="tab-button" onclick="showTab('organization')">Organization</button>
+            </div>
+            
+            <div id="discovery" class="tab-content active">
+                <h2>🔍 Discovery Section</h2>
+                <p>Comprehensive list of all AWS service checks performed across all assessment categories.</p>
+                <table class="discovery-table">
+                    <thead>
+                        <tr>
+                            <th>Check #</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Command</th>
+                            <th>Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_log_groups_categorization_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Total: 152 log groups | Vended: 122 | Custom: 30<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>AWS Vended/Service Logs:</strong><br>  • /aws/apigateway/welcome<br>  • /aws/application-signals/data<br>  • /aws/bedrock-agentcore/runtimes/PetFoodAgent-J6SVEc3Xu1-DEFAULT<br>  • /aws/codebuild/BuildpetfoodagentstrandspyP-hxOOXi8NZ2ME<br>  • /aws/codebuild/BuildpetfoodagentstrandspyP-quBuNmpUmXxK<br>  • /aws/codebuild/OneObservability-pipeline-selfupdate<br>  • /aws/codebuild/PipelineAssetsFileAsset1024-QBZyQaTu59Gx<br>  • /aws/codebuild/PipelineAssetsFileAsset1024-YGVh6FqpXWOo<br>  • /aws/codebuild/PipelineAssetsFileAsset11D5-ABQUtU3eiFsZ<br>  • /aws/codebuild/PipelineAssetsFileAsset11D5-XkLXQuMo7Uzi<br>  • /aws/codebuild/PipelineAssetsFileAsset12E9-64p5tJdOfAYR<br>  • /aws/codebuild/PipelineAssetsFileAsset12E9-aqfo39qfvQq6<br>  • /aws/codebuild/PipelineAssetsFileAsset13BC-7KDxtURDZdOg<br>  • /aws/codebuild/PipelineAssetsFileAsset13BC-LCHnC0BpQOFv<br>  • /aws/codebuild/PipelineAssetsFileAsset14A3-FTwlmmb8z8Bz<br>  • /aws/codebuild/PipelineAssetsFileAsset14A3-wWOQqXBDrmf2<br>  • /aws/codebuild/PipelineAssetsFileAsset15B2-YIxZkaGZ0jsa<br>  • /aws/codebuild/PipelineAssetsFileAsset15B2-eDIRhR8DBxh9<br>  • /aws/codebuild/PipelineAssetsFileAsset161A-FRk5Pmf5lkUm<br>  • /aws/codebuild/PipelineAssetsFileAsset161A-e0R3mCcPrbEQ<br>  • /aws/codebuild/PipelineAssetsFileAsset172B-A509TvSRfELI<br>  • /aws/codebuild/PipelineAssetsFileAsset172B-RHAyWqKVLocd<br>  • /aws/codebuild/PipelineAssetsFileAsset185A-61v4OWTQxuwN<br>  • /aws/codebuild/PipelineAssetsFileAsset185A-tObbOAnCRvzf<br>  • /aws/codebuild/PipelineAssetsFileAsset1886-CHmwwpX7F70O<br>  • /aws/codebuild/PipelineAssetsFileAsset1886-co8Ku0dOmDSM<br>  • /aws/codebuild/PipelineAssetsFileAsset192E-WXMlceF3AOE1<br>  • /aws/codebuild/PipelineAssetsFileAsset192E-fYIlwKM5tc6C<br>  • /aws/codebuild/PipelineAssetsFileAsset2002-01gyhz2I6Dn7<br>  • /aws/codebuild/PipelineAssetsFileAsset2002-m5WS8FgG4lU1<br>  • /aws/codebuild/PipelineAssetsFileAsset2144-kDS8ic55C8P1<br>  • /aws/codebuild/PipelineAssetsFileAsset2144-shl02K6e0ecK<br>  • /aws/codebuild/PipelineAssetsFileAsset22CD-JJs6Rr64nbkE<br>  • /aws/codebuild/PipelineAssetsFileAsset22CD-h3saDRxdZAgY<br>  • /aws/codebuild/PipelineAssetsFileAsset23A5-WwIMncCsjbYj<br>  • /aws/codebuild/PipelineAssetsFileAsset23A5-lXpQ3xy8KEzy<br>  • /aws/codebuild/PipelineAssetsFileAsset240D-FN9sQr8oth49<br>  • /aws/codebuild/PipelineAssetsFileAsset240D-gKxTbBX6Cg2g<br>  • /aws/codebuild/PipelineAssetsFileAsset24D2-JZppirTfwhVv<br>  • /aws/codebuild/PipelineAssetsFileAsset24D2-Qw9sJlNOAim0<br>  • /aws/codebuild/PipelineAssetsFileAsset25C2-AxguHRGHuyf2<br>  • /aws/codebuild/PipelineAssetsFileAsset25C2-xuzE83XWdkG6<br>  • /aws/codebuild/PipelineAssetsFileAsset26CD-1HqssN54pJNb<br>  • /aws/codebuild/PipelineAssetsFileAsset26CD-6DF8DNGX1rLS<br>  • /aws/codebuild/PipelineAssetsFileAsset2785-ccaWtLT5gcON<br>  • /aws/codebuild/PipelineAssetsFileAsset2785-f5hETSYzsICb<br>  • /aws/codebuild/PipelineAssetsFileAsset28D7-Lygqdi7Lqiv3<br>  • /aws/codebuild/PipelineAssetsFileAsset28D7-o2tGeoETgSYb<br>  • /aws/codebuild/PipelineAssetsFileAsset3FE7-GlC2cXn11X99<br>  • /aws/codebuild/PipelineAssetsFileAsset3FE7-YdDTxeoHUKMx<br>  • /aws/codebuild/PipelineAssetsFileAsset4743-CjuLBuG7euWz<br>  • /aws/codebuild/PipelineAssetsFileAsset4743-qBgwoNlLDSTf<br>  • /aws/codebuild/PipelineAssetsFileAsset5184-Q4iKaCD9ZPcf<br>  • /aws/codebuild/PipelineAssetsFileAsset5184-eFaSx7dFh5C6<br>  • /aws/codebuild/PipelineAssetsFileAsset669C-H7zvG6MtxtfN<br>  • /aws/codebuild/PipelineAssetsFileAsset669C-Lf6rb7OFrh0G<br>  • /aws/codebuild/PipelineAssetsFileAsset7A51-nIRgy9ABnUlE<br>  • /aws/codebuild/PipelineAssetsFileAsset7A51-tr1TyvVU5kS4<br>  • /aws/codebuild/PipelineAssetsFileAsset81DA-F4u8h1pGqiGK<br>  • /aws/codebuild/PipelineAssetsFileAsset81DA-yeSK8U9ecU34<br>  • /aws/codebuild/PipelineAssetsFileAsset9F08-pZNkVJhinioQ<br>  • /aws/codebuild/PipelineAssetsFileAsset9F08-ruwaIFFE76BP<br>  • /aws/codebuild/PipelineBackendStorageDDBSe-iOkhDnFuvhvg<br>  • /aws/codebuild/PipelineBackendStorageRDSSe-uu9dCstEKCOW<br>  • /aws/codebuild/PipelineBuildSynthCdkBuildP-AkFg1a0TRUM6<br>  • /aws/codebuild/PipelineBuildSynthCdkBuildP-AtiYGJkAohuQ<br>  • /aws/codebuild/one-observability-demo-codebuild-cdk-deployment<br>  • /aws/codepipeline/Applications-ContainersStack-pipeline<br>  • /aws/containerinsights/PetsiteEKS-cluster/application<br>  • /aws/containerinsights/PetsiteEKS-cluster/dataplane<br>  • /aws/containerinsights/PetsiteEKS-cluster/host<br>  • /aws/containerinsights/PetsiteEKS-cluster/performance<br>  • /aws/coredns/emf<br>  • /aws/ecs/containerinsights/PetsiteECS-cluster/performance<br>  • /aws/eks/PetsiteEKS-cluster/cluster<br>  • /aws/kinesisfirehose/PUT-S3-Ut14i<br>  • /aws/lambda-insights<br>  • /aws/lambda/Applications-ContainersSt-CustomS3AutoDeleteObject-CsUSk3RbGBzz<br>  • /aws/lambda/Applications-ContainersSt-CustomS3AutoDeleteObject-URok4fCoo9rx<br>  • /aws/lambda/Compute-ComputeStack-AWSCDKCfnUtilsProviderCustomR-KJ8qU4Id4BEK<br>  • /aws/lambda/Compute-ComputeStack-AWSCDKCfnUtilsProviderCustomR-vVyxU67tDNig<br>  • /aws/lambda/Compute-ComputeStack-CustomAWSCDKOpenIdConnectProv-opb7yy3xxZKm<br>  • /aws/lambda/Compute-ComputeStack-CustomAWSCDKOpenIdConnectProv-qMQsTid5d6Rn<br>  • /aws/lambda/Compute-ComputeStack-awsc-IsCompleteHandler7073F4D-4kD9ox1JHD1K<br>  • /aws/lambda/Compute-ComputeStack-awsc-IsCompleteHandler7073F4D-tAbDzL2EmX98<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkisCompl-MAujNBR1Z24D<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkisCompl-upu0vAckROSS<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-2GTkrrgQByb4<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-77WepgpBqDZs<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-aO7NLRjRraCg<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-nrGHhUQU0NZq<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonTimeo-CSmw4F3mPvQT<br>  • /aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonTimeo-soS2bpIQWAns<br>  • /aws/lambda/Compute-ComputeStack-awscdk-OnEventHandler42BEBAE0-LdYyDk7CMRNS<br>  • /aws/lambda/Compute-ComputeStack-awscdk-OnEventHandler42BEBAE0-bw66djDc4A13<br>  • /aws/lambda/Compute-ComputeStack-awscdkawseksK-Handler886CB40B-8HMGjR1rCM4F<br>  • /aws/lambda/Compute-ComputeStack-awscdkawseksK-Handler886CB40B-IIm8cYVuZDxC<br>  • /aws/lambda/Core-Stack-CustomS3AutoDeleteObjectsCustomResource-fAaqufhxUdc8<br>  • /aws/lambda/Core-Stack-CustomVpcRestrictDefaultSGCustomResourc-6Wuad0gOFhzU<br>  • /aws/lambda/Microservices-Microservic-CustomS3AutoDeleteObject-wTUu34TonlOG<br>  • /aws/lambda/Microservices-Microservic-ProviderframeworkonEvent-SgJxys6R5k8J<br>  • /aws/lambda/Microservices-Microservice-OneObse-Handler886CB40B-On8wCJTqtKxX<br>  • /aws/lambda/OneObservability-CustomS3AutoDeleteObjectsCustomRe-MTDdC6coYUIB<br>  • /aws/lambda/OneObservability-CustomS3AutoDeleteObjectsCustomRe-z7t5hoakRtTb<br>  • /aws/lambda/Storage-StorageStack-CustomCDKBucketDeployment8693-8gQsMVjuTJNQ<br>  • /aws/lambda/Storage-StorageStack-LogRetentionaae0aa3c5b4d4f87b-csuKiCkP51t9<br>  • /aws/lambda/cwsyn-housekeeping-canary-0faa14aa-7f8c-4881-8ba6-5f02a04614e8<br>  • /aws/lambda/cwsyn-petsite-canary-88c52721-034a-4e46-9c66-35a4c40ab506<br>  • /aws/lambda/one-observability-demo-co-rCDKOutputRetrieverFunct-lUpUTA1Lc6HN<br>  • /aws/lambda/one-observability-demo-co-rResourceCleanupFunction-QLlYs2HPxC4F<br>  • /aws/lambda/one-observability-demo-co-rResourceCleanupFunction-qnCXeFhWuzzy<br>  • /aws/lambda/one-observability-demo-co-rResourceCleanupFunction-s4lA3UmoleGE<br>  • /aws/lambda/one-observability-demo-co-rStartDeploymentFunction-jFQrGa74JsxI<br>  • /aws/lambda/one-observability-demo-co-rStartDeploymentFunction-nmyxKsgQ6PK2<br>  • /aws/lambda/one-observability-demo-co-rStartDeploymentFunction-zTuSFq48xTAl<br>  • /aws/lambda/one-observability-demo-codebuild-cdk-stack-lister<br>  • /aws/lambda/one-observability-demo-codebuild-cleanup-monitor<br>  • /aws/lambda/one-observability-demo-codebuild-cross-region-stack-ops<br>  • /aws/lambda/one-observability-demo-codebuild-deletion-result-checker<br>  • /aws/rds/cluster/storage-storagestack-auroradatabase9102d3f1-p1yg0obd3tw0/postgresql<br>  • /aws/vendedlogs/opensearch-ingestion/petsite-logs-pipeline<br>  • /aws/vpcflowlogs/vpc-0a3604b640f296d5e<br><br><strong>Custom Application Logs:</strong><br>  • /ecs/AMP-Task-Petfood-otel-collector<br>  • /ecs/ecs-aws-otel-sidecar-collector<br>  • /ecs/otel-collector<br>  • /metrics/ECS/ContainerInsights<br>  • /metrics/petlistadoptions-api-py<br>  • API-Gateway-Execution-Logs_nbqzwevkj3/prod<br>  • Core-Stack-cloudtrailCloudTrailLogGroup73B81FE9-bWRoSqIFeZni<br>  • Core-Stack-vpcResolverLogGroup9F0E9450-9t25LyHrAzv8<br>  • Microservices-Microservice-payforadoptiongocloudwatchagentloggroupD9BC8041-VhMxmcsPHUbr<br>  • Microservices-Microservice-payforadoptiongoecsloggroupD1ADE1C1-EnynA8Z3wWTs<br>  • Microservices-Microservice-petfoodcleanupprocessornodeLogGroup58FE0D2C-zNw8Qs9ZMZyO<br>  • Microservices-Microservice-petfoodimagegeneratorpythonLogGroup4F39396F-l95XlPxNI6eu<br>  • Microservices-Microservice-petfoodrscloudwatchagentloggroupA24084B4-Po5VCywSwVhU<br>  • Microservices-Microservice-petfoodrsecsloggroup778D439B-rKEEADILV38r<br>  • Microservices-Microservice-petfoodrsfirelensloggroupB8330C97-OEIriAvDP60U<br>  • Microservices-Microservice-petfoodstockprocessornodeLogGroup3E304D75-4Hzq2O66g3Nq<br>  • Microservices-Microservice-petlistadoptionpycloudwatchagentloggroup76F91C69-HyRwenwuGlUn<br>  • Microservices-Microservice-petlistadoptionpyecsloggroup3C8C5A66-eEyNeAfIDVQN<br>  • Microservices-Microservice-petsearchjavaecsloggroup5D1699AA-2mofO52Cf1EC<br>  • Microservices-Microservice-petsearchjavataskDefinitionecscwagentLogGroupA062E140-UBs2TC1GPHkZ<br>  • Microservices-Microservice-petupdaternodeLogGroup054BC908-srDg2W64IXbL<br>  • Microservices-Microservice-petupdaternodeaccesslogsC026D99B-Kz1wPVNguZgB<br>  • Microservices-Microservice-trafficgeneratornodeLogGroupB4466E45-z262pD1M0ar5<br>  • Microservices-Microservice-usercreatorLogGroupFB628CF3-gmdV08B0ZzZv<br>  • Storage-StorageStack-RdsSeederFunctionLogGroupEC159721-WipCkXLiKhiR<br>  • aws/spans<br>  • ec2metricsscraperlogs<br>  • ecspayforadoptiondnsscraperlogs<br>  • mskmanagedscraper<br>  • testec2instance<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_top_log_groups_retention_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Analyzed top 10 largest log groups (52.5 GB total) | 1/10 have retention policies<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. /ecs/AMP-Task-Petfood-otel-collector<br>   Size: 12143.9 MB | Retention: None days<br><br>2. /aws/eks/PetsiteEKS-cluster/cluster<br>   Size: 10611.5 MB | Retention: None days<br><br>3. /aws/containerinsights/PetsiteEKS-cluster/application<br>   Size: 10193.5 MB | Retention: None days<br><br>4. /aws/containerinsights/PetsiteEKS-cluster/performance<br>   Size: 8812.7 MB | Retention: None days<br><br>5. /ecs/ecs-aws-otel-sidecar-collector<br>   Size: 6496.7 MB | Retention: None days<br><br>6. /aws/vpcflowlogs/vpc-0a3604b640f296d5e<br>   Size: 1814.3 MB | Retention: 7 days<br><br>7. /aws/containerinsights/PetsiteEKS-cluster/dataplane<br>   Size: 1299.7 MB | Retention: None days<br><br>8. /aws/containerinsights/PetsiteEKS-cluster/host<br>   Size: 1254.1 MB | Retention: None days<br><br>9. /aws/application-signals/data<br>   Size: 800.4 MB | Retention: None days<br><br>10. /aws/lambda/cwsyn-petsite-canary-88c52721-034a-4e46-9c66-35a4c40ab506<br>   Size: 337.0 MB | Retention: None days<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>3</td>
+                            <td>Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-query-definitions --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 saved query definitions<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>1. Error Analysis</strong><br>Query: fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 100<br>No log groups<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>4</td>
+                            <td>Log Insights Query History</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-queries --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
+                        </tr>
+                        <tr>
+                            <td>5</td>
+                            <td>Have you created metric filters to extract KPIs from logs?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-metric-filters --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 metric filters<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>Countof200</strong><br>   Log Group: Microservices-Microservice-petlistadoptionpyecsloggroup3C8C5A66-eEyNeAfIDVQN<br>   Pattern: %200%<br>   Metric 1: PetSiteMetricsFilters/Countof200 = 1<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>6</td>
+                            <td>What percentage of log groups have subscription filters for real-time processing?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_subscription_filters_coverage_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1/27 log groups with subscription filters<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. Microservices-Microservice-petlistadoptionpyecsloggroup3C8C5A66-eEyNeAfIDVQN<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>7</td>
+                            <td>What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_ec2_cloudwatch_agent_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Total: 5 instances | SSM: 5/5 | CW Agent: 4/5 | Logging: 2/5<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>All EC2 Instances (5):</strong><br>1. i-08b11a6382d208087<br>2. i-0b80fba2314592b32<br>3. i-0ef682f9d36433da9<br>4. i-04edeb6bd5f42dfa1<br>5. i-0f412ccc5a571973e<br><br><strong>SSM Managed Instances (5):</strong><br>1. i-08b11a6382d208087<br>2. i-0b80fba2314592b32<br>3. i-0ef682f9d36433da9<br>4. i-04edeb6bd5f42dfa1<br>5. i-0f412ccc5a571973e<br><br><strong>CloudWatch Agent Running (4):</strong><br>1. i-08b11a6382d208087<br>2. i-0b80fba2314592b32<br>3. i-04edeb6bd5f42dfa1<br>4. i-0f412ccc5a571973e<br><br><strong>Logging Configured (2):</strong><br>1. i-0b80fba2314592b32<br>2. i-0f412ccc5a571973e<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>8</td>
+                            <td>Are all Lambda functions logging to CloudWatch?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-log-groups --log-group-name-prefix /aws/lambda --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 43 Lambda log groups<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>/aws/lambda-insights<br>/aws/lambda/Applications-ContainersSt-CustomS3AutoDeleteObject-CsUSk3RbGBzz<br>/aws/lambda/Applications-ContainersSt-CustomS3AutoDeleteObject-URok4fCoo9rx<br>/aws/lambda/Compute-ComputeStack-AWSCDKCfnUtilsProviderCustomR-KJ8qU4Id4BEK<br>/aws/lambda/Compute-ComputeStack-AWSCDKCfnUtilsProviderCustomR-vVyxU67tDNig<br>/aws/lambda/Compute-ComputeStack-CustomAWSCDKOpenIdConnectProv-opb7yy3xxZKm<br>/aws/lambda/Compute-ComputeStack-CustomAWSCDKOpenIdConnectProv-qMQsTid5d6Rn<br>/aws/lambda/Compute-ComputeStack-awsc-IsCompleteHandler7073F4D-4kD9ox1JHD1K<br>/aws/lambda/Compute-ComputeStack-awsc-IsCompleteHandler7073F4D-tAbDzL2EmX98<br>/aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkisCompl-MAujNBR1Z24D<br>/aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkisCompl-upu0vAckROSS<br>/aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-2GTkrrgQByb4<br>/aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-77WepgpBqDZs<br>/aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-aO7NLRjRraCg<br>/aws/lambda/Compute-ComputeStack-awsc-ProviderframeworkonEvent-nrGHhUQU0NZq<br>... and 28 more log groups</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>9</td>
+                            <td>What percentage of ECS tasks use structured logging (JSON)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_ecs_task_log_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">ECS clusters: 1 | Running tasks: 1 | Tasks with logging: 1/1<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>ECS Clusters (1):</strong><br>1. arn:aws:ecs:us-west-2:209466560996:cluster/PetsiteECS-cluster<br><br><strong>Running Tasks (1):</strong><br>1. arn:aws:ecs:us-west-2:209466560996:task/PetsiteECS-cluster/890235bfb4e34d6eac58a23b8428b104<br><br><strong>Tasks with Logging (1):</strong><br>1. arn:aws:ecs:us-west-2:209466560996:task/PetsiteECS-cluster/890235bfb4e34d6eac58a23b8428b104<br><br><strong>Logging Configurations (1):</strong><br>1. <strong>Task Definition:</strong> AMP-Task-Petfood<br>   Container 1: Unknown | Driver: awsfirelens | Group: N/A<br>   Container 2: Unknown | Driver: awslogs | Group: N/A<br>   Container 3: Unknown | Driver: awslogs | Group: N/A<br>   Container 4: Unknown | Driver: awslogs | Group: N/A<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>10</td>
+                            <td>Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-log-groups --log-group-name-prefix /aws/eks --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 EKS control plane log groups<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>/aws/eks/PetsiteEKS-cluster/cluster</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>11</td>
+                            <td>Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws eks describe-addon --cluster-name PetsiteEKS-cluster --addon-name amazon-cloudwatch-observability --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found EKS addon: amazon-cloudwatch-observability (version: v4.7.0-eksbuild.1, status: ACTIVE)<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Add-on Details:</strong><br>Name: amazon-cloudwatch-observability<br>Version: v4.7.0-eksbuild.1<br>Status: ACTIVE<br>Cluster: PetsiteEKS-cluster<br>Created: 1765506700.704<br>Modified: 1765507096.975<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>12</td>
+                            <td>Have you enabled anomaly detection?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs list-log-anomaly-detectors --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 log anomaly detectors<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>Name: Microservices-Microservic-anomaly-detector<br>Status: ANALYZING<br>Log Groups: Microservices-Microservice-petlistadoptionpyecsloggroup3C8C5A66-eEyNeAfIDVQN<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>13</td>
+                            <td>Log Export Tasks Per Log Group</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_log_export_tasks_per_log_group_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1/152 log groups with export history<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Log Groups with Export History (1):</strong><br>1. Microservices-Microservice-petlistadoptionpyecsloggroup3C8C5A66-eEyNeAfIDVQN<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>14</td>
+                            <td>Have you implemented Cross-Account and Cross-Region Log Centralization?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_log_centralization_analysis_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account type: Standalone | Org status: Organization Management Account | Found 1 centralization patterns<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Account Information:</strong><br>Account Type: Standalone<br>Organization Status: Organization Management Account<br><br><strong>Centralization Patterns (1):</strong><br>1. Kinesis Data Firehose: MetricStreams-QuickFull-dU2TrF-5dYK6tHa → S3 bucket metricstreams-quickfull-du2trf-ya9rmyss (same account), PUT-S3-Ut14i → S3 bucket nilou-o11y-workshop-cloudwatch-logs-export (same account)<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>15</td>
+                            <td>Are you using CloudWatch cross-account observability?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_oam_links_and_sinks_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account Type: No OAM Configuration</td>
+                        </tr>
+                        <tr>
+                            <td>16</td>
+                            <td>What percentage of application logs use structured JSON format for easier parsing and analysis?</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_json_structured_logs_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
+                        </tr>
+                        <tr>
+                            <td>17</td>
+                            <td>Field Index Policies Per Log Group</td>
+                            <td>Logs</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_field_indexes_per_log_group_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 15/20 log groups with field indexes (top 20 largest by size) | Examples: /ecs/AMP-Task-Petfood-otel-collector, /aws/eks/PetsiteEKS-cluster/cluster, /ecs/ecs-aws-otel-sidecar-collector<details><summary>Show Field Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>/ecs/AMP-Task-Petfood-otel-collector</strong><br>Fields: severityText<br><br><strong>/aws/eks/PetsiteEKS-cluster/cluster</strong><br>Fields: severityText<br><br><strong>/ecs/ecs-aws-otel-sidecar-collector</strong><br>Fields: severityText<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>18</td>
+                            <td>EC2 Instances</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ec2 describe-instances --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 5 EC2 instances<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>i-08b11a6382d208087 (t3.large) - running<br>i-0b80fba2314592b32 (t3.micro) - running<br>i-0ef682f9d36433da9 (t3.micro) - running<br>i-04edeb6bd5f42dfa1 (t3.large) - running<br>i-0f412ccc5a571973e (t2.micro) - running<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>19</td>
+                            <td>What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ec2 describe-instances --query 'Reservations[].Instances[?Monitoring.State==`enabled`]' --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 EC2 instances with detailed monitoring enabled<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Instances with Detailed Monitoring (1):</strong><br>1. <strong>i-0f412ccc5a571973e</strong><br>   Type: t2.micro<br>   State: running<br>   Monitoring: enabled<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>20</td>
+                            <td>What percentage of ECS Clusters have monitoring enabled?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ecs list-clusters --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 ECS clusters<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>PetsiteECS-cluster</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>21</td>
+                            <td>List of ECS clusters with Container Insights enabled?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 ECS clusters | Container Insights: 1 enabled, 0 disabled<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Clusters with Container Insights Enabled (1):</strong><br>1. <strong>PetsiteECS-cluster</strong><br>   Status: ACTIVE<br>   Container Insights: enhanced<br>   ARN: arn:aws:ecs:us-west-2:209466560996:cluster/PetsiteECS-cluster<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>22</td>
+                            <td>EKS Clusters</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws eks list-clusters --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 EKS clusters<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>PetsiteEKS-cluster</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>23</td>
+                            <td>List of EKS clusters enabled with CloudWatch Observability EKS add-on?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_eks_addons_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1/1 EKS clusters with CloudWatch Observability add-on<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>EKS Clusters with CloudWatch Observability Add-on (1):</strong><br>1. PetsiteEKS-cluster<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>24</td>
+                            <td>Lambda Functions</td>
+                            <td>Logs, Metrics, Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws lambda list-functions --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 36 Lambda functions<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>user-creator<br>one-observability-demo-codebuild-cleanup-completion<br>petfood-image-generator-python<br>cwsyn-petsite-canary-88c52721-034a-4e46-9c66-35a4c40ab506<br>petfood-stock-processor-node<br>Core-Stack-CustomVpcRestrictDefaultSGCustomResourc-6Wuad0gOFhzU<br>Compute-ComputeStack-awsc-ProviderframeworkonEvent-77WepgpBqDZs<br>Storage-StorageStack-LogRetentionaae0aa3c5b4d4f87b-csuKiCkP51t9<br>Storage-StorageStack-CustomCDKBucketDeployment8693-8gQsMVjuTJNQ<br>Compute-ComputeStack-awsc-ProviderframeworkisCompl-MAujNBR1Z24D<br>one-observability-demo-codebuild-deletion-result-checker<br>one-observability-demo-codebuild-cleanup-monitor<br>Compute-ComputeStack-awsc-IsCompleteHandler7073F4D-tAbDzL2EmX98<br>OneObservability-CustomS3AutoDeleteObjectsCustomRe-z7t5hoakRtTb<br>one-observability-demo-codebuild-bucket-cleanup<br>Compute-ComputeStack-awscdkawseksK-Handler886CB40B-IIm8cYVuZDxC<br>Compute-ComputeStack-awsc-ProviderframeworkonTimeo-CSmw4F3mPvQT<br>petfood-cleanup-processor-node<br>Applications-ContainersSt-CustomS3AutoDeleteObject-CsUSk3RbGBzz<br>Compute-ComputeStack-awsc-ProviderframeworkonEvent-2GTkrrgQByb4<br>... and 16 more functions</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>25</td>
+                            <td>What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_lambda_insights_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">7/36 Lambda functions have Lambda Insights enabled<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Lambda Functions with Insights Enabled (7):</strong><br>1. user-creator<br>2. petfood-image-generator-python<br>3. petfood-stock-processor-node<br>4. petfood-cleanup-processor-node<br>5. petupdater-node<br>6. traffic-generator-node<br>7. rds-seeder<br><br><strong>Functions without Insights (29):</strong><br>Total functions without Lambda Insights: 29<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>26</td>
+                            <td>Are you publishing custom business and application metrics to CloudWatch?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_metrics_namespaces_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 3 custom namespaces with 45 total metrics<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Custom Metrics Namespaces (3):</strong><br>1. Custom/CoreDNS<br>2. CoreDNS/Real<br>3. CoreDNS/EMF<br><br><strong>Sample Custom Metrics (5):</strong><br>1. CoreDNS/EMF/request_duration_bucket | Dimensions: 1<br>2. CoreDNS/EMF/request_duration_bucket | Dimensions: 1<br>3. Custom/CoreDNS/coredns_request_duration_bucket_le_1_0<br>4. Custom/CoreDNS/coredns_request_duration_bucket_le_0_05<br>5. CoreDNS/EMF/request_count<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>27</td>
+                            <td>Are CloudWatch Agents configured to collect system-level metrics?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-metrics --namespace CWAgent --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 29 items<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'mem_used_percent', 'Dimensions': [{'Name': 'InstanceId', 'Va<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>{'Namespace': 'CWAgent', 'MetricName': 'disk_used_percent', 'Dimensions': [{'Name': 'path', 'Value':<br>... and 14 more items</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>28</td>
+                            <td>Have you configured metric streams for real-time export to third-party tools or data lakes?</td>
+                            <td>Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-metric-streams --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 2 metric streams<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>QuickFull-dU2TrF</strong><br>   State: running<br>   Output Format: opentelemetry1.0<br>   Firehose: MetricStreams-QuickFull-dU2TrF-5dYK6tHa<br>   Created: 1766771062.553<br><br>2. <strong>elasticache-metrics-stream</strong><br>   State: running<br>   Output Format: json<br>   Firehose: MetricStreams-QuickFull-dU2TrF-5dYK6tHa<br>   Created: 1766783369.817<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>29</td>
+                            <td>X-Ray Service Map</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_xray_service_graph_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 20 items<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>AWS::DynamoDB<br>AWS::EventBridge<br>SSM<br>housekeeping-canary<br>internal-lb-payforadoption-go-691595162.us-west-2.elb.amazonaws.com:80<br>internal-lb-petfood-rs-553586716.us-west-2.elb.amazonaws.com:80<br>internal-lb-petsearch-java-2061172362.us-west-2.elb.amazonaws.com:80<br>petfood-api-rs<br>petfood-api-rs<br>petfood-image-generator-python<br>petfood-image-generator-python<br>petfood-image-generator-python<br>petsite-canary<br>petsite-frontend-dotnet<br>petsite-frontend-dotnet<br>... and 5 more items</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>30</td>
+                            <td>X-Ray Sampling Rules</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_xray_sampling_rules_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 5 custom sampling rules<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>critical-payment-adoption</strong><br>   Priority: 100<br>   Fixed Rate: 100.0%<br>   Service: *<br><br>2. <strong>exclude-health-checks</strong><br>   Priority: 50<br>   Fixed Rate: 0.0%<br>   Service: *<br><br>3. <strong>high-priority-frontend</strong><br>   Priority: 200<br>   Fixed Rate: 50.0%<br>   Service: petsite-frontend-dotnet<br><br>4. <strong>low-priority-processors</strong><br>   Priority: 800<br>   Fixed Rate: 10.0%<br>   Service: petfood-image-generator-python<br><br>5. <strong>moderate-backend-api</strong><br>   Priority: 500<br>   Fixed Rate: 20.0%<br>   Service: petfood-api-rs<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>31</td>
+                            <td>X-Ray Encryption Config</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws xray get-encryption-config --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
+                        </tr>
+                        <tr>
+                            <td>32</td>
+                            <td>Lambda Tracing Config</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Command executed successfully</td>
+                        </tr>
+                        <tr>
+                            <td>33</td>
+                            <td>X-Ray Insights</td>
+                            <td>Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws xray get-insight-summaries --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>34</td>
+                            <td>Do you have CloudWatch dashboards for visualizing metrics and logs?</td>
+                            <td>Dashboards, Logs, Metrics</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-dashboards --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 9 dashboards<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>CoreDNS-Complete<br>CoreDNS-EMF<br>CoreDNS-Histogram-Cumulative<br>CoreDNS-Histogram<br>CoreDNS-P50<br>CoreDNS-P90<br>CoreDNS-Real-Metrics<br>dashboard-variables<br>test</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>35</td>
+                            <td>Do you have CloudWatch alarms configured for your resources?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_cloudwatch_alarms_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 9 alarms (8 metric, 1 composite)<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Metric Alarms:</strong><br>Fleetwide CPU Utilization avg<br>Petsite-pod-memory-anomaly-alarm<br>Storage-StorageStack-DynamoDbddbPetadoptionD887F287-1KOJ0OQV3U25C-ReadThrottleEvents-BasicAlarm<br>Storage-StorageStack-DynamoDbddbPetadoptionD887F287-1KOJ0OQV3U25C-WriteThrottleEvents-BasicAlarm<br>TargetTracking-PetsiteECS-ecs-asg-AlarmHigh-cc24ae8c-cb15-4c37-8acf-24dfb2e4f468<br>TargetTracking-PetsiteECS-ecs-asg-AlarmLow-b9ebd0bb-a82b-4e54-b99d-3b344e218c78<br>petsite-frontend-cpu<br>petsite-frontent-memory<br><br><strong>Composite Alarms:</strong><br>petsite-frontend-composite</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>36</td>
+                            <td>Do you have metric-based alarms configured?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch describe-alarms --alarm-types MetricAlarm --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
+                        </tr>
+                        <tr>
+                            <td>37</td>
+                            <td>Do you use composite alarms to reduce alarm noise?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 composite alarms<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>petsite-frontend-composite</strong><br>   State: ALARM<br>   Rule: ALARM("petsite-frontend-cpu") OR 
+ALARM("petsite-frontent-memory")<br>   Actions Enabled: False<br>   Actions: 2 configured<br>     1. SNS: Default_CloudWatch_Alarms_Topic<br>     2. SSM: 3#CATEGORY=Performance<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>38</td>
+                            <td>Do your alarms send notifications to SNS topics?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_sns_configuration_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">SNS configured for 1 of 9 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with SNS Configuration (1):</strong><br>1. <strong>petsite-frontend-composite</strong><br>   SNS Topics: 1<br>     1. Default_CloudWatch_Alarms_Topic<br><br><br><strong>Alarms without SNS Configuration (8):</strong><br>1. Fleetwide CPU Utilization avg<br>2. Petsite-pod-memory-anomaly-alarm<br>3. Storage-StorageStack-DynamoDbddbPetadoptionD887F287-1KOJ0OQV3U25C-ReadThrottleEvents-BasicAlarm<br>4. Storage-StorageStack-DynamoDbddbPetadoptionD887F287-1KOJ0OQV3U25C-WriteThrottleEvents-BasicAlarm<br>5. TargetTracking-PetsiteECS-ecs-asg-AlarmHigh-cc24ae8c-cb15-4c37-8acf-24dfb2e4f468<br>6. TargetTracking-PetsiteECS-ecs-asg-AlarmLow-b9ebd0bb-a82b-4e54-b99d-3b344e218c78<br>7. petsite-frontend-cpu<br>8. petsite-frontent-memory<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>39</td>
+                            <td>Do you use anomaly detection models for adaptive alarming?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_anomaly_detection_bands_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 anomaly detection bands configured<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Anomaly Detection Bands (1):</strong><br>1. <strong>ContainerInsights/pod_memory_utilization</strong><br>   State: TRAINED<br>   Dimensions: ClusterName=PetsiteEKS-cluster<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>40</td>
+                            <td>Do you use resource tags for organizing and managing AWS resources?</td>
+                            <td>Logs, Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws resourcegroupstaggingapi get-resources --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 467 tagged resources<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>aoss</strong>: jnozeypnpxfjnghpeeed<br>   Tags: 8<br><br>2. <strong>aps</strong>: ws-0c0c4492-87b7-4560-b01e-4de836c20678<br>   Tags: 1<br><br>3. <strong>bedrock-agentcore</strong>: PetFoodAgent-J6SVEc3Xu1<br>   Tags: 10<br><br>4. <strong>bedrock-agentcore</strong>: PetFoodAgent-J6SVEc3Xu1<br>   Tags: 10<br><br>5. <strong>cloudformation</strong>: ba0d5df0-d702-11f0-90b3-0ac637472b87<br>   Tags: 5<br><br>6. <strong>cloudformation</strong>: be158aa0-d700-11f0-a514-02a0779bb2db<br>   Tags: 5<br><br>7. <strong>cloudformation</strong>: be485a70-d700-11f0-8283-026b37b04247<br>   Tags: 5<br><br>8. <strong>cloudwatch</strong>: TargetTracking-PetsiteECS-ecs-asg-AlarmLow-b9ebd0bb-a82b-4e54-b99d-3b344e218c78<br>   Tags: 0<br><br>9. <strong>codebuild</strong>: PipelineAssetsFileAsset13BC-LCHnC0BpQOFv<br>   Tags: 6<br><br>10. <strong>codebuild</strong>: PipelineAssetsFileAsset2002-m5WS8FgG4lU1<br>   Tags: 6<br><br>11. <strong>codebuild</strong>: PipelineAssetsFileAsset161A-FRk5Pmf5lkUm<br>   Tags: 6<br><br>12. <strong>codebuild</strong>: PipelineAssetsFileAsset2144-shl02K6e0ecK<br>   Tags: 6<br><br>13. <strong>codebuild</strong>: PipelineAssetsFileAsset2785-f5hETSYzsICb<br>   Tags: 6<br><br>14. <strong>codebuild</strong>: PipelineAssetsFileAsset1024-YGVh6FqpXWOo<br>   Tags: 6<br><br>15. <strong>codebuild</strong>: PipelineAssetsFileAsset3FE7-GlC2cXn11X99<br>   Tags: 6<br><br>... and 452 more tagged resources</div></details></td>
+                        </tr>
+                        <tr>
+                            <td>41</td>
+                            <td>Do you use CloudWatch Synthetics to monitor application endpoints?</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws synthetics describe-canaries --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 2 synthetic canaries<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>housekeeping-canary</strong><br>   Status: RUNNING<br>   Runtime: syn-nodejs-puppeteer-11.0<br><br>2. <strong>petsite-canary</strong><br>   Status: RUNNING<br>   Runtime: syn-nodejs-puppeteer-11.0<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>42</td>
+                            <td>Do you use CloudWatch RUM to monitor real user experiences?</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws rum list-app-monitors --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 RUM applications<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>MyRUMApp</strong><br>   Domain: Unknown<br>   State: CREATED<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>43</td>
+                            <td>Do you have any Systems Manager OpsCenter actions configured with your alarms?</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_opsitem_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">OpsItem actions configured for 1 of 9 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with OpsItem Actions (1):</strong><br>1. <strong>Alarm:</strong> petsite-frontend-composite<br>   <strong>OpsItem Actions (1):</strong><br>     1. ARN: arn:aws:ssm:us-west-2:209466560996:opsitem:3#CATEGORY=Performance<br><br><br><strong>Alarms without OpsItem Actions (8):</strong><br>1. Fleetwide CPU Utilization avg<br>2. Petsite-pod-memory-anomaly-alarm<br>3. Storage-StorageStack-DynamoDbddbPetadoptionD887F287-1KOJ0OQV3U25C-ReadThrottleEvents-BasicAlarm<br>4. Storage-StorageStack-DynamoDbddbPetadoptionD887F287-1KOJ0OQV3U25C-WriteThrottleEvents-BasicAlarm<br>5. TargetTracking-PetsiteECS-ecs-asg-AlarmHigh-cc24ae8c-cb15-4c37-8acf-24dfb2e4f468<br>6. TargetTracking-PetsiteECS-ecs-asg-AlarmLow-b9ebd0bb-a82b-4e54-b99d-3b344e218c78<br>7. petsite-frontend-cpu<br>8. petsite-frontent-memory<br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>44</td>
+                            <td>Do you use AWS DevOps Agent for AI-assisted troubleshooting?</td>
+                            <td>Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_devops_agent_spaces_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 1 DevOps Agent spaces<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>DevOps Agent Spaces (1):</strong><br><em>Regions checked: us-east-1, us-west-2</em><br><br>1. <strong>Test</strong> (us-east-1)<br>   ID: 2f3d7fc6-5a1e-4588-81df-18b8a3f813d8<br>   Created: 2026-01-03T20:52:42.795Z<br>   Updated: 2026-01-03T20:52:42.795Z<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>45</td>
+                            <td>Do you have any Lambda actions configured with your alarms?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_lambda_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Lambda actions configured for 0 of 9 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with Lambda Actions (0):</strong><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>46</td>
+                            <td>Have you configured CloudWatch Investigations action for any alarms?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_investigations_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">CloudWatch Investigations actions configured for 1 of 9 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with CloudWatch Investigations Actions (1):</strong><br>1. <strong>Alarm:</strong> petsite-frontend-cpu<br>   <strong>Investigations Actions (1):</strong><br>     1. ARN: arn:aws:aiops:us-west-2:209466560996:investigation-group/HHcinFb6IcEdugCy<br><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>47</td>
+                            <td>Do you have any EC2 actions configured with your alarms?</td>
+                            <td>Alarms</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_alarm_ec2_actions_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">EC2 actions configured for 0 of 9 alarms checked<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'><strong>Alarms with EC2 Actions (0):</strong><br></div></details></td>
+                        </tr>
+                        <tr>
+                            <td>48</td>
+                            <td>Do you have dashboards configured with variables?</td>
+                            <td>Dashboards</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_dashboard_variables_check</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
+                        </tr>
+                        <tr>
+                            <td>49</td>
+                            <td>Do you use AWS Application Signals to monitor application services?</td>
+                            <td>Metrics, Traces</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws application-signals list-services --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No resources found</td>
+                        </tr>
+                        <tr>
+                            <td>50</td>
+                            <td>Have you defined Service Level Objectives (SLOs) for critical application services?</td>
+                            <td>Metrics, Organization</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws application-signals list-service-level-objectives --output json</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No Application Signals SLOs found</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="logs" class="tab-content">
+                <h2>📝 Logs Assessment</h2>
+                <p>Assessment of log collection, usage, access, and retention practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q1: How do you collect logs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Basic log groups exist, some services logging</li><li style="font-weight: bold; color: #10b981;">Level 2: ✅ Centralized collection with analytics (Logs Insights queries)</li><li style="">Level 3: Correlation patterns, anomaly detection models</li><li style="">Level 4: Automated insights, ML-based analysis</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 2<br>
+                        <strong>Evidence:</strong> Centralized log collection established with Lambda log groups configured, ECS task logging configured, EKS control plane logs enabled (Checks #1, #8, #9, #10). Good foundation for observability with multiple log sources configured across AWS services.<br>
+                        <strong>Discovery Checks:</strong> #1, #8, #9, #10
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q2: How do you use logs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Manual log searches and basic queries</li><li style="">Level 2: Structured queries with faster analysis</li><li style="font-weight: bold; color: #10b981;">Level 3: ✅ Automated correlation and anomaly detection</li><li style="">Level 4: Automated resolution and MTTR reduction</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 3<br>
+                        <strong>Evidence:</strong> Advanced log usage with 1 metric filters for automated monitoring, 1 log groups with subscription filters for real-time processing, log anomaly detection configured (Checks #5, #6, #12). This enables automated correlation and anomaly detection, moving beyond structured queries to proactive log analysis with automated insights and correlation patterns.<br>
+                        <strong>Discovery Checks:</strong> #5, #6, #12
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q3: How do you access logs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Basic centralized collection</li><li style="font-weight: bold; color: #10b981;">Level 2: ✅ Enterprise-wide visibility with prioritization</li><li style="">Level 3: Single pane correlation and anomaly detection</li><li style="">Level 4: Automated insights with proactive root cause</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 2<br>
+                        <strong>Evidence:</strong> Enterprise-wide log access established through subscription filters for cross-service access, centralized logging infrastructure (Checks #1, #6, #14). This provides comprehensive visibility into application and infrastructure logs with appropriate access controls and visualization capabilities.<br>
+                        <strong>Discovery Checks:</strong> #1, #6, #14
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q4: What is your log retention policy?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Disparate retention policies</li><li style="font-weight: bold; color: #10b981;">Level 2: ✅ Enterprise-wide compliance-based policies</li><li style="">Level 3: Automated archival with cost optimization</li><li style="">Level 4: Easy retrieval with metadata-based search</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 2<br>
+                        <strong>Evidence:</strong> Centralized log access through subscription filters for cross-service access (Checks #1, #6). Good foundation for enterprise visibility.<br>
+                        <strong>Discovery Checks:</strong> #1, #6
+                    </div>
+                </div>
+            </div>
+            
+            <div id="metrics" class="tab-content">
+                <h2>📊 Metrics Assessment</h2>
+                <p>Assessment of metric collection, usage, and access patterns.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q5: What type of metrics do you collect?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Infrastructure metrics only (cpu, memory, disk utilization)</li><li style="font-weight: bold; color: #10b981;">Level 2: ✅ Infrastructure and application metrics (latency, errors, volume)</li><li style="">Level 3: Infrastructure, application, and custom metrics</li><li style="">Level 4: All metrics with dimensions for critical metadata</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 2<br>
+                        <strong>Evidence:</strong> Infrastructure and application metrics are collected from multiple AWS services including EC2, EKS, and Lambda (Checks #18, #22, #24). This provides good coverage of system performance and application health metrics.<br>
+                        <strong>Discovery Checks:</strong> #18, #26, #22, #24
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q6: How do you use metrics?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Manually explore metrics when diagnosing issues</li><li style="">Level 2: Dashboards and alerting for manual reaction</li><li style="">Level 3: Infrastructure automation and operational reviews</li><li style="">Level 4: AI/ML capabilities for proactive issue identification</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Basic metrics usage limited to manual exploration and ad-hoc analysis without systematic dashboards or automated alerting.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q7: How do you access metrics?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Centralized metric collection mechanism</li><li style="">Level 2: Enterprise-wide visibility for analysis and troubleshooting</li><li style="font-weight: bold; color: #10b981;">Level 3: ✅ Correlation and anomaly detection for root cause</li><li style="">Level 4: Automated insights with proactive resolution options</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 3<br>
+                        <strong>Evidence:</strong> Advanced metrics access with 2 metric streams configured (Check #28), enabling real-time data export and correlation capabilities. This supports sophisticated analytics and cross-service correlation.<br>
+                        <strong>Discovery Checks:</strong> #28
+                    </div>
+                </div>
+            </div>
+            
+            <div id="traces" class="tab-content">
+                <h2>🔍 Traces Assessment</h2>
+                <p>Assessment of trace collection and usage practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q8: How do you collect traces?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Auto-instrumented SDKs for monitoring</li><li style="">Level 2: Auto + manual instrumentation</li><li style="font-weight: bold; color: #10b981;">Level 3: ✅ End-to-end visibility with correlation</li><li style="">Level 4: Automatic injection with proactive alerts</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 3<br>
+                        <strong>Evidence:</strong> Comprehensive tracing infrastructure with X-Ray service map showing 20 services (Check #29) and 5 sampling rules configured (Check #30). This provides end-to-end visibility with optimized trace collection and correlation capabilities across distributed services.<br>
+                        <strong>Discovery Checks:</strong> #29, #32, #30
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q9: How do you use traces?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Centralized trace collection mechanism</li><li style="font-weight: bold; color: #10b981;">Level 2: ✅ Analyze and troubleshoot issues based on captured information</li><li style="">Level 3: 360 view for correlation and anomaly detection</li><li style="">Level 4: Cross-boundary insights with proactive root cause identification</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 2<br>
+                        <strong>Evidence:</strong> Active trace analysis using X-Ray service map with 20 services (Check #29), enabling troubleshooting and performance analysis based on captured trace information and service dependencies.<br>
+                        <strong>Discovery Checks:</strong> #29, #33
+                    </div>
+                </div>
+            </div>
+            
+            <div id="dashboards" class="tab-content">
+                <h2>📈 Dashboards & Alarms Assessment</h2>
+                <p>Assessment of dashboard and alerting practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q10: How do you use alarms?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Alarms with notifications when metrics meet triggers</li><li style="">Level 2: Clear priority for alerts with urgency and customer impact</li><li style="">Level 3: Actionable alarms based on anomaly detection</li><li style="font-weight: bold; color: #10b981;">Level 4: ✅ Composite alarms for aggregated health indicators</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 4<br>
+                        <strong>Evidence:</strong> Advanced alarm strategy with 1 composite alarms (Check #37) aggregating 0 metric alarms (Check #N/A). This creates summarized health indicators reducing alarm noise and enabling actions at an aggregated application level.<br>
+                        <strong>Discovery Checks:</strong> #37
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q11: How do you use dashboards?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Basic resource monitoring</li><li style="">Level 2: Single pane of glass with visibility into various data sources</li><li style="">Level 3: Flexible dashboards with dynamic content based on input fields</li><li style="">Level 4: Automatically created dynamic visualizations relevant to issues</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited dashboard usage, primarily basic resource monitoring without comprehensive operational visibility or systematic visualization strategies.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q12: How adaptive are your alarm thresholds?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Alarms triggered immediately when metric exceeds static threshold</li><li style="">Level 2: Alarms triggered when metric exceeds threshold for a period of time</li><li style="">Level 3: Alarms triggered when metric exhibits anomalous behavior</li><li style="">Level 4: Continuously analyze metrics, determine baselines, surface anomalies</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> No adaptive threshold mechanisms detected. Reliance on manual threshold setting without automated baseline determination or anomaly detection.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+            </div>
+            
+            <div id="organization" class="tab-content">
+                <h2>🏢 Organization Assessment</h2>
+                <p>Assessment of enterprise observability strategy and practices.</p>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q13: Do you have an enterprise observability strategy?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Data collection strategy only</li><li style="">Level 2: Unified tools and technologies</li><li style="">Level 3: Best practices and training</li><li style="">Level 4: Culture of continuous improvement</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited evidence of enterprise observability strategy. Appears to focus primarily on data collection without comprehensive organizational alignment or standardization.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q14: How do you use SLOs?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Team experimentation without adoption</li><li style="">Level 2: Enterprise adoption for reliability</li><li style="">Level 3: Prioritization for users and business</li><li style="">Level 4: Integrated platforms with error budgets</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> No formal SLO implementation detected. May have team-level experimentation but lacks enterprise adoption for systematic reliability management.<br>
+                        <strong>Discovery Checks:</strong> #50
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q15: Are you getting ROI from your observability tools?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ Want optimization without knowledge</li><li style="">Level 2: Vendor consolidation attempts</li><li style="">Level 3: Established validation policies</li><li style="">Level 4: Business value and cost optimization</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> Limited evidence of ROI optimization. Observability tools may be present but without clear consolidation or cost optimization strategies.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q16: Do you use any AI/ML capability today?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="font-weight: bold; color: #10b981;">Level 1: ✅ No AI/ML features</li><li style="">Level 2: Natural language query capability</li><li style="">Level 3: Automatic correlation and patterns</li><li style="">Level 4: Comprehensive AI/ML with real-time insights</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 1<br>
+                        <strong>Evidence:</strong> No AI/ML features detected in the observability stack. Reliance on traditional threshold-based monitoring without machine learning capabilities.<br>
+                        <strong>Discovery Checks:</strong> No evidence
+                    </div>
+                </div>
+                <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h3>Q17: Do you have real end-user monitoring?</h3>
+                    <div style="margin: 1rem 0;">
+                        <strong>Maturity Levels:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 2rem;"><li style="">Level 1: Test users for validation</li><li style="font-weight: bold; color: #10b981;">Level 2: ✅ Synthetic scripts on schedule</li><li style="">Level 3: Scripted interaction tests with correlation</li><li style="">Level 4: Real user monitoring with proactive anomalies</li>
+                        </ul>
+                    </div>
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
+                        <strong>Selected Answer:</strong> Level 2<br>
+                        <strong>Evidence:</strong> Synthetic monitoring implemented with 2 CloudWatch Synthetics canaries (Check #41), providing scheduled validation of application functionality and user workflows from simulated user perspectives.<br>
+                        <strong>Discovery Checks:</strong> #42, #41
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            function showTab(tabName) {
+                // Hide all tab contents
+                const contents = document.querySelectorAll('.tab-content');
+                contents.forEach(content => content.classList.remove('active'));
+                
+                // Remove active class from all buttons
+                const buttons = document.querySelectorAll('.tab-button');
+                buttons.forEach(button => button.classList.remove('active'));
+                
+                // Show selected tab and activate button
+                document.getElementById(tabName).classList.add('active');
+                event.target.classList.add('active');
+            }
+        </script>
+    </div>
+</body>
+</html>
