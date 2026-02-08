@@ -53,7 +53,7 @@ class ComprehensiveObservabilityAssessment:
         self.region = region
         self.results = AssessmentResults()
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.html_file = f"sample-result/comprehensive_observability_assessment_{self.timestamp}.html"
+        self.html_file = None  # Will be set after getting account_id
         self.discovery_check_counter = 0
         self.largest_log_groups = None  # Will be populated during setup
         
@@ -3476,6 +3476,8 @@ class ComprehensiveObservabilityAssessment:
         if identity:
             self.results.account_id = identity.get('Account', 'Unknown')
             self.results.user_arn = identity.get('Arn', 'Unknown')
+            # Set html_file with account_id
+            self.html_file = f"sample-result/observability_assessment_{self.timestamp}_{self.results.account_id}.html"
         
         # Setup and execute discovery
         self.setup_discovery_checks()
