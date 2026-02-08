@@ -507,7 +507,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details_html}</div></details>"
             return f"No log anomaly detectors found"
         
-        elif check.name == "Log Export Tasks Per Log Group":
+        elif check.name == "Do you have log export tasks configured for archival?":
             if check.result:
                 total_groups = check.result.get('total_log_groups', 0)
                 exported_groups = check.result.get('exported_log_groups', 0)
@@ -593,7 +593,7 @@ class ComprehensiveObservabilityAssessment:
                 return summary
             return f"OAM configuration check failed"
         
-        elif check.name == "Field Index Policies Per Log Group":
+        elif check.name == "Do you have field index policies configured for faster log queries?":
             if check.result:
                 total_groups = check.result.get('total_log_groups', 0)
                 indexed_groups = check.result.get('indexed_log_groups', 0)
@@ -657,7 +657,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No ECS clusters found"
         
-        elif check.name == "List of ECS clusters with Container Insights enabled?":
+        elif check.name == "Do you have ECS clusters with Container Insights enabled?":
             clusters = check.result.get('clusters', [])
             if clusters:
                 insights_enabled = []
@@ -710,7 +710,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No ECS clusters found"
         
-        elif check.name == "EKS Clusters":
+        elif check.name == "Do you have EKS clusters in your environment?":
             clusters = check.result.get('clusters', [])
             if clusters:
                 summary = f"Found {len(clusters)} EKS clusters"
@@ -720,7 +720,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No EKS clusters found"
         
-        elif check.name == "List of EKS clusters enabled with CloudWatch Observability EKS add-on?":
+        elif check.name == "Do you have EKS clusters with CloudWatch Observability add-on enabled?":
             if check.result:
                 total_clusters = check.result.get('total_clusters', 0)
                 observability_clusters = check.result.get('observability_clusters', 0)
@@ -1079,7 +1079,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "Lambda Functions":
+        elif check.name == "Do you have Lambda functions in your environment?":
             functions = check.result.get('Functions', [])
             if functions:
                 summary = f"Found {len(functions)} Lambda functions"
@@ -1089,7 +1089,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No Lambda functions found"
         
-        elif check.name == "EC2 Instances":
+        elif check.name == "Do you have EC2 instances in your environment?":
             instances = []
             for reservation in check.result.get('Reservations', []):
                 instances.extend(reservation.get('Instances', []))
@@ -1233,7 +1233,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{command_info} | Found {len(query_definitions)} saved query definitions | Details: {' | '.join(query_details)}"
             return f"{command_info} | No saved query definitions found"
         
-        elif check.name == "Log Insights Query History":
+        elif check.name == "Do you have a history of Log Insights queries being executed?":
             queries = check.result.get('queries', [])
             if queries:
                 # Filter out system/default queries (Application Signals, etc.)
@@ -1262,7 +1262,7 @@ class ComprehensiveObservabilityAssessment:
         
         
         
-        elif check.name == "EC2 Instances":
+        elif check.name == "Do you have EC2 instances in your environment?":
             instances = []
             for reservation in check.result.get('Reservations', []):
                 instances.extend(reservation.get('Instances', []))
@@ -1271,14 +1271,14 @@ class ComprehensiveObservabilityAssessment:
                 return f"Found {len(instances)} EC2 instances (e.g., {', '.join(sample_ids)})"
             return f"No EC2 instances found"
         
-        elif check.name == "EKS Clusters":
+        elif check.name == "Do you have EKS clusters in your environment?":
             clusters = check.result.get('clusters', [])
             if clusters:
                 sample_names = clusters[:3]
                 return f"Found {len(clusters)} EKS clusters (e.g., {', '.join(sample_names)})"
             return f"No EKS clusters found"
         
-        elif check.name == "Lambda Functions":
+        elif check.name == "Do you have Lambda functions in your environment?":
             functions = check.result.get('Functions', [])
             if functions:
                 sample_names = [func.get('FunctionName', 'Unknown') for func in functions[:3]]
@@ -1430,7 +1430,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{command_info} | Found {len(anomaly_detectors)} log anomaly detectors | Details: {detectors_summary}"
             return f"{command_info} | No log anomaly detectors found"
         
-        elif check.name == "Log Export Tasks Per Log Group":
+        elif check.name == "Do you have log export tasks configured for archival?":
             if check.result:
                 total_groups = check.result.get('total_log_groups', 0)
                 exported_groups = check.result.get('exported_log_groups', 0)
@@ -1467,7 +1467,7 @@ class ComprehensiveObservabilityAssessment:
             return f"No JSON structured log analysis performed"
         
 
-        elif check.name == "Field Index Policies Per Log Group":
+        elif check.name == "Do you have field index policies configured for faster log queries?":
             if check.result:
                 total_groups = check.result.get('total_log_groups', 0)
                 indexed_groups = check.result.get('indexed_log_groups', 0)
@@ -1479,7 +1479,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"Checked {total_groups} largest log groups by size - {indexed_groups}/{total_groups} have field index policies"
             return f"No largest log groups checked for field indexes"
 
-        elif check.name == "List of EKS clusters enabled with CloudWatch Observability EKS add-on?":
+        elif check.name == "Do you have EKS clusters with CloudWatch Observability add-on enabled?":
             if check.result:
                 total_clusters = check.result.get('total_clusters', 0)
                 observability_clusters = check.result.get('observability_clusters', 0)
@@ -1571,7 +1571,7 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)", "Logs", "custom_log_groups_categorization_check")
         self.add_discovery_check("What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?", "Logs", "custom_top_log_groups_retention_check")
         self.add_discovery_check("Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?", "Logs", "aws logs describe-query-definitions --output json")
-        self.add_discovery_check("Log Insights Query History", "Logs", "aws logs describe-queries --output json")
+        self.add_discovery_check("Do you have a history of Log Insights queries being executed?", "Logs", "aws logs describe-queries --output json")
         self.add_discovery_check("Have you created metric filters to extract KPIs from logs?", "Logs", "aws logs describe-metric-filters --output json")
         self.add_discovery_check("What percentage of log groups have subscription filters for real-time processing?", "Logs", "custom_subscription_filters_coverage_check")
         
@@ -1584,20 +1584,20 @@ class ComprehensiveObservabilityAssessment:
         
         # Advanced Log Analysis
         self.add_discovery_check("Have you enabled anomaly detection?", "Logs", "aws logs list-log-anomaly-detectors --output json")
-        self.add_discovery_check("Log Export Tasks Per Log Group", "Logs", "custom_log_export_tasks_per_log_group_check")
+        self.add_discovery_check("Do you have log export tasks configured for archival?", "Logs", "custom_log_export_tasks_per_log_group_check")
         self.add_discovery_check("Have you implemented Cross-Account and Cross-Region Log Centralization?", "Logs", "custom_log_centralization_analysis_check")
         self.add_discovery_check("Are you using CloudWatch cross-account observability?", "Logs", "custom_oam_links_and_sinks_check")
         self.add_discovery_check("What percentage of application logs use structured JSON format for easier parsing and analysis?", "Logs", "custom_json_structured_logs_check")
-        self.add_discovery_check("Field Index Policies Per Log Group", "Logs", "custom_field_indexes_per_log_group_check")
+        self.add_discovery_check("Do you have field index policies configured for faster log queries?", "Logs", "custom_field_indexes_per_log_group_check")
         
         # Metrics Discovery Checks (Detailed)
-        self.add_discovery_check("EC2 Instances", "Metrics", "aws ec2 describe-instances --output json")
+        self.add_discovery_check("Do you have EC2 instances in your environment?", "Metrics", "aws ec2 describe-instances --output json")
         self.add_discovery_check("What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?", "Metrics", "aws ec2 describe-instances --query 'Reservations[].Instances[?Monitoring.State==`enabled`]' --output json")
         self.add_discovery_check("What percentage of ECS Clusters have monitoring enabled?", "Metrics", "aws ecs list-clusters --output json")
-        self.add_discovery_check("List of ECS clusters with Container Insights enabled?", "Metrics", "aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json")
-        self.add_discovery_check("EKS Clusters", "Metrics", "aws eks list-clusters --output json")
-        self.add_discovery_check("List of EKS clusters enabled with CloudWatch Observability EKS add-on?", "Metrics", "custom_eks_addons_check")
-        self.add_discovery_check("Lambda Functions", "Metrics", "aws lambda list-functions --output json")
+        self.add_discovery_check("Do you have ECS clusters with Container Insights enabled?", "Metrics", "aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json")
+        self.add_discovery_check("Do you have EKS clusters in your environment?", "Metrics", "aws eks list-clusters --output json")
+        self.add_discovery_check("Do you have EKS clusters with CloudWatch Observability add-on enabled?", "Metrics", "custom_eks_addons_check")
+        self.add_discovery_check("Do you have Lambda functions in your environment?", "Metrics", "aws lambda list-functions --output json")
         self.add_discovery_check("What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?", "Metrics", "custom_lambda_insights_check")
 
         self.add_discovery_check("Are you publishing custom business and application metrics to CloudWatch?", "Metrics", "custom_metrics_namespaces_check")
@@ -1643,8 +1643,8 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Metrics", "aws cloudwatch list-dashboards --output json")
         
         # Lambda Functions - applies to Logs, Metrics, and Traces
-        self.add_discovery_check("Lambda Functions", "Logs", "aws lambda list-functions --output json")
-        self.add_discovery_check("Lambda Functions", "Traces", "aws lambda list-functions --output json")
+        self.add_discovery_check("Do you have Lambda functions in your environment?", "Logs", "aws lambda list-functions --output json")
+        self.add_discovery_check("Do you have Lambda functions in your environment?", "Traces", "aws lambda list-functions --output json")
         
         # Resource Tags - applies to Logs retention and Organization strategy
         self.add_discovery_check("Do you use resource tags for organizing and managing AWS resources?", "Logs", "aws resourcegroupstaggingapi get-resources --output json")
@@ -2712,7 +2712,7 @@ class ComprehensiveObservabilityAssessment:
                 # Map to discovery checks for log retention
                 log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
                 top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
-                export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Log Export Tasks Per Log Group"), None)
+                export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
                 
                 check.evidence_check_ids = [c.id for c in [log_groups_check, top_groups_retention_check, export_tasks_check, tags_check] if c]
@@ -2808,10 +2808,10 @@ class ComprehensiveObservabilityAssessment:
         
         for check in metrics_checks:
             if check.question_id == 5:  # What type of metrics do you collect?
-                ec2_check = next((c for c in self.results.discovery_checks if c.name == "EC2 Instances"), None)
+                ec2_check = next((c for c in self.results.discovery_checks if c.name == "Do you have EC2 instances in your environment?"), None)
                 custom_metrics_check = next((c for c in self.results.discovery_checks if c.name == "Are you publishing custom business and application metrics to CloudWatch?"), None)
-                eks_check = next((c for c in self.results.discovery_checks if c.name == "EKS Clusters"), None)
-                lambda_check = next((c for c in self.results.discovery_checks if c.name == "Lambda Functions"), None)
+                eks_check = next((c for c in self.results.discovery_checks if c.name == "Do you have EKS clusters in your environment?"), None)
+                lambda_check = next((c for c in self.results.discovery_checks if c.name == "Do you have Lambda functions in your environment?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [ec2_check, custom_metrics_check, eks_check, lambda_check] if c]
                 
