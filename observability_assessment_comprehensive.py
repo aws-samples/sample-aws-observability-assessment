@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 import time
+import csv
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
@@ -56,6 +57,102 @@ class ComprehensiveObservabilityAssessment:
         self.html_file = None  # Will be set after getting account_id
         self.discovery_check_counter = 0
         self.largest_log_groups = None  # Will be populated during setup
+        self.csv_file = None  # Will be set after getting account_id
+        
+    def export_check_to_csv(self, check_name, found_count, total_count, details=None):
+        """Export check results to CSV file"""
+        if not self.csv_file:
+            self.csv_file = f"sample-result/discovery_checks_{self.timestamp}.csv"
+            # Create CSV with headers
+            with open(self.csv_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['Check Name', 'Found Count', 'Total Count', 'Percentage', 'Details'])
+        
+        percentage = (found_count / total_count * 100) if total_count > 0 else 0
+        details_str = json.dumps(details) if details else ""
+        
+        with open(self.csv_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([check_name, found_count, total_count, f"{percentage:.1f}%", details_str])
+    
+    def export_check_result_to_csv(self, check):
+        """Extract counts from check result and export to CSV"""
+        if check.id == 1:
+            # Already handled in execute_log_groups_categorization_check
+            return
+        elif check.id == 2:
+            # Already handled in execute_top_log_groups_retention_check
+            return
+        elif check.id == 3:
+            # Query definitions
+            defs = check.result.get('queryDefinitions', []) if isinstance(check.result, dict) else []
+            count = len(defs)
+            self.export_check_to_csv("Log Insights Query Definitions", 1 if count > 0 else 0, 1, {'count': count})
+        elif check.id == 4:
+            # Query history
+            queries = check.result.get('queries', []) if isinstance(check.result, dict) else []
+            count = len(queries)
+            self.export_check_to_csv("Log Insights Query History", 1 if count > 0 else 0, 1, {'count': count})
+        elif check.id == 5:
+            # Metric filters
+            filters = check.result.get('metricFilters', []) if isinstance(check.result, dict) else []
+            count = len(filters)
+            self.export_check_to_csv("Metric Filters", 1 if count > 0 else 0, 1, {'count': count})
+        elif check.id == 6:
+            # Subscription filters
+            if isinstance(check.result, dict):
+                found = check.result.get('log_groups_with_subscriptions', 0)
+                total = check.result.get('total_log_groups', 0)
+                self.export_check_to_csv("Subscription Filters", 1 if found > 0 else 0, 1, {'log_groups_with_subscriptions': found, 'total_log_groups': total})
+        elif check.id == 7:
+            # EC2 CloudWatch Agent - handled in custom function
+            if isinstance(check.result, dict):
+                found = check.result.get('logging_configured_count', 0)
+                total = check.result.get('total_instances', 0)
+                self.export_check_to_csv("EC2 CloudWatch Agent", found, total)
+        elif check.id == 8:
+            # Lambda JSON logging
+            if isinstance(check.result, dict):
+                found = check.result.get('json_logging_count', 0)
+                total = check.result.get('total_functions', 0)
+                self.export_check_to_csv("Lambda JSON Structured Logging", found, total)
+        elif check.id == 9:
+            # ECS structured logging - handled in custom function
+            if isinstance(check.result, dict):
+                found = check.result.get('json_logging_count', 0)
+                total = check.result.get('total_tasks', 0)
+                self.export_check_to_csv("ECS Structured Logging", found, total)
+        elif check.id == 10:
+            # EKS control plane logs
+            if isinstance(check.result, dict):
+                enabled = check.result.get('enabled_types', 0)
+                total = check.result.get('total_types', 5)
+                self.export_check_to_csv("EKS Control Plane Logs", enabled, total)
+        elif check.id == 11:
+            # EKS CloudWatch Observability add-on
+            has_addon = isinstance(check.result, dict) and check.result.get('addon') is not None
+            self.export_check_to_csv("EKS CloudWatch Observability Add-on", 1 if has_addon else 0, 1)
+        elif check.id == 15:
+            # CloudWatch cross-account observability (OAM)
+            if isinstance(check.result, dict):
+                links = check.result.get('links_count', 0)
+                sinks = check.result.get('sinks_count', 0)
+                has_oam = links > 0 or sinks > 0
+                self.export_check_to_csv("CloudWatch Cross-Account Observability", 1 if has_oam else 0, 1, {'links': links, 'sinks': sinks})
+            else:
+                self.export_check_to_csv("CloudWatch Cross-Account Observability", 0, 1)
+        else:
+            # Default handler for checks 12-50: binary yes/no based on result existence
+            if check.id >= 12 and check.id <= 50:
+                # Extract check name from the check object
+                check_name = check.name[:50] if len(check.name) > 50 else check.name
+                # Binary: 1 if result exists and has data, 0 otherwise
+                has_result = check.result is not None and (
+                    (isinstance(check.result, dict) and len(check.result) > 0) or
+                    (isinstance(check.result, list) and len(check.result) > 0) or
+                    (isinstance(check.result, (str, int, float, bool)))
+                )
+                self.export_check_to_csv(check_name, 1 if has_result else 0, 1)
         
     def run_aws_command(self, command):
         """Execute AWS CLI command and return result"""
@@ -111,8 +208,12 @@ class ComprehensiveObservabilityAssessment:
         try:
             if check.command == "custom_ec2_cloudwatch_agent_check":
                 check.result = self.execute_ec2_cloudwatch_agent_check()
+            elif check.command == "custom_lambda_json_logging_check":
+                check.result = self.execute_lambda_json_logging_check()
             elif check.command == "custom_ecs_task_log_check":
                 check.result = self.execute_ecs_task_log_check()
+            elif check.command == "custom_eks_control_plane_logs_check":
+                check.result = self.execute_eks_control_plane_logs_check()
             elif check.command == "custom_field_indexes_per_log_group_check":
                 check.result = self.execute_field_indexes_per_log_group_check()
             elif check.command == "custom_eks_addons_check":
@@ -162,6 +263,9 @@ class ComprehensiveObservabilityAssessment:
             
             if check.result is not None:
                 check.status = "success"
+                # Export to CSV for checks 1-50
+                if 1 <= check.id <= 50:
+                    self.export_check_result_to_csv(check)
                 # Generate detailed evidence based on check type
                 try:
                     check.evidence = self.generate_detailed_evidence(check)
@@ -171,6 +275,10 @@ class ComprehensiveObservabilityAssessment:
             else:
                 check.status = "failed"
                 check.evidence = f"No resources found"
+                # Export failed checks to CSV as well
+                if 1 <= check.id <= 50:
+                    check_name = check.name[:50] if len(check.name) > 50 else check.name
+                    self.export_check_to_csv(check_name, 0, 1)
         except Exception as e:
             check.status = "failed"
             check.evidence = f"No resources found"
@@ -390,15 +498,22 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No EC2 instances found"
         
-        elif check.name == "Are all Lambda functions logging to CloudWatch?":
-            log_groups = check.result.get('logGroups', [])
-            if log_groups:
-                summary = f"Found {len(log_groups)} Lambda log groups"
-                details = "<br>".join([lg.get('logGroupName', 'Unknown') for lg in log_groups[:15]])
-                if len(log_groups) > 15:
-                    details += f"<br>... and {len(log_groups) - 15} more log groups"
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No Lambda log groups found"
+        elif check.name == "What percentage of Lambda functions use JSON structured logging?":
+            if isinstance(check.result, dict):
+                total = check.result.get('total_functions', 0)
+                json_count = check.result.get('json_logging_count', 0)
+                functions = check.result.get('functions_with_json', [])
+                
+                if total > 0:
+                    percentage = (json_count / total) * 100
+                    summary = f"Lambda functions: {total} | JSON logging: {json_count}/{total} ({percentage:.1f}%)"
+                    if functions:
+                        details = "<br>".join(functions[:10])
+                        if len(functions) > 10:
+                            details += f"<br>... and {len(functions) - 10} more"
+                        return f"{summary}<details><summary>Show Functions</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+                    return summary
+            return "No Lambda functions found"
         
         elif check.name == "What percentage of ECS tasks use structured logging (JSON)?":
             if check.result:
@@ -444,16 +559,6 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 return f"No running ECS tasks found"
             return f"No ECS task log configuration data available"
-        
-        elif check.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?":
-            log_groups = check.result.get('logGroups', [])
-            if log_groups:
-                summary = f"Found {len(log_groups)} EKS control plane log groups"
-                details = "<br>".join([lg.get('logGroupName', 'Unknown') for lg in log_groups[:10]])
-                if len(log_groups) > 10:
-                    details += f"<br>... and {len(log_groups) - 10} more log groups"
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No EKS control plane log groups found"
         
         elif check.name == "Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?":
             if check.result and 'addon' in check.result:
@@ -709,16 +814,6 @@ class ComprehensiveObservabilityAssessment:
                 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No ECS clusters found"
-        
-        elif check.name == "Do you have EKS clusters in your environment?":
-            clusters = check.result.get('clusters', [])
-            if clusters:
-                summary = f"Found {len(clusters)} EKS clusters"
-                details = "<br>".join(clusters[:10])
-                if len(clusters) > 10:
-                    details += f"<br>... and {len(clusters) - 10} more clusters"
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No EKS clusters found"
         
         elif check.name == "Do you have EKS clusters with CloudWatch Observability add-on enabled?":
             if check.result:
@@ -1079,33 +1174,6 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "Do you have Lambda functions in your environment?":
-            functions = check.result.get('Functions', [])
-            if functions:
-                summary = f"Found {len(functions)} Lambda functions"
-                details = "<br>".join([func.get('FunctionName', 'Unknown') for func in functions[:20]])
-                if len(functions) > 20:
-                    details += f"<br>... and {len(functions) - 20} more functions"
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No Lambda functions found"
-        
-        elif check.name == "Do you have EC2 instances in your environment?":
-            instances = []
-            for reservation in check.result.get('Reservations', []):
-                instances.extend(reservation.get('Instances', []))
-            if instances:
-                summary = f"Found {len(instances)} EC2 instances"
-                details = ""
-                for instance in instances[:15]:
-                    instance_id = instance.get('InstanceId', 'Unknown')
-                    instance_type = instance.get('InstanceType', 'Unknown')
-                    state = instance.get('State', {}).get('Name', 'Unknown')
-                    details += f"{instance_id} ({instance_type}) - {state}<br>"
-                if len(instances) > 15:
-                    details += f"... and {len(instances) - 15} more instances"
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No EC2 instances found"
-        
         elif check.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?":
             if check.result:
                 top_groups = check.result.get('top_log_groups', [])
@@ -1176,6 +1244,16 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             else:
                 return "No log groups found"
+        
+        elif check.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?":
+            if isinstance(check.result, dict):
+                clusters = check.result.get('clusters', [])
+                enabled_types = check.result.get('enabled_types', 0)
+                if clusters:
+                    cluster_summary = ', '.join([f"{c['cluster']} ({len(c['enabled_types'])}/5)" for c in clusters[:3]])
+                    return f"Found {len(clusters)} EKS cluster(s) with {enabled_types}/5 log types enabled across all clusters (e.g., {cluster_summary})"
+                return f"No EKS clusters found"
+            return f"No EKS control plane log configuration found"
         
         # Default handler for other checks
         else:
@@ -1262,29 +1340,6 @@ class ComprehensiveObservabilityAssessment:
         
         
         
-        elif check.name == "Do you have EC2 instances in your environment?":
-            instances = []
-            for reservation in check.result.get('Reservations', []):
-                instances.extend(reservation.get('Instances', []))
-            if instances:
-                sample_ids = [inst.get('InstanceId', 'Unknown') for inst in instances[:3]]
-                return f"Found {len(instances)} EC2 instances (e.g., {', '.join(sample_ids)})"
-            return f"No EC2 instances found"
-        
-        elif check.name == "Do you have EKS clusters in your environment?":
-            clusters = check.result.get('clusters', [])
-            if clusters:
-                sample_names = clusters[:3]
-                return f"Found {len(clusters)} EKS clusters (e.g., {', '.join(sample_names)})"
-            return f"No EKS clusters found"
-        
-        elif check.name == "Do you have Lambda functions in your environment?":
-            functions = check.result.get('Functions', [])
-            if functions:
-                sample_names = [func.get('FunctionName', 'Unknown') for func in functions[:3]]
-                return f"Found {len(functions)} Lambda functions (e.g., {', '.join(sample_names)})"
-            return f"No Lambda functions found"
-        
         elif check.name == "Do you have CloudWatch alarms configured for your resources?":
             metric_alarms = check.result.get('MetricAlarms', [])
             composite_alarms = check.result.get('CompositeAlarms', [])
@@ -1327,38 +1382,17 @@ class ComprehensiveObservabilityAssessment:
                 return f"Found {len(trails)} CloudTrail trails (e.g., {', '.join(sample_names)})"
             return f"No CloudTrail trails found"
         
-        elif check.name == "Are all Lambda functions logging to CloudWatch?":
-            log_groups = check.result.get('logGroups', [])
-            if log_groups:
-                # Get Lambda function count for comparison
-                lambda_functions_result = self.run_aws_command("aws lambda list-functions --output json")
-                lambda_count = 0
-                if lambda_functions_result and 'Functions' in lambda_functions_result:
-                    lambda_count = len(lambda_functions_result['Functions'])
+        elif check.name == "What percentage of Lambda functions use JSON structured logging?":
+            if isinstance(check.result, dict):
+                total = check.result.get('total_functions', 0)
+                json_count = check.result.get('json_logging_count', 0)
                 
-                # Filter out non-function log groups (like lambda-insights)
-                function_log_groups = [lg for lg in log_groups if not lg.get('logGroupName', '').endswith('-insights')]
-                function_log_count = len(function_log_groups)
-                
-                if lambda_count > 0:
-                    # Calculate coverage (cap at 100% since there can be old log groups)
-                    coverage_count = min(function_log_count, lambda_count)
-                    percentage = int((coverage_count / lambda_count) * 100)
-                    return f"{command_info} | {coverage_count}/{lambda_count} Lambda functions ({percentage}%) have log groups configured | Total log groups: {len(log_groups)}"
+                if total > 0:
+                    percentage = int((json_count / total) * 100)
+                    return f"{command_info} | {json_count}/{total} Lambda functions ({percentage}%) have JSON structured logging configured"
                 else:
-                    return f"{command_info} | Found {len(log_groups)} Lambda log groups but no Lambda functions detected"
-            else:
-                # Check if there are Lambda functions without log groups
-                lambda_functions_result = self.run_aws_command("aws lambda list-functions --output json")
-                lambda_count = 0
-                if lambda_functions_result and 'Functions' in lambda_functions_result:
-                    lambda_count = len(lambda_functions_result['Functions'])
-                
-                if lambda_count > 0:
-                    return f"{command_info} | No Lambda log groups found but {lambda_count} Lambda functions exist (functions may not have been invoked yet to create log groups)"
-                else:
-                    return f"{command_info} | No Lambda log groups found and no Lambda functions deployed"
-        
+                    return f"{command_info} | No Lambda functions found"
+            return f"{command_info} | No Lambda functions found"
         elif check.name == "What percentage of ECS tasks use structured logging (JSON)?":
             clusters = check.result.get('clusters', [])
             running_tasks = check.result.get('running_tasks', [])
@@ -1393,13 +1427,6 @@ class ComprehensiveObservabilityAssessment:
                 return f"Command: Multi-step ECS task logging analysis | No running tasks found | Clusters checked: {len(clusters)}"
             else:
                 return f"Command: Multi-step ECS task logging analysis | No ECS clusters found"
-        
-        elif check.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?":
-            log_groups = check.result.get('logGroups', [])
-            if log_groups:
-                sample_names = [lg.get('logGroupName', 'Unknown') for lg in log_groups[:3]]
-                return f"Found {len(log_groups)} EKS control plane log groups (e.g., {', '.join(sample_names)})"
-            return f"No EKS control plane log groups found"
         
         elif check.name == "EC2 CloudWatch Agent IAM":
             policies = check.result.get('AttachedPolicies', [])
@@ -1577,9 +1604,9 @@ class ComprehensiveObservabilityAssessment:
         
         # Service-Specific Log Collection
         self.add_discovery_check("What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?", "Logs", "custom_ec2_cloudwatch_agent_check")
-        self.add_discovery_check("Are all Lambda functions logging to CloudWatch?", "Logs", "aws logs describe-log-groups --log-group-name-prefix /aws/lambda --output json")
+        self.add_discovery_check("What percentage of Lambda functions use JSON structured logging?", "Logs", "custom_lambda_json_logging_check")
         self.add_discovery_check("What percentage of ECS tasks use structured logging (JSON)?", "Logs", "custom_ecs_task_log_check")
-        self.add_discovery_check("Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?", "Logs", "aws logs describe-log-groups --log-group-name-prefix /aws/eks --output json")
+        self.add_discovery_check("Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?", "Logs", "custom_eks_control_plane_logs_check")
         self.add_discovery_check("Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?", "Logs", "aws eks describe-addon --cluster-name PetsiteEKS-cluster --addon-name amazon-cloudwatch-observability --output json")
         
         # Advanced Log Analysis
@@ -1591,13 +1618,10 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Do you have field index policies configured for faster log queries?", "Logs", "custom_field_indexes_per_log_group_check")
         
         # Metrics Discovery Checks (Detailed)
-        self.add_discovery_check("Do you have EC2 instances in your environment?", "Metrics", "aws ec2 describe-instances --output json")
         self.add_discovery_check("What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?", "Metrics", "aws ec2 describe-instances --query 'Reservations[].Instances[?Monitoring.State==`enabled`]' --output json")
         self.add_discovery_check("What percentage of ECS Clusters have monitoring enabled?", "Metrics", "aws ecs list-clusters --output json")
         self.add_discovery_check("Do you have ECS clusters with Container Insights enabled?", "Metrics", "aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json")
-        self.add_discovery_check("Do you have EKS clusters in your environment?", "Metrics", "aws eks list-clusters --output json")
         self.add_discovery_check("Do you have EKS clusters with CloudWatch Observability add-on enabled?", "Metrics", "custom_eks_addons_check")
-        self.add_discovery_check("Do you have Lambda functions in your environment?", "Metrics", "aws lambda list-functions --output json")
         self.add_discovery_check("What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?", "Metrics", "custom_lambda_insights_check")
 
         self.add_discovery_check("Are you publishing custom business and application metrics to CloudWatch?", "Metrics", "custom_metrics_namespaces_check")
@@ -1641,10 +1665,6 @@ class ComprehensiveObservabilityAssessment:
         # CloudWatch Dashboards - applies to Logs, Metrics, Traces access
         self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Logs", "aws cloudwatch list-dashboards --output json")
         self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Metrics", "aws cloudwatch list-dashboards --output json")
-        
-        # Lambda Functions - applies to Logs, Metrics, and Traces
-        self.add_discovery_check("Do you have Lambda functions in your environment?", "Logs", "aws lambda list-functions --output json")
-        self.add_discovery_check("Do you have Lambda functions in your environment?", "Traces", "aws lambda list-functions --output json")
         
         # Resource Tags - applies to Logs retention and Organization strategy
         self.add_discovery_check("Do you use resource tags for organizing and managing AWS resources?", "Logs", "aws resourcegroupstaggingapi get-resources --output json")
@@ -1810,11 +1830,59 @@ class ComprehensiveObservabilityAssessment:
                 'instances': instance_ids,
                 'ssm_instances': ssm_instances,
                 'cw_agent_instances': cw_agent_instances,
-                'logging_configured_instances': logging_configured_instances
+                'logging_configured_instances': logging_configured_instances,
+                'total_instances': len(instance_ids),
+                'logging_configured_count': len(logging_configured_instances)
             }
             
         except Exception as e:
-            return {'instances': [], 'ssm_instances': [], 'cw_agent_instances': [], 'logging_configured_instances': []}
+            return {'instances': [], 'ssm_instances': [], 'cw_agent_instances': [], 'logging_configured_instances': [], 'total_instances': 0, 'logging_configured_count': 0}
+
+    def execute_lambda_json_logging_check(self):
+        """Check Lambda functions for JSON structured logging configuration"""
+        try:
+            # Get all Lambda functions
+            functions_result = self.run_aws_command("aws lambda list-functions --output json")
+            if not functions_result or 'Functions' not in functions_result:
+                return {'total_functions': 0, 'json_logging_count': 0, 'functions_with_json': []}
+            
+            functions = functions_result['Functions']
+            total_functions = len(functions)
+            functions_with_json = []
+            
+            # Check each function's logging configuration
+            for func in functions[:20]:  # Limit to first 20 for performance
+                func_name = func.get('FunctionName', '')
+                
+                try:
+                    # Get function configuration
+                    config_result = self.run_aws_command(f'aws lambda get-function-configuration --function-name {func_name} --output json')
+                    if config_result:
+                        # Check environment variables for JSON logging indicators
+                        env_vars = config_result.get('Environment', {}).get('Variables', {})
+                        
+                        # Common JSON logging indicators
+                        json_indicators = [
+                            'LOG_FORMAT' in env_vars and 'json' in env_vars.get('LOG_FORMAT', '').lower(),
+                            'LOGGING_FORMAT' in env_vars and 'json' in env_vars.get('LOGGING_FORMAT', '').lower(),
+                            'LOG_LEVEL' in env_vars and 'JSON' in env_vars.get('LOG_LEVEL', '').upper(),
+                            'POWERTOOLS_LOG_FORMAT' in env_vars and 'json' in env_vars.get('POWERTOOLS_LOG_FORMAT', '').lower(),
+                            'AWS_LAMBDA_LOG_FORMAT' in env_vars and 'json' in env_vars.get('AWS_LAMBDA_LOG_FORMAT', '').lower()
+                        ]
+                        
+                        if any(json_indicators):
+                            functions_with_json.append(func_name)
+                except:
+                    continue
+            
+            return {
+                'total_functions': total_functions,
+                'json_logging_count': len(functions_with_json),
+                'functions_with_json': functions_with_json
+            }
+            
+        except Exception as e:
+            return {'total_functions': 0, 'json_logging_count': 0, 'functions_with_json': []}
 
     def execute_ecs_task_log_check(self):
         """Custom check for ECS running tasks and their logging configuration"""
@@ -1889,11 +1957,59 @@ class ComprehensiveObservabilityAssessment:
                 'clusters': clusters,
                 'running_tasks': all_running_tasks,
                 'tasks_with_logging': tasks_with_logging,
-                'logging_configs': logging_configs
+                'logging_configs': logging_configs,
+                'total_tasks': len(all_running_tasks),
+                'json_logging_count': len(tasks_with_logging)
             }
             
         except Exception as e:
-            return {'clusters': [], 'running_tasks': [], 'tasks_with_logging': [], 'logging_configs': []}
+            return {'clusters': [], 'running_tasks': [], 'tasks_with_logging': [], 'logging_configs': [], 'total_tasks': 0, 'json_logging_count': 0}
+
+    def execute_eks_control_plane_logs_check(self):
+        """Check if all 5 EKS control plane log types are enabled"""
+        try:
+            # Get list of EKS clusters
+            clusters_result = self.run_aws_command("aws eks list-clusters --output json")
+            if not clusters_result or 'clusters' not in clusters_result:
+                return {'clusters': [], 'enabled_types': 0, 'total_types': 5}
+            
+            clusters = clusters_result['clusters']
+            required_types = {'api', 'audit', 'authenticator', 'controllerManager', 'scheduler'}
+            all_enabled_types = set()
+            cluster_configs = []
+            
+            # Check each cluster's logging configuration
+            for cluster_name in clusters[:5]:  # Limit to first 5 clusters
+                try:
+                    cluster_result = self.run_aws_command(f'aws eks describe-cluster --name {cluster_name} --output json')
+                    if cluster_result and 'cluster' in cluster_result:
+                        logging_config = cluster_result['cluster'].get('logging', {})
+                        cluster_logging = logging_config.get('clusterLogging', [])
+                        
+                        enabled_types = set()
+                        for log_config in cluster_logging:
+                            if log_config.get('enabled', False):
+                                enabled_types.update(log_config.get('types', []))
+                        
+                        all_enabled_types.update(enabled_types)
+                        cluster_configs.append({
+                            'cluster': cluster_name,
+                            'enabled_types': list(enabled_types),
+                            'all_enabled': enabled_types == required_types
+                        })
+                except:
+                    continue
+            
+            # Return count of unique enabled types across all clusters
+            return {
+                'clusters': cluster_configs,
+                'enabled_types': len(all_enabled_types),
+                'total_types': 5,
+                'all_types_enabled': all_enabled_types == required_types
+            }
+            
+        except Exception as e:
+            return {'clusters': [], 'enabled_types': 0, 'total_types': 5}
 
     def execute_field_indexes_per_log_group_check(self):
         """Custom check for field indexes on top 20 largest log groups by size"""
@@ -2037,6 +2153,14 @@ class ComprehensiveObservabilityAssessment:
                 })
             
             total_size_gb = round(total_size_bytes / 1073741824, 1)
+            
+            # Export to CSV
+            self.export_check_to_csv(
+                check_name="Log Groups Retention Policies",
+                found_count=groups_with_retention,
+                total_count=10,
+                details={'with_retention': groups_with_retention, 'without_retention': 10 - groups_with_retention}
+            )
             
             return {
                 'top_log_groups': top_groups_info,
@@ -2588,7 +2712,7 @@ class ComprehensiveObservabilityAssessment:
                 cloudtrail_check = next((c for c in self.results.discovery_checks if c.name == "CloudTrail Trails"), None)
                 config_recorders_check = next((c for c in self.results.discovery_checks if c.name == "Config Recorders"), None)
                 ec2_agent_check = next((c for c in self.results.discovery_checks if c.name == "EC2 CloudWatch Agent IAM"), None)
-                lambda_logs_check = next((c for c in self.results.discovery_checks if c.name == "Are all Lambda functions logging to CloudWatch?"), None)
+                lambda_logs_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of Lambda functions use JSON structured logging?"), None)
                 ecs_logs_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of ECS tasks use structured logging (JSON)?"), None)
                 eks_logs_check = next((c for c in self.results.discovery_checks if c.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?"), None)
                 
@@ -2808,18 +2932,11 @@ class ComprehensiveObservabilityAssessment:
         
         for check in metrics_checks:
             if check.question_id == 5:  # What type of metrics do you collect?
-                ec2_check = next((c for c in self.results.discovery_checks if c.name == "Do you have EC2 instances in your environment?"), None)
                 custom_metrics_check = next((c for c in self.results.discovery_checks if c.name == "Are you publishing custom business and application metrics to CloudWatch?"), None)
-                eks_check = next((c for c in self.results.discovery_checks if c.name == "Do you have EKS clusters in your environment?"), None)
-                lambda_check = next((c for c in self.results.discovery_checks if c.name == "Do you have Lambda functions in your environment?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [ec2_check, custom_metrics_check, eks_check, lambda_check] if c]
+                check.evidence_check_ids = [c.id for c in [custom_metrics_check] if c]
                 
-                has_infrastructure = any([
-                    ec2_check and ec2_check.result and ec2_check.result.get('Reservations'),
-                    eks_check and eks_check.result and eks_check.result.get('clusters'),
-                    lambda_check and lambda_check.result and lambda_check.result.get('Functions')
-                ])
+                has_infrastructure = False  # No longer checking EC2
                 
                 has_custom = custom_metrics_check and custom_metrics_check.result and isinstance(custom_metrics_check.result, dict) and any(
                     not m.get('Namespace', '').startswith('AWS/') 
@@ -2830,10 +2947,10 @@ class ComprehensiveObservabilityAssessment:
                     custom_count = len([m for m in custom_metrics_check.result.get('Metrics', []) 
                                       if not m.get('Namespace', '').startswith('AWS/')])
                     check.current_level = 3
-                    check.explanation = f"Comprehensive metrics collection is implemented with infrastructure metrics from EC2, EKS, and Lambda services (Checks #{ec2_check.id if ec2_check else 'N/A'}, #{eks_check.id if eks_check else 'N/A'}, #{lambda_check.id if lambda_check else 'N/A'}), plus {custom_count} custom metrics (Check #{custom_metrics_check.id}). This indicates mature monitoring covering infrastructure, applications, and business-specific metrics."
+                    check.explanation = f"Comprehensive metrics collection is implemented with {custom_count} custom metrics (Check #{custom_metrics_check.id}). This indicates mature monitoring covering infrastructure, applications, and business-specific metrics."
                 elif has_infrastructure:
                     check.current_level = 2
-                    check.explanation = f"Infrastructure and application metrics are collected from multiple AWS services including EC2, EKS, and Lambda (Checks #{ec2_check.id if ec2_check else 'N/A'}, #{eks_check.id if eks_check else 'N/A'}, #{lambda_check.id if lambda_check else 'N/A'}). This provides good coverage of system performance and application health metrics."
+                    check.explanation = f"Infrastructure and application metrics are collected from AWS services. This provides good coverage of system performance and application health metrics."
                 else:
                     check.current_level = 1
                     check.explanation = "Limited metrics collection detected, primarily basic infrastructure monitoring without comprehensive application or custom business metrics."
@@ -3922,13 +4039,26 @@ class ComprehensiveObservabilityAssessment:
                 else:
                     custom_logs.append(name)
             
-            return {
+            result_data = {
                 'total_log_groups': len(log_groups),
                 'vended_logs': vended_logs,
                 'custom_logs': custom_logs,
                 'vended_count': len(vended_logs),
                 'custom_count': len(custom_logs)
             }
+            
+            # Export to CSV
+            self.export_check_to_csv(
+                check_name="Log Groups Categorization",
+                found_count=len(vended_logs) + len(custom_logs),
+                total_count=len(log_groups),
+                details={
+                    'Vended Logs': len(vended_logs),
+                    'Custom Logs': len(custom_logs)
+                }
+            )
+            
+            return result_data
             
         except Exception as e:
             return None
