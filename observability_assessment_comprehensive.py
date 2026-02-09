@@ -1196,6 +1196,28 @@ class ComprehensiveObservabilityAssessment:
                 return f"{base_info} | No large log groups found for retention analysis"
             return f"{base_info} - No retention analysis performed"
         
+        elif check.name == "Do you have X-Ray groups configured for focused trace analysis?":
+            groups = check.result.get('Groups', []) if check.result else []
+            # Filter out the Default group
+            custom_groups = [g for g in groups if g.get('GroupName') != 'Default']
+            
+            if custom_groups:
+                summary = f"Found {len(custom_groups)} custom X-Ray groups"
+                details = ""
+                for i, group in enumerate(custom_groups, 1):
+                    name = group.get('GroupName', 'Unknown')
+                    filter_expr = group.get('FilterExpression', 'No filter')
+                    insights = group.get('InsightsConfiguration', {})
+                    insights_enabled = insights.get('InsightsEnabled', False)
+                    
+                    details += f"{i}. <strong>{name}</strong><br>"
+                    details += f"   Filter: {filter_expr}<br>"
+                    details += f"   Insights: {'Enabled' if insights_enabled else 'Disabled'}<br><br>"
+                
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            else:
+                return f"No custom X-Ray groups configured (only Default group exists)"
+        
         elif check.name == "Do you have custom X-Ray sampling rules configured?":
             sampling_rules = check.result.get('SamplingRuleRecords', []) if check.result else []
             custom_rules = [rule for rule in sampling_rules if rule.get('SamplingRule', {}).get('RuleName') != 'Default']
@@ -1631,7 +1653,8 @@ class ComprehensiveObservabilityAssessment:
         # Traces Discovery Checks (Detailed)
         self.add_discovery_check("Do you use X-Ray service maps to visualize application architecture?", "Traces", "custom_xray_service_graph_check")
         self.add_discovery_check("Do you have custom X-Ray sampling rules configured?", "Traces", "custom_xray_sampling_rules_check")
-        self.add_discovery_check("Do you have X-Ray encryption configured?", "Traces", "aws xray get-encryption-config --output json")
+        self.add_discovery_check("Do you have X-Ray groups configured for focused trace analysis?", "Traces", "aws xray get-groups --output json")
+        self.add_discovery_check("Do you have transaction search enabled?", "Traces", "aws logs describe-log-groups --log-group-name-prefix aws/spans --output json")
         self.add_discovery_check("Do your Lambda functions have X-Ray tracing enabled?", "Traces", "aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json")
         self.add_discovery_check("Do you have X-Ray Insights configured for anomaly detection?", "Traces", "aws xray get-insight-summaries --output json")
         
@@ -3009,21 +3032,35 @@ class ComprehensiveObservabilityAssessment:
                 xray_check = next((c for c in self.results.discovery_checks if c.name == "Do you use X-Ray service maps to visualize application architecture?"), None)
                 lambda_tracing_check = next((c for c in self.results.discovery_checks if c.name == "Do your Lambda functions have X-Ray tracing enabled?"), None)
                 sampling_check = next((c for c in self.results.discovery_checks if c.name == "Do you have custom X-Ray sampling rules configured?"), None)
+                groups_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray groups configured for focused trace analysis?"), None)
+                transaction_search_check = next((c for c in self.results.discovery_checks if c.name == "Do you have transaction search enabled?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [xray_check, lambda_tracing_check, sampling_check] if c]
+                check.evidence_check_ids = [c.id for c in [xray_check, lambda_tracing_check, sampling_check, groups_check, transaction_search_check] if c]
                 
                 has_service_map = xray_check and xray_check.result and xray_check.result.get('Services')
                 has_sampling = sampling_check and sampling_check.result and sampling_check.result.get('SamplingRuleRecords')
+                has_groups = groups_check and groups_check.result and groups_check.result.get('Groups')
                 has_lambda_tracing = lambda_tracing_check and lambda_tracing_check.result and isinstance(lambda_tracing_check.result, dict) and any(
                     func.get('TracingConfig', {}).get('Mode') == 'Active' 
                     for func in lambda_tracing_check.result.get('Functions', [])
                 )
+                has_transaction_search = transaction_search_check and transaction_search_check.result and transaction_search_check.result.get('logGroups')
                 
-                if has_service_map and has_sampling:
+                if has_transaction_search and has_service_map and has_sampling and has_groups:
+                    service_count = len(xray_check.result.get('Services', []))
+                    rule_count = len(sampling_check.result.get('SamplingRuleRecords', []))
+                    group_count = len(groups_check.result.get('Groups', []))
+                    check.current_level = 4
+                    check.explanation = f"Advanced tracing with Transaction Search enabled (Check #{transaction_search_check.id}), X-Ray service map showing {service_count} services (Check #{xray_check.id}), {rule_count} sampling rules (Check #{sampling_check.id}), and {group_count} X-Ray groups for focused analysis (Check #{groups_check.id}). This provides automatic injection with proactive alerts, complete span visibility, optimized trace collection, and targeted trace filtering across distributed services."
+                elif has_service_map and has_sampling and (has_groups or has_transaction_search):
                     service_count = len(xray_check.result.get('Services', []))
                     rule_count = len(sampling_check.result.get('SamplingRuleRecords', []))
                     check.current_level = 3
-                    check.explanation = f"Comprehensive tracing infrastructure with X-Ray service map showing {service_count} services (Check #{xray_check.id}) and {rule_count} sampling rules configured (Check #{sampling_check.id}). This provides end-to-end visibility with optimized trace collection and correlation capabilities across distributed services."
+                    if has_groups:
+                        group_count = len(groups_check.result.get('Groups', []))
+                        check.explanation = f"Comprehensive tracing infrastructure with X-Ray service map showing {service_count} services (Check #{xray_check.id}), {rule_count} sampling rules (Check #{sampling_check.id}), and {group_count} X-Ray groups (Check #{groups_check.id}). This provides end-to-end visibility with optimized trace collection, focused trace analysis, and correlation capabilities across distributed services."
+                    else:
+                        check.explanation = f"Comprehensive tracing infrastructure with Transaction Search enabled (Check #{transaction_search_check.id}), X-Ray service map showing {service_count} services (Check #{xray_check.id}), and {rule_count} sampling rules (Check #{sampling_check.id}). This provides end-to-end visibility with complete span visibility and optimized trace collection across distributed services."
                 elif has_service_map or has_lambda_tracing:
                     if has_service_map:
                         service_count = len(xray_check.result.get('Services', []))
@@ -3042,17 +3079,35 @@ class ComprehensiveObservabilityAssessment:
                 xray_check = next((c for c in self.results.discovery_checks if c.name == "Do you use X-Ray service maps to visualize application architecture?"), None)
                 insights_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray Insights configured for anomaly detection?"), None)
                 app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Application Signals Services"), None)
+                groups_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray groups configured for focused trace analysis?"), None)
+                transaction_search_check = next((c for c in self.results.discovery_checks if c.name == "Do you have transaction search enabled?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [xray_check, insights_check, app_signals_check] if c]
+                check.evidence_check_ids = [c.id for c in [xray_check, insights_check, app_signals_check, groups_check, transaction_search_check] if c]
                 
                 has_app_signals = app_signals_check and app_signals_check.result and app_signals_check.result.get('Services')
                 has_insights = insights_check and insights_check.result
                 has_service_map = xray_check and xray_check.result and xray_check.result.get('Services')
+                has_groups = groups_check and groups_check.result and groups_check.result.get('Groups')
+                has_transaction_search = transaction_search_check and transaction_search_check.result and transaction_search_check.result.get('logGroups')
                 
-                if has_app_signals:
+                if has_app_signals and has_transaction_search:
                     service_count = len(app_signals_check.result.get('Services', []))
                     check.current_level = 4
-                    check.explanation = f"Advanced trace analysis with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}), providing cross-boundary insights and proactive root cause identification. This enables comprehensive correlation across application boundaries with automated issue detection."
+                    check.explanation = f"Advanced trace analysis with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}) and Transaction Search enabled (Check #{transaction_search_check.id}), providing cross-boundary insights with complete span visibility and proactive root cause identification. This enables comprehensive correlation across application boundaries with automated issue detection."
+                elif has_app_signals or (has_transaction_search and has_service_map) or (has_groups and has_service_map):
+                    if has_app_signals:
+                        service_count = len(app_signals_check.result.get('Services', []))
+                        check.current_level = 3
+                        check.explanation = f"Advanced trace analysis with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}), providing cross-boundary insights. Consider enabling Transaction Search for complete span visibility."
+                    elif has_groups:
+                        service_count = len(xray_check.result.get('Services', []))
+                        group_count = len(groups_check.result.get('Groups', []))
+                        check.current_level = 3
+                        check.explanation = f"Sophisticated trace usage with {group_count} X-Ray groups (Check #{groups_check.id}) for focused trace analysis and X-Ray service map tracking {service_count} services (Check #{xray_check.id}). This provides targeted trace filtering with custom metrics and CloudWatch integration for correlation and detailed transaction analysis."
+                    else:
+                        service_count = len(xray_check.result.get('Services', []))
+                        check.current_level = 3
+                        check.explanation = f"Sophisticated trace usage with Transaction Search enabled (Check #{transaction_search_check.id}) and X-Ray service map tracking {service_count} services (Check #{xray_check.id}). This provides 360-degree view with complete span visibility for correlation and detailed transaction analysis."
                 elif has_insights and has_service_map:
                     service_count = len(xray_check.result.get('Services', []))
                     check.current_level = 3
