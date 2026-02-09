@@ -1277,6 +1277,30 @@ class ComprehensiveObservabilityAssessment:
                 return f"No EKS clusters found"
             return f"No EKS control plane log configuration found"
         
+        elif check.name == "Do you have dashboards configured with variables?":
+            if check.result:
+                total_dashboards = check.result.get('total_dashboards', 0)
+                dashboards_with_variables = check.result.get('dashboards_with_variables', 0)
+                dashboards_with_variables_details = check.result.get('dashboards_with_variables_details', [])
+                
+                if dashboards_with_variables > 0:
+                    summary = f"{base_info} | {dashboards_with_variables}/{total_dashboards} dashboards have dynamic variables"
+                    
+                    # Create detailed breakdown
+                    details = f"<strong>Dashboards with Variables ({dashboards_with_variables}):</strong><br>"
+                    for i, dashboard in enumerate(dashboards_with_variables_details, 1):
+                        name = dashboard.get('DashboardName', 'Unknown')
+                        indicators = dashboard.get('VariableIndicators', [])
+                        size = dashboard.get('Size', 0)
+                        details += f"{i}. <strong>{name}</strong><br>"
+                        details += f"   Variable Features: {', '.join(indicators)}<br>"
+                        details += f"   Size: {size} bytes<br><br>"
+                    
+                    return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+                
+                return f"{base_info} | {dashboards_with_variables}/{total_dashboards} dashboards have dynamic variables"
+            return f"{base_info} | No dashboards found"
+        
         # Default handler for other checks
         else:
             # Provide specific context for known checks that might return empty results
@@ -1546,30 +1570,6 @@ class ComprehensiveObservabilityAssessment:
                 sample_names = [svc.get('Name', 'Unknown') for svc in services[:3]]
                 return f"{base_info} | Found {len(services)} X-Ray services (e.g., {', '.join(sample_names)})"
             return f"{base_info} | No X-Ray services found"
-        
-        elif check.name == "Do you have dashboards configured with variables?":
-            if check.result:
-                total_dashboards = check.result.get('total_dashboards', 0)
-                dashboards_with_variables = check.result.get('dashboards_with_variables', 0)
-                dashboards_with_variables_details = check.result.get('dashboards_with_variables_details', [])
-                
-                if dashboards_with_variables > 0:
-                    summary = f"{base_info} | {dashboards_with_variables}/{total_dashboards} dashboards have dynamic variables"
-                    
-                    # Create detailed breakdown
-                    details = f"<strong>Dashboards with Variables ({dashboards_with_variables}):</strong><br>"
-                    for i, dashboard in enumerate(dashboards_with_variables_details, 1):
-                        name = dashboard.get('DashboardName', 'Unknown')
-                        indicators = dashboard.get('VariableIndicators', [])
-                        size = dashboard.get('Size', 0)
-                        details += f"{i}. <strong>{name}</strong><br>"
-                        details += f"   Variable Features: {', '.join(indicators)}<br>"
-                        details += f"   Size: {size} bytes<br><br>"
-                    
-                    return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-                
-                return f"{base_info} | {dashboards_with_variables}/{total_dashboards} dashboards have dynamic variables"
-            return f"{base_info} | No dashboards found"
         
         # Generic handling for other checks
         elif isinstance(check.result, dict):
@@ -3157,16 +3157,26 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 11:  # How do you use dashboards?
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
+                variables_check = next((c for c in self.results.discovery_checks if c.name == "Do you have dashboards configured with variables?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [dashboards_check] if c]
+                check.evidence_check_ids = [c.id for c in [dashboards_check, variables_check] if c]
                 
                 has_dashboards = dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries')
+                has_variables = variables_check and variables_check.result and variables_check.result.get('dashboards_with_variables', 0) > 0
                 
                 if has_dashboards:
                     dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
-                    if dashboard_count >= 5:
+                    dashboards_with_vars = variables_check.result.get('dashboards_with_variables', 0) if variables_check and variables_check.result else 0
+                    
+                    if has_variables and dashboard_count >= 5:
+                        check.current_level = 3
+                        check.explanation = f"Advanced dashboard usage with {dashboard_count} dashboards including {dashboards_with_vars} with dynamic variables (Checks #{dashboards_check.id}, #{variables_check.id}). Flexible dashboards can quickly display different content in multiple widgets depending on input field values, enabling easier correlation and anomaly detection across services."
+                    elif dashboard_count >= 5:
                         check.current_level = 3
                         check.explanation = f"Advanced dashboard usage with {dashboard_count} dashboards (Check #{dashboards_check.id}) providing comprehensive operational visibility. Multiple dashboards suggest systematic approach to visualization with potential for correlation and anomaly detection across different services and metrics."
+                    elif has_variables:
+                        check.current_level = 2
+                        check.explanation = f"Operational dashboards with {dashboard_count} CloudWatch dashboards including {dashboards_with_vars} with dynamic variables (Checks #{dashboards_check.id}, #{variables_check.id}). Variable-enabled dashboards provide flexible visualization that can adapt to different contexts and use cases."
                     else:
                         check.current_level = 2
                         check.explanation = f"Operational dashboards implemented with {dashboard_count} CloudWatch dashboards (Check #{dashboards_check.id}), providing single pane of glass visibility into various data sources. This enables faster communication flow during operational events with well-defined visualization criteria."
