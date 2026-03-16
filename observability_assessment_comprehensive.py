@@ -130,8 +130,12 @@ class ComprehensiveObservabilityAssessment:
                 self.export_check_to_csv("EKS Control Plane Logs", enabled, total)
         elif check.id == 11:
             # EKS CloudWatch Observability add-on
-            has_addon = isinstance(check.result, dict) and check.result.get('addon') is not None
-            self.export_check_to_csv("EKS CloudWatch Observability Add-on", 1 if has_addon else 0, 1)
+            if isinstance(check.result, dict):
+                obs = check.result.get('observability_clusters', 0)
+                total = check.result.get('total_clusters', 0)
+                self.export_check_to_csv("EKS CloudWatch Observability Add-on", obs, total if total > 0 else 1)
+            else:
+                self.export_check_to_csv("EKS CloudWatch Observability Add-on", 0, 1)
         elif check.id == 15:
             # CloudWatch cross-account observability (OAM)
             if isinstance(check.result, dict):
@@ -561,40 +565,18 @@ class ComprehensiveObservabilityAssessment:
             return f"No ECS task log configuration data available"
         
         elif check.name == "Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?":
-            if check.result and 'addon' in check.result:
-                addon = check.result['addon']
-                addon_name = addon.get('addonName', 'Unknown')
-                addon_version = addon.get('addonVersion', 'Unknown')
-                status = addon.get('status', 'Unknown')
-                created_at = addon.get('createdAt', 'Unknown')
-                modified_at = addon.get('modifiedAt', 'Unknown')
-                cluster_name = addon.get('clusterName', 'Unknown')
-                
-                summary = f"Found EKS addon: {addon_name} (version: {addon_version}, status: {status})"
-                
-                # Create detailed breakdown
-                details = f"<strong>Add-on Details:</strong><br>"
-                details += f"Name: {addon_name}<br>"
-                details += f"Version: {addon_version}<br>"
-                details += f"Status: {status}<br>"
-                details += f"Cluster: {cluster_name}<br>"
-                details += f"Created: {created_at}<br>"
-                details += f"Modified: {modified_at}<br>"
-                
-                # Add configuration details if available
-                if 'configurationValues' in addon:
-                    config_values = addon.get('configurationValues', '')
-                    if config_values:
-                        details += f"<br><strong>Configuration:</strong><br>{config_values}<br>"
-                
-                # Add service account details if available
-                if 'serviceAccountRoleArn' in addon:
-                    service_account_role = addon.get('serviceAccountRoleArn', '')
-                    if service_account_role:
-                        details += f"<br><strong>Service Account Role:</strong><br>{service_account_role}<br>"
-                
-                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"EKS CloudWatch Observability add-on not found"
+            if check.result and isinstance(check.result, dict):
+                total = check.result.get('total_clusters', 0)
+                obs_count = check.result.get('observability_clusters', 0)
+                clusters = check.result.get('clusters_with_observability', [])
+                if total == 0:
+                    return "No EKS clusters found in this account"
+                summary = f"{obs_count}/{total} EKS clusters have CloudWatch Observability add-on installed"
+                if clusters:
+                    details = "<strong>Clusters with add-on:</strong><br>" + "<br>".join(clusters)
+                    return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+                return summary
+            return "No EKS clusters found in this account"
         
         elif check.name == "Have you enabled anomaly detection?":
             anomaly_detectors = check.result.get('anomalyDetectors', [])
@@ -1305,7 +1287,7 @@ class ComprehensiveObservabilityAssessment:
         else:
             # Provide specific context for known checks that might return empty results
             if check.name == "Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?":
-                return f"{base_info} | {command_info} | CloudWatch Observability add-on not found - EKS cluster may not have Amazon CloudWatch Observability add-on installed"
+                return f"{base_info} | {command_info} | No EKS clusters found or CloudWatch Observability add-on not installed"
             elif check.name == "Have you enabled anomaly detection?":
                 return f"{command_info} | No log anomaly detectors found - CloudWatch Logs anomaly detection not configured"
             elif check.name == "Are you using CloudWatch cross-account observability?":
@@ -1629,7 +1611,7 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("What percentage of Lambda functions use JSON structured logging?", "Logs", "custom_lambda_json_logging_check")
         self.add_discovery_check("What percentage of ECS tasks use structured logging (JSON)?", "Logs", "custom_ecs_task_log_check")
         self.add_discovery_check("Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?", "Logs", "custom_eks_control_plane_logs_check")
-        self.add_discovery_check("Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?", "Logs", "aws eks describe-addon --cluster-name PetsiteEKS-cluster --addon-name amazon-cloudwatch-observability --output json")
+        self.add_discovery_check("Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?", "Logs", "custom_eks_addons_check")
         
         # Advanced Log Analysis
         self.add_discovery_check("Have you enabled anomaly detection?", "Logs", "aws logs list-log-anomaly-detectors --output json")
@@ -2729,60 +2711,74 @@ class ComprehensiveObservabilityAssessment:
         
         for check in log_checks:
             if check.question_id == 1:  # How do you collect logs?
-                # Map to discovery checks for log collection
+                # Discovery checks for log collection
                 log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
-                vpc_flow_check = next((c for c in self.results.discovery_checks if c.name == "VPC Flow Logs"), None)
-                cloudtrail_check = next((c for c in self.results.discovery_checks if c.name == "CloudTrail Trails"), None)
-                config_recorders_check = next((c for c in self.results.discovery_checks if c.name == "Config Recorders"), None)
-                ec2_agent_check = next((c for c in self.results.discovery_checks if c.name == "EC2 CloudWatch Agent IAM"), None)
+                ec2_agent_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?"), None)
                 lambda_logs_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of Lambda functions use JSON structured logging?"), None)
                 ecs_logs_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of ECS tasks use structured logging (JSON)?"), None)
                 eks_logs_check = next((c for c in self.results.discovery_checks if c.name == "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?"), None)
-                
-                check.evidence_check_ids = [c.id for c in [log_groups_check, vpc_flow_check, cloudtrail_check, config_recorders_check, ec2_agent_check, lambda_logs_check, ecs_logs_check, eks_logs_check] if c]
-                
-                # Count successful log collection mechanisms
-                collection_mechanisms = []
-                if log_groups_check and log_groups_check.result and log_groups_check.result.get('logGroups'):
-                    log_count = len(log_groups_check.result.get('logGroups', []))
-                    collection_mechanisms.append(f"{log_count} CloudWatch log groups")
-                
-                if vpc_flow_check and vpc_flow_check.result and vpc_flow_check.result.get('FlowLogs'):
-                    flow_count = len(vpc_flow_check.result.get('FlowLogs', []))
-                    collection_mechanisms.append(f"{flow_count} VPC flow logs")
-                
-                if cloudtrail_check and cloudtrail_check.result and cloudtrail_check.result.get('trailList'):
-                    trail_count = len(cloudtrail_check.result.get('trailList', []))
-                    collection_mechanisms.append(f"{trail_count} CloudTrail trails")
-                
-                if config_recorders_check and config_recorders_check.result and config_recorders_check.result.get('ConfigurationRecorders'):
-                    config_count = len(config_recorders_check.result.get('ConfigurationRecorders', []))
-                    collection_mechanisms.append(f"{config_count} Config recorders")
-                
-                if ec2_agent_check and ec2_agent_check.status == 'success':
-                    collection_mechanisms.append("EC2 CloudWatch Agent configured")
-                
-                if lambda_logs_check and lambda_logs_check.status == 'success':
-                    collection_mechanisms.append("Lambda log groups configured")
-                
-                if ecs_logs_check and ecs_logs_check.status == 'success':
-                    collection_mechanisms.append("ECS task logging configured")
-                
-                if eks_logs_check and eks_logs_check.status == 'success':
-                    collection_mechanisms.append("EKS control plane logs enabled")
-                
-                if len(collection_mechanisms) >= 4:
+                eks_addon_check = next((c for c in self.results.discovery_checks if c.name == "Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?" and c.category == "Logs"), None)
+                structured_json_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of application logs use structured JSON format for easier parsing and analysis?"), None)
+                centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
+                oam_check = next((c for c in self.results.discovery_checks if c.name == "Are you using CloudWatch cross-account observability?"), None)
+                anomaly_detection_check = next((c for c in self.results.discovery_checks if c.name == "Have you enabled anomaly detection?"), None)
+
+                check.evidence_check_ids = [c.id for c in [log_groups_check, ec2_agent_check, lambda_logs_check, ecs_logs_check, eks_logs_check, eks_addon_check, structured_json_check, centralization_check, oam_check, anomaly_detection_check] if c]
+
+                # Determine which compute types are in use based on largest log groups
+                compute_in_use = {k: v for k, v in self.largest_log_groups.items() if v}
+                compute_with_logging = {}
+
+                if 'EC2' in compute_in_use and ec2_agent_check and ec2_agent_check.status == 'success':
+                    compute_with_logging['EC2'] = "CloudWatch Agent configured"
+                if 'Lambda' in compute_in_use and lambda_logs_check and lambda_logs_check.status == 'success':
+                    compute_with_logging['Lambda'] = "JSON structured logging"
+                if 'ECS' in compute_in_use and ecs_logs_check and ecs_logs_check.status == 'success':
+                    compute_with_logging['ECS'] = "task logging configured"
+                if 'EKS' in compute_in_use and eks_logs_check and eks_logs_check.status == 'success':
+                    compute_with_logging['EKS'] = "control plane logs enabled"
+
+                # Coverage ratio of compute types that have logging vs compute types in use
+                coverage = len(compute_with_logging) / len(compute_in_use) if compute_in_use else 0
+
+                # Check higher-level signals
+                has_structured_json = (structured_json_check and isinstance(structured_json_check.result, dict) and structured_json_check.result.get('json_groups', 0) > 0) or \
+                    (lambda_logs_check and isinstance(lambda_logs_check.result, dict) and lambda_logs_check.result.get('json_logging_count', 0) > 0) or \
+                    (ecs_logs_check and isinstance(ecs_logs_check.result, dict) and ecs_logs_check.result.get('json_logging_count', 0) > 0)
+                has_centralization = (centralization_check and centralization_check.status == 'success') or (oam_check and isinstance(oam_check.result, dict) and (oam_check.result.get('links_count', 0) > 0 or oam_check.result.get('sinks_count', 0) > 0))
+                has_eks_addon = eks_addon_check and isinstance(eks_addon_check.result, dict) and eks_addon_check.result.get('observability_clusters', 0) > 0
+                has_anomaly_detection = anomaly_detection_check and anomaly_detection_check.status == 'success'
+                has_log_groups = log_groups_check and log_groups_check.result and log_groups_check.result.get('logGroups')
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                compute_summary = ', '.join(f"{k}: {v}" for k, v in compute_with_logging.items())
+                in_use_summary = ', '.join(compute_in_use.keys())
+
+                # L4: Automated collection with ML-based analysis
+                if coverage >= 0.75 and has_structured_json and has_centralization and (has_eks_addon or has_anomaly_detection):
+                    check.current_level = 4
+                    extras = []
+                    if has_eks_addon: extras.append("EKS Observability add-on for auto-instrumented collection")
+                    if has_anomaly_detection: extras.append("log anomaly detection")
+                    check.explanation = f"Automated log collection with ML-based analysis. Compute coverage: {compute_summary}. Additional: {', '.join(extras)}. Structured JSON logging and centralization in place {evidence_refs}."
+                # L3: Correlation patterns via centralization + structured logs
+                elif coverage >= 0.75 and has_structured_json and has_centralization:
                     check.current_level = 3
-                    check.explanation = f"Comprehensive centralized log collection with {', '.join(collection_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This demonstrates advanced structured logging practices across multiple AWS services including application logs, network flows, API calls, configuration changes, and service-specific logging for compute services."
-                elif len(collection_mechanisms) >= 2:
+                    check.explanation = f"Centralized log collection with correlation patterns. Compute coverage: {compute_summary}. Structured JSON logging enables correlation across services. Cross-account/region centralization provides unified view {evidence_refs}."
+                # L2: Good coverage of in-use compute types with structured logging
+                elif coverage >= 0.5 and (has_structured_json or len(compute_with_logging) >= 2):
                     check.current_level = 2
-                    check.explanation = f"Centralized log collection established with {', '.join(collection_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). Good foundation for observability with multiple log sources configured across AWS services."
-                elif len(collection_mechanisms) >= 1:
+                    check.explanation = f"Centralized collection with analytics across compute types in use ({in_use_summary}). Logging configured for: {compute_summary} {evidence_refs}."
+                # L1: Some logging exists
+                elif has_log_groups or compute_with_logging:
                     check.current_level = 1
-                    check.explanation = f"Basic log collection with {', '.join(collection_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). Limited logging infrastructure needs expansion for comprehensive observability."
+                    if compute_with_logging:
+                        check.explanation = f"Basic log collection. Compute types in use: {in_use_summary}. Logging configured for: {compute_summary}. Coverage gap needs attention {evidence_refs}."
+                    else:
+                        check.explanation = f"Basic log groups exist but compute-specific log collection not fully configured for in-use types ({in_use_summary}) {evidence_refs}."
                 else:
                     check.current_level = 1
-                    check.explanation = "Minimal log collection detected. Basic logging may be present but lacks centralized collection mechanisms across AWS services."
+                    check.explanation = f"Minimal log collection detected {evidence_refs}."
             
             elif check.question_id == 2:  # How do you use logs?
                 # Map to discovery checks for log usage
@@ -3156,33 +3152,43 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "Basic or no alerting infrastructure detected. Limited ability to proactively notify operators when metrics meet alarm triggers."
             
             elif check.question_id == 11:  # How do you use dashboards?
-                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?"), None)
                 variables_check = next((c for c in self.results.discovery_checks if c.name == "Do you have dashboards configured with variables?"), None)
+                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Application Signals Services"), None)
                 
-                check.evidence_check_ids = [c.id for c in [dashboards_check, variables_check] if c]
+                check.evidence_check_ids = [c.id for c in [dashboards_check, variables_check, app_signals_check] if c]
                 
                 has_dashboards = dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries')
                 has_variables = variables_check and variables_check.result and variables_check.result.get('dashboards_with_variables', 0) > 0
+                has_app_signals = app_signals_check and app_signals_check.result and app_signals_check.result.get('Services')
                 
                 if has_dashboards:
                     dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
                     dashboards_with_vars = variables_check.result.get('dashboards_with_variables', 0) if variables_check and variables_check.result else 0
                     
-                    if has_variables and dashboard_count >= 5:
-                        check.current_level = 3
-                        check.explanation = f"Advanced dashboard usage with {dashboard_count} dashboards including {dashboards_with_vars} with dynamic variables (Checks #{dashboards_check.id}, #{variables_check.id}). Flexible dashboards can quickly display different content in multiple widgets depending on input field values, enabling easier correlation and anomaly detection across services."
-                    elif dashboard_count >= 5:
-                        check.current_level = 3
-                        check.explanation = f"Advanced dashboard usage with {dashboard_count} dashboards (Check #{dashboards_check.id}) providing comprehensive operational visibility. Multiple dashboards suggest systematic approach to visualization with potential for correlation and anomaly detection across different services and metrics."
+                    # Level 4: Automatic dynamic visualizations
+                    if has_app_signals:
+                        service_count = len(app_signals_check.result.get('Services', []))
+                        check.current_level = 4
+                        check.explanation = f"Automatically created dynamic visualizations with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}), which auto-generates service dashboards relevant to application health and performance. Additionally, {dashboard_count} custom dashboards provide operational visibility (Check #{dashboards_check.id}). This saves time and cost by automatically creating visualizations that contain only information relevant to issues."
+                    
+                    # Level 3: Flexible dashboards with variables
                     elif has_variables:
+                        check.current_level = 3
+                        check.explanation = f"Flexible dashboards with dynamic content: {dashboards_with_vars} out of {dashboard_count} dashboards are configured with dynamic variables/input fields (Checks #{dashboards_check.id}, #{variables_check.id}). These dashboards can quickly display different content in multiple widgets depending on input field values (e.g., selecting different resources, time ranges, or grouping dimensions), enabling easier correlation and anomaly detection across services and contexts."
+                    
+                    # Level 2: Single pane of glass
+                    elif dashboard_count >= 3:
                         check.current_level = 2
-                        check.explanation = f"Operational dashboards with {dashboard_count} CloudWatch dashboards including {dashboards_with_vars} with dynamic variables (Checks #{dashboards_check.id}, #{variables_check.id}). Variable-enabled dashboards provide flexible visualization that can adapt to different contexts and use cases."
+                        check.explanation = f"Single pane of glass with {dashboard_count} CloudWatch dashboards (Check #{dashboards_check.id}) providing visibility into various data sources. Multiple dashboards enable faster communication flow during operational events with well-defined visualization criteria. To reach Level 3, consider adding dynamic variables to dashboards for flexible, context-aware visualizations."
+                    
+                    # Level 1: Basic monitoring
                     else:
-                        check.current_level = 2
-                        check.explanation = f"Operational dashboards implemented with {dashboard_count} CloudWatch dashboards (Check #{dashboards_check.id}), providing single pane of glass visibility into various data sources. This enables faster communication flow during operational events with well-defined visualization criteria."
+                        check.current_level = 1
+                        check.explanation = f"Basic resource monitoring with {dashboard_count} dashboard(s) (Check #{dashboards_check.id}). Limited dashboard count suggests primarily basic resource monitoring. To improve, create additional dashboards covering different services and operational aspects, and consider adding dynamic variables for flexible visualizations."
                 else:
                     check.current_level = 1
-                    check.explanation = "Limited dashboard usage, primarily basic resource monitoring without comprehensive operational visibility or systematic visualization strategies."
+                    check.explanation = "No dashboards detected. Limited or no dashboard usage for operational visibility. Create CloudWatch dashboards to visualize metrics, logs, and alarms for better operational awareness."
             
             elif check.question_id == 12:  # How adaptive are your alarm thresholds?
                 anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
@@ -3600,6 +3606,78 @@ class ComprehensiveObservabilityAssessment:
             f.write(html_content)
         
         print(f"📊 HTML report saved to: {self.html_file}")
+
+    def get_discovery_checks_for_question(self, question_id: int) -> list:
+        """Return discovery check names needed for a given assessment question."""
+        mapping = {
+            1: [  # How do you collect logs?
+                "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)",
+                "What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?",
+                "What percentage of Lambda functions use JSON structured logging?",
+                "What percentage of ECS tasks use structured logging (JSON)?",
+                "Are all five EKS control plane log types enabled (api, audit, authenticator, controllerManager, scheduler)?",
+                "Is the EKS CloudWatch Observability add-on deployed with Container Insights and Application Signals enabled?",
+                "What percentage of application logs use structured JSON format for easier parsing and analysis?",
+                "Have you implemented Cross-Account and Cross-Region Log Centralization?",
+                "Are you using CloudWatch cross-account observability?",
+                "Have you enabled anomaly detection?",
+            ],
+        }
+        return mapping.get(question_id, [])
+
+    def run_single_question(self, question_id: int):
+        """Run only the discovery checks relevant to a specific assessment question and score it."""
+        print(f"🔍 Running Assessment Question #{question_id}")
+        print("=" * 60)
+
+        self.setup_discovery_checks()
+
+        identity = self.run_aws_command("aws sts get-caller-identity --output json")
+        if not identity:
+            print("❌ Error: Could not get AWS identity")
+            return
+        self.results.account_id = identity.get('Account', 'Unknown')
+        self.results.user_arn = identity.get('Arn', 'Unknown')
+
+        # Run only relevant discovery checks
+        needed_names = self.get_discovery_checks_for_question(question_id)
+        if not needed_names:
+            print(f"❌ No discovery check mapping defined for question {question_id}")
+            return
+
+        relevant_checks = [c for c in self.results.discovery_checks if c.name in needed_names]
+        print(f"📋 Running {len(relevant_checks)} discovery checks for question {question_id}:\n")
+        for c in relevant_checks:
+            print(f"  🚀 #{c.id}: {c.name[:80]}...")
+            self.execute_discovery_check(c.id)
+            print(f"     Status: {'✅' if c.status == 'success' else '❌'}")
+
+        # Setup and run maturity assessment
+        self.setup_assessment_questions()
+        category_map = {1: 'Logs', 2: 'Logs', 3: 'Logs', 4: 'Logs',
+                        5: 'Metrics', 6: 'Metrics', 7: 'Metrics',
+                        8: 'Traces', 9: 'Traces',
+                        10: 'Dashboards & Alerting', 11: 'Dashboards & Alerting', 12: 'Dashboards & Alerting',
+                        13: 'Organization', 14: 'Organization', 15: 'Organization', 16: 'Organization', 17: 'Organization'}
+        cat = category_map.get(question_id)
+        if cat == 'Logs':
+            self.assess_logs_maturity()
+        elif cat == 'Metrics':
+            self.assess_metrics_maturity()
+        elif cat == 'Traces':
+            self.assess_traces_maturity()
+        elif cat == 'Dashboards & Alerting':
+            self.assess_dashboards_alarms_maturity()
+        elif cat == 'Organization':
+            self.assess_organization_maturity()
+
+        q = next((c for c in self.results.assessment_checks if c.question_id == question_id), None)
+        if q:
+            print(f"\n{'=' * 60}")
+            print(f"📊 Question {question_id}: {q.question}")
+            print(f"   Level: {q.current_level}/4 — {q.maturity_descriptions.get(q.current_level, '')}")
+            print(f"   Explanation: {q.explanation}")
+        print("\n✅ Single question assessment complete!")
 
     def run_single_check(self, check_id: int):
         """Run a single discovery check and output to console"""
@@ -4395,6 +4473,7 @@ def main():
     parser.add_argument('--profile', help='AWS profile to use')
     parser.add_argument('--region', default='us-west-2', help='AWS region')
     parser.add_argument('--single-check', type=int, help='Run only a specific check by ID (outputs to console)')
+    parser.add_argument('--single-question', type=int, help='Run only discovery checks for a specific question (1-17) and score it')
     
     args = parser.parse_args()
     
@@ -4402,6 +4481,8 @@ def main():
     
     if args.single_check:
         assessment.run_single_check(args.single_check)
+    elif args.single_question:
+        assessment.run_single_question(args.single_question)
     else:
         assessment.run_assessment()
 
