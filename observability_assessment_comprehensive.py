@@ -2781,38 +2781,59 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = f"Minimal log collection detected {evidence_refs}."
             
             elif check.question_id == 2:  # How do you use logs?
-                # Map to discovery checks for log usage
+                # Discovery checks for log usage
+                query_definitions_check = next((c for c in self.results.discovery_checks if c.name == "Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?"), None)
                 metric_filters_check = next((c for c in self.results.discovery_checks if c.name == "Have you created metric filters to extract KPIs from logs?"), None)
-                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 anomaly_detection_check = next((c for c in self.results.discovery_checks if c.name == "Have you enabled anomaly detection?"), None)
-                
-                check.evidence_check_ids = [c.id for c in [metric_filters_check, subscription_filters_check, anomaly_detection_check] if c]
-                
-                usage_capabilities = []
-                if metric_filters_check and metric_filters_check.result and metric_filters_check.result.get('metricFilters'):
-                    filter_count = len(metric_filters_check.result.get('metricFilters', []))
-                    usage_capabilities.append(f"{filter_count} metric filters for automated monitoring")
-                
-                if subscription_filters_check and subscription_filters_check.result:
-                    groups_with_filters = subscription_filters_check.result.get('groups_with_subscription_filters', 0)
-                    if groups_with_filters > 0:
-                        usage_capabilities.append(f"{groups_with_filters} log groups with subscription filters for real-time processing")
-                
-                if anomaly_detection_check and anomaly_detection_check.status == 'success':
-                    usage_capabilities.append("log anomaly detection configured")
-                
-                if len(usage_capabilities) >= 3:
+                structured_json_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of application logs use structured JSON format for easier parsing and analysis?"), None)
+                field_indexes_check = next((c for c in self.results.discovery_checks if c.name == "Do you have field index policies configured for faster log queries?"), None)
+                devops_agent_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"), None)
+                lambda_json_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of Lambda functions use JSON structured logging?"), None)
+                ecs_json_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of ECS tasks use structured logging (JSON)?"), None)
+
+                check.evidence_check_ids = [c.id for c in [query_definitions_check, metric_filters_check, anomaly_detection_check, structured_json_check, field_indexes_check, devops_agent_check, lambda_json_check, ecs_json_check] if c]
+
+                has_saved_queries = query_definitions_check and query_definitions_check.result and query_definitions_check.result.get('queryDefinitions')
+                has_metric_filters = metric_filters_check and metric_filters_check.result and metric_filters_check.result.get('metricFilters')
+                has_anomaly_detection = anomaly_detection_check and anomaly_detection_check.status == 'success'
+                has_structured_json = (structured_json_check and isinstance(structured_json_check.result, dict) and structured_json_check.result.get('json_groups', 0) > 0) or \
+                    (lambda_json_check and isinstance(lambda_json_check.result, dict) and lambda_json_check.result.get('json_logging_count', 0) > 0) or \
+                    (ecs_json_check and isinstance(ecs_json_check.result, dict) and ecs_json_check.result.get('json_logging_count', 0) > 0)
+                has_field_indexes = field_indexes_check and isinstance(field_indexes_check.result, dict) and field_indexes_check.result.get('indexed_log_groups', 0) > 0
+                has_devops_agent = devops_agent_check and isinstance(devops_agent_check.result, dict) and devops_agent_check.result.get('total_spaces', 0) > 0
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                capabilities = []
+                if has_saved_queries:
+                    q_count = len(query_definitions_check.result['queryDefinitions'])
+                    capabilities.append(f"{q_count} saved Logs Insights queries")
+                if has_metric_filters:
+                    mf_count = len(metric_filters_check.result['metricFilters'])
+                    capabilities.append(f"{mf_count} metric filters")
+                if has_anomaly_detection: capabilities.append("log anomaly detection")
+                if has_structured_json: capabilities.append("structured JSON logging")
+                if has_field_indexes: capabilities.append("field index policies")
+                if has_devops_agent: capabilities.append("DevOps Agent for AI-assisted troubleshooting")
+
+                # L4: Automated resolution — anomaly detection + metric filters (logs→metrics→alarms) + AI resolution
+                if has_anomaly_detection and has_metric_filters and has_devops_agent:
+                    check.current_level = 4
+                    check.explanation = f"Automated resolution and MTTR reduction with {', '.join(capabilities)}. Logs drive automated alerting via metric filters, anomaly detection identifies issues proactively, and DevOps Agent enables AI-assisted resolution {evidence_refs}."
+                # L3: Automated correlation and anomaly detection
+                elif has_anomaly_detection and (has_metric_filters or has_saved_queries):
                     check.current_level = 3
-                    check.explanation = f"Advanced log usage with {', '.join(usage_capabilities)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This enables automated correlation and anomaly detection, moving beyond structured queries to proactive log analysis with automated insights and correlation patterns."
-                elif len(usage_capabilities) >= 2:
+                    check.explanation = f"Automated correlation and anomaly detection with {', '.join(capabilities)}. Anomaly detection proactively identifies issues while structured analysis capabilities enable faster root cause identification {evidence_refs}."
+                # L2: Structured queries with faster analysis
+                elif has_saved_queries or has_metric_filters or (has_structured_json and has_field_indexes):
                     check.current_level = 2
-                    check.explanation = f"Structured log usage with {', '.join(usage_capabilities)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This enables structured queries with faster analysis, moving beyond basic manual log searches to automated monitoring and alerting based on log patterns."
-                elif len(usage_capabilities) >= 1:
-                    check.current_level = 2
-                    check.explanation = f"Basic structured log usage with {', '.join(usage_capabilities)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). Foundation for log analysis and monitoring."
+                    check.explanation = f"Structured queries with faster analysis using {', '.join(capabilities)}. Repeatable analysis patterns and log-derived metrics enable faster troubleshooting beyond manual searches {evidence_refs}."
+                # L1: Manual log searches
                 else:
                     check.current_level = 1
-                    check.explanation = "Log usage appears limited to basic manual searches and troubleshooting. No evidence of structured log analysis, automated monitoring patterns, or real-time log processing."
+                    if capabilities:
+                        check.explanation = f"Basic log usage with {', '.join(capabilities)}. Limited structured analysis — primarily manual log searches for troubleshooting {evidence_refs}."
+                    else:
+                        check.explanation = f"Log usage limited to manual searches and basic queries. No saved queries, metric filters, or anomaly detection detected {evidence_refs}."
             
             elif check.question_id == 3:  # How do you access logs?
                 # Map to discovery checks for log access
@@ -3621,6 +3642,16 @@ class ComprehensiveObservabilityAssessment:
                 "Have you implemented Cross-Account and Cross-Region Log Centralization?",
                 "Are you using CloudWatch cross-account observability?",
                 "Have you enabled anomaly detection?",
+            ],
+            2: [  # How do you use logs?
+                "Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?",
+                "Have you created metric filters to extract KPIs from logs?",
+                "Have you enabled anomaly detection?",
+                "What percentage of application logs use structured JSON format for easier parsing and analysis?",
+                "What percentage of Lambda functions use JSON structured logging?",
+                "What percentage of ECS tasks use structured logging (JSON)?",
+                "Do you have field index policies configured for faster log queries?",
+                "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
             ],
         }
         return mapping.get(question_id, [])
