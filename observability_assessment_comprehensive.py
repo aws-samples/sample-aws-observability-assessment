@@ -2838,7 +2838,7 @@ class ComprehensiveObservabilityAssessment:
             elif check.question_id == 3:  # How do you access logs?
                 # Discovery checks for log access
                 log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
-                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and c.category == "Logs"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Logs" in c.category), None)
                 subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
                 oam_check = next((c for c in self.results.discovery_checks if c.name == "Are you using CloudWatch cross-account observability?"), None)
@@ -2894,98 +2894,61 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = f"Minimal log access detected. No centralized collection or access mechanisms found {evidence_refs}."
             
             elif check.question_id == 4:  # What is your log retention policy?
-                # Map to discovery checks for log retention
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
+                # Discovery checks for log retention
                 top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
                 export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
-                tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
-                
-                check.evidence_check_ids = [c.id for c in [log_groups_check, top_groups_retention_check, export_tasks_check, tags_check] if c]
-                
-                retention_mechanisms = []
-                
-                # Check top 10 largest log groups retention policies
+                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
+                centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
+                tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?" and "Logs" in c.category), None)
+
+                check.evidence_check_ids = [c.id for c in [top_groups_retention_check, export_tasks_check, subscription_filters_check, centralization_check, tags_check] if c]
+
+                # Analyze retention coverage from top 10 largest log groups
+                retention_ratio = 0.0
+                total_groups_checked = 0
+                groups_with_retention = 0
                 if top_groups_retention_check and top_groups_retention_check.result:
                     groups_with_retention = top_groups_retention_check.result.get('groups_with_retention', 0)
-                    total_size_gb = top_groups_retention_check.result.get('total_size_gb', 0)
-                    if groups_with_retention > 0:
-                        retention_mechanisms.append(f"retention policies on {groups_with_retention}/10 largest log groups ({total_size_gb:.1f} GB)")
-                
-                if log_groups_check and log_groups_check.result and log_groups_check.result.get('logGroups'):
-                    # Check if log groups have retention policies
-                    groups_with_retention = [lg for lg in log_groups_check.result.get('logGroups', []) if lg.get('retentionInDays')]
-                    if groups_with_retention:
-                        retention_mechanisms.append(f"retention policies on {len(groups_with_retention)} total log groups")
-                
-                if export_tasks_check and export_tasks_check.status == 'success':
-                    retention_mechanisms.append("log export tasks for archival")
-                
-                if tags_check and tags_check.result and tags_check.result.get('ResourceTagMappingList'):
-                    retention_mechanisms.append("resource tagging for governance")
-                
-                if len(retention_mechanisms) >= 2:
+                    total_groups_checked = len(top_groups_retention_check.result.get('top_log_groups', []))
+                    if total_groups_checked > 0:
+                        retention_ratio = groups_with_retention / total_groups_checked
+
+                has_export_tasks = export_tasks_check and isinstance(export_tasks_check.result, dict) and export_tasks_check.result.get('exported_log_groups', 0) > 0
+                has_subscription_archival = subscription_filters_check and isinstance(subscription_filters_check.result, dict) and subscription_filters_check.result.get('groups_with_subscription_filters', 0) > 0
+                has_centralization = centralization_check and centralization_check.status == 'success'
+                has_archival = has_export_tasks or has_subscription_archival or has_centralization
+                has_tags = tags_check and isinstance(tags_check.result, dict) and len(tags_check.result.get('ResourceTagMappingList', [])) > 0
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                capabilities = []
+                if total_groups_checked > 0:
+                    capabilities.append(f"retention policies on {groups_with_retention}/{total_groups_checked} largest log groups ({retention_ratio:.0%} coverage)")
+                if has_export_tasks:
+                    capabilities.append(f"export tasks on {export_tasks_check.result.get('exported_log_groups', 0)} log groups")
+                if has_subscription_archival:
+                    capabilities.append(f"subscription filters on {subscription_filters_check.result.get('groups_with_subscription_filters', 0)} log groups for streaming/archival")
+                if has_centralization: capabilities.append("cross-account/region log centralization")
+                if has_tags: capabilities.append(f"resource tagging ({len(tags_check.result.get('ResourceTagMappingList', []))} tagged resources)")
+
+                # L4: Easy retrieval with metadata-based search (high retention coverage + archival + tagging)
+                if retention_ratio >= 0.75 and has_archival and has_tags:
+                    check.current_level = 4
+                    check.explanation = f"Comprehensive retention strategy with {', '.join(capabilities)}. High retention coverage combined with archival pipelines and resource tagging enables metadata-based search and easy retrieval {evidence_refs}."
+                # L3: Automated archival with cost optimization (good retention + archival)
+                elif retention_ratio >= 0.50 and has_archival:
+                    check.current_level = 3
+                    check.explanation = f"Automated archival with cost optimization via {', '.join(capabilities)}. Retention policies combined with archival mechanisms (export/subscription/centralization) provide tiered storage for cost optimization {evidence_refs}."
+                # L2: Enterprise-wide compliance-based policies (retention policies on majority of groups)
+                elif retention_ratio >= 0.50:
                     check.current_level = 2
-                    check.explanation = f"Structured log retention approach with {', '.join(retention_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This indicates enterprise-wide compliance-based policies for log lifecycle management and cost optimization through automated archival strategies."
-                elif len(retention_mechanisms) >= 1:
-                    check.current_level = 2
-                    check.explanation = f"Basic retention management with {', '.join(retention_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). Foundation for compliance and cost control."
+                    check.explanation = f"Enterprise-wide retention policies with {', '.join(capabilities)}. Consistent retention settings across major log groups indicate compliance-based lifecycle management {evidence_refs}."
+                # L1: Disparate retention policies
+                elif groups_with_retention > 0:
+                    check.current_level = 1
+                    check.explanation = f"Partial retention coverage with {', '.join(capabilities)}. Some log groups have retention policies but coverage is below 50%, indicating disparate department-level policies {evidence_refs}."
                 else:
                     check.current_level = 1
-                    check.explanation = "Log retention appears to use default settings without enterprise-wide policy coordination, compliance-driven retention strategies, or systematic cost optimization approaches."
-                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
-                subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
-                
-                check.evidence_check_ids = [c.id for c in [log_groups_check, dashboards_check, subscription_filters_check] if c]
-                
-                access_mechanisms = []
-                if log_groups_check and log_groups_check.result and log_groups_check.result.get('logGroups'):
-                    log_count = len(log_groups_check.result.get('logGroups', []))
-                    access_mechanisms.append(f"centralized access to {log_count} log groups")
-                
-                if dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries'):
-                    dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
-                    access_mechanisms.append(f"{dashboard_count} dashboards for visualization")
-                
-                if subscription_filters_check and subscription_filters_check.result:
-                    access_mechanisms.append("subscription filters for cross-service access")
-                
-                if len(access_mechanisms) >= 2:
-                    check.current_level = 2
-                    check.explanation = f"Enterprise-wide log access established through {', '.join(access_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This provides comprehensive visibility into application and infrastructure logs with appropriate access controls and visualization capabilities."
-                elif len(access_mechanisms) >= 1:
-                    check.current_level = 2
-                    check.explanation = f"Centralized log access through {', '.join(access_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). Good foundation for enterprise visibility."
-                else:
-                    check.current_level = 1
-                    check.explanation = "Log access appears fragmented across different systems without centralized management, unified access patterns, or comprehensive visualization capabilities."
-            
-            elif check.question_id == 4:  # What is your log retention policy?
-                # Required checks: CloudWatch retention settings, S3 lifecycle policies, Compliance tagging, Cost optimization
-                log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
-                tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
-                
-                check.evidence_check_ids = [c.id for c in [log_groups_check, tags_check] if c]
-                
-                retention_mechanisms = []
-                
-                if log_groups_check and log_groups_check.result and log_groups_check.result.get('logGroups'):
-                    # Check if log groups have retention policies
-                    groups_with_retention = [lg for lg in log_groups_check.result.get('logGroups', []) if lg.get('retentionInDays')]
-                    if groups_with_retention:
-                        retention_mechanisms.append(f"retention policies on {len(groups_with_retention)} log groups")
-                
-                if tags_check and tags_check.result and tags_check.result.get('ResourceTagMappingList'):
-                    retention_mechanisms.append("resource tagging for governance")
-                
-                if len(retention_mechanisms) >= 2:
-                    check.current_level = 2
-                    check.explanation = f"Structured log retention approach with {', '.join(retention_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This indicates enterprise-wide compliance-based policies for log lifecycle management and cost optimization."
-                elif len(retention_mechanisms) >= 1:
-                    check.current_level = 2
-                    check.explanation = f"Basic retention management with {', '.join(retention_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). Foundation for compliance and cost control."
-                else:
-                    check.current_level = 1
-                    check.explanation = "Log retention appears to use default settings without enterprise-wide policy coordination, compliance-driven retention strategies, or systematic cost optimization approaches."
+                    check.explanation = f"No retention policies detected on largest log groups. Logs may be using default 'Never expire' settings, leading to uncontrolled storage costs {evidence_refs}."
 
     def assess_metrics_maturity(self):
         """Assess metrics maturity based on discovery checks"""
@@ -3683,6 +3646,13 @@ class ComprehensiveObservabilityAssessment:
                 "Have you enabled anomaly detection?",
                 "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
                 "Have you configured CloudWatch Investigations action for any alarms?",
+            ],
+            4: [  # What is your log retention policy?
+                "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?",
+                "Do you have log export tasks configured for archival?",
+                "What percentage of log groups have subscription filters for real-time processing?",
+                "Have you implemented Cross-Account and Cross-Region Log Centralization?",
+                "Do you use resource tags for organizing and managing AWS resources?",
             ],
         }
         return mapping.get(question_id, [])
