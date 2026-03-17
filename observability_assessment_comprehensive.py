@@ -2956,73 +2956,151 @@ class ComprehensiveObservabilityAssessment:
         
         for check in metrics_checks:
             if check.question_id == 5:  # What type of metrics do you collect?
+                # Discovery checks for metrics collection
                 custom_metrics_check = next((c for c in self.results.discovery_checks if c.name == "Are you publishing custom business and application metrics to CloudWatch?"), None)
-                
-                check.evidence_check_ids = [c.id for c in [custom_metrics_check] if c]
-                
-                has_infrastructure = False  # No longer checking EC2
-                
-                has_custom = custom_metrics_check and custom_metrics_check.result and isinstance(custom_metrics_check.result, dict) and any(
-                    not m.get('Namespace', '').startswith('AWS/') 
-                    for m in custom_metrics_check.result.get('Metrics', [])
-                )
-                
+                ec2_detailed_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?"), None)
+                ecs_monitoring_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of ECS Clusters have monitoring enabled?"), None)
+                ecs_insights_check = next((c for c in self.results.discovery_checks if c.name == "Do you have ECS clusters with Container Insights enabled?"), None)
+                eks_addon_check = next((c for c in self.results.discovery_checks if c.name == "Do you have EKS clusters with CloudWatch Observability add-on enabled?"), None)
+                lambda_insights_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?"), None)
+                cwagent_check = next((c for c in self.results.discovery_checks if c.name == "Are CloudWatch Agents configured to collect system-level metrics?"), None)
+                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS Application Signals to monitor application services?"), None)
+
+                check.evidence_check_ids = [c.id for c in [custom_metrics_check, ec2_detailed_check, ecs_monitoring_check, ecs_insights_check, eks_addon_check, lambda_insights_check, cwagent_check, app_signals_check] if c]
+
+                # Determine which compute types are in use
+                active_compute = set(self.largest_log_groups.keys()) if self.largest_log_groups else set()
+
+                # Check infrastructure metrics (enhanced monitoring per compute type)
+                infra_signals = []
+                if 'EC2' in active_compute:
+                    if ec2_detailed_check and ec2_detailed_check.result and isinstance(ec2_detailed_check.result, list) and len(ec2_detailed_check.result) > 0:
+                        infra_signals.append("EC2 detailed monitoring")
+                    if cwagent_check and cwagent_check.result and isinstance(cwagent_check.result, dict) and cwagent_check.result.get('Metrics'):
+                        infra_signals.append("CloudWatch Agent metrics")
+                if 'ECS' in active_compute:
+                    if ecs_insights_check and ecs_insights_check.result and isinstance(ecs_insights_check.result, dict):
+                        clusters = ecs_insights_check.result.get('clusters', [])
+                        if any(s.get('value') == 'enabled' for c in clusters for s in c.get('settings', []) if s.get('name') == 'containerInsights'):
+                            infra_signals.append("ECS Container Insights")
+                if 'EKS' in active_compute and eks_addon_check and eks_addon_check.result and isinstance(eks_addon_check.result, dict) and eks_addon_check.result.get('clusters_with_addon', 0) > 0:
+                    infra_signals.append("EKS CloudWatch Observability add-on")
+                if 'Lambda' in active_compute and lambda_insights_check and isinstance(lambda_insights_check.result, dict) and lambda_insights_check.result.get('insights_functions', 0) > 0:
+                    infra_signals.append("Lambda Insights")
+
+                has_custom = custom_metrics_check and isinstance(custom_metrics_check.result, dict) and any(
+                    not m.get('Namespace', '').startswith('AWS/') for m in custom_metrics_check.result.get('Metrics', []))
+                has_app_signals = app_signals_check and isinstance(app_signals_check.result, dict) and app_signals_check.result.get('Services')
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                capabilities = list(infra_signals)
                 if has_custom:
-                    custom_count = len([m for m in custom_metrics_check.result.get('Metrics', []) 
-                                      if not m.get('Namespace', '').startswith('AWS/')])
+                    custom_count = len([m for m in custom_metrics_check.result.get('Metrics', []) if not m.get('Namespace', '').startswith('AWS/')])
+                    capabilities.append(f"{custom_count} custom metrics")
+                if has_app_signals:
+                    capabilities.append(f"Application Signals ({len(app_signals_check.result['Services'])} services)")
+
+                # L4: Infrastructure + application + custom + dimensions/app signals
+                if has_custom and has_app_signals and infra_signals:
+                    check.current_level = 4
+                    check.explanation = f"Comprehensive metrics with {', '.join(capabilities)}. Infrastructure, application, and custom metrics with Application Signals providing dimensional metadata for diagnosing issues {evidence_refs}."
+                # L3: Infrastructure + application + custom metrics
+                elif has_custom and infra_signals:
                     check.current_level = 3
-                    check.explanation = f"Comprehensive metrics collection is implemented with {custom_count} custom metrics (Check #{custom_metrics_check.id}). This indicates mature monitoring covering infrastructure, applications, and business-specific metrics."
-                elif has_infrastructure:
+                    check.explanation = f"Infrastructure, application, and custom metrics with {', '.join(capabilities)} {evidence_refs}."
+                # L2: Infrastructure + application metrics (enhanced monitoring)
+                elif infra_signals:
                     check.current_level = 2
-                    check.explanation = f"Infrastructure and application metrics are collected from AWS services. This provides good coverage of system performance and application health metrics."
+                    check.explanation = f"Infrastructure and application metrics via {', '.join(capabilities)} {evidence_refs}."
+                # L1: Basic infrastructure metrics only
                 else:
                     check.current_level = 1
-                    check.explanation = "Limited metrics collection detected, primarily basic infrastructure monitoring without comprehensive application or custom business metrics."
+                    check.explanation = f"Basic infrastructure metrics only. No enhanced monitoring, custom metrics, or application-level metrics detected {evidence_refs}."
             
             elif check.question_id == 6:  # How do you use metrics?
-                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
-                alarms_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Alarms"), None)
-                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
-                
-                check.evidence_check_ids = [c.id for c in [dashboards_check, alarms_check, anomaly_check] if c]
-                
-                has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('AnomalyDetectors')
-                has_alarms = alarms_check and alarms_check.result and (alarms_check.result.get('MetricAlarms') or alarms_check.result.get('CompositeAlarms'))
-                has_dashboards = dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries')
-                
-                if has_anomaly:
-                    anomaly_count = len(anomaly_check.result.get('AnomalyDetectors', []))
+                # Discovery checks for metrics usage
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Metrics" in c.category), None)
+                alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
+                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
+                devops_agent_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"), None)
+
+                check.evidence_check_ids = [c.id for c in [dashboards_check, alarms_check, anomaly_check, devops_agent_check] if c]
+
+                has_dashboards = dashboards_check and isinstance(dashboards_check.result, dict) and dashboards_check.result.get('DashboardEntries')
+                has_alarms = alarms_check and isinstance(alarms_check.result, dict) and (alarms_check.result.get('MetricAlarms') or alarms_check.result.get('CompositeAlarms'))
+                has_anomaly = anomaly_check and isinstance(anomaly_check.result, dict) and anomaly_check.result.get('total_bands', 0) > 0
+                has_devops_agent = devops_agent_check and isinstance(devops_agent_check.result, dict) and devops_agent_check.result.get('total_spaces', 0) > 0
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                capabilities = []
+                if has_dashboards: capabilities.append(f"{len(dashboards_check.result['DashboardEntries'])} dashboards")
+                if has_alarms:
+                    alarm_count = len(alarms_check.result.get('MetricAlarms', [])) + len(alarms_check.result.get('CompositeAlarms', []))
+                    capabilities.append(f"{alarm_count} alarms")
+                if has_anomaly: capabilities.append(f"{anomaly_check.result.get('total_bands', 0)} anomaly detectors")
+                if has_devops_agent: capabilities.append("DevOps Agent")
+
+                # L4: AI/ML capabilities (anomaly detection + DevOps Agent)
+                if has_anomaly and has_devops_agent:
                     check.current_level = 4
-                    check.explanation = f"Advanced metrics usage with AI/ML capabilities implemented through {anomaly_count} anomaly detectors (Check #{anomaly_check.id}), complemented by dashboards and alarms (Checks #{dashboards_check.id if dashboards_check else 'N/A'}, #{alarms_check.id if alarms_check else 'N/A'}). This enables proactive issue identification and automated anomaly detection."
-                elif has_alarms and has_dashboards:
-                    alarm_count = len(alarms_check.result.get('MetricAlarms', []) + alarms_check.result.get('CompositeAlarms', []))
-                    dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
+                    check.explanation = f"AI/ML-driven metrics usage with {', '.join(capabilities)}. Proactive issue identification via anomaly detection and AI-assisted troubleshooting {evidence_refs}."
+                # L3: Automation and anomaly detection
+                elif has_anomaly and has_alarms:
+                    check.current_level = 3
+                    check.explanation = f"Automated metrics usage with {', '.join(capabilities)}. Anomaly detection drives corrective action with high signal-to-noise ratio {evidence_refs}."
+                # L2: Dashboards + alarms for operational visibility
+                elif has_dashboards and has_alarms:
                     check.current_level = 2
-                    check.explanation = f"Structured metrics usage with {dashboard_count} dashboards for operational visibility (Check #{dashboards_check.id}) and {alarm_count} alarms for reactive monitoring (Check #{alarms_check.id}). This provides good operational awareness and manual response capabilities."
+                    check.explanation = f"Operational visibility with {', '.join(capabilities)}. Dashboards and alarms enable manual reaction to issues {evidence_refs}."
+                # L1: Manual exploration
                 else:
                     check.current_level = 1
-                    check.explanation = "Basic metrics usage limited to manual exploration and ad-hoc analysis without systematic dashboards or automated alerting."
+                    check.explanation = f"Manual metrics exploration. {'Found ' + ', '.join(capabilities) + ' but' if capabilities else 'No dashboards or alarms detected —'} limited systematic usage {evidence_refs}."
             
             elif check.question_id == 7:  # How do you access metrics?
-                metrics_check = None
+                # Discovery checks for metrics access
                 streams_check = next((c for c in self.results.discovery_checks if c.name == "Have you configured metric streams for real-time export to third-party tools or data lakes?"), None)
-                
-                check.evidence_check_ids = [c.id for c in [metrics_check, streams_check] if c]
-                
-                has_streams = streams_check and streams_check.result and streams_check.result.get('Entries')
-                has_metrics = metrics_check and metrics_check.result and metrics_check.result.get('Metrics')
-                
-                if has_streams:
-                    stream_count = len(streams_check.result.get('Entries', []))
+                oam_check = next((c for c in self.results.discovery_checks if c.name == "Are you using CloudWatch cross-account observability?"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Metrics" in c.category), None)
+                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
+                devops_agent_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"), None)
+
+                check.evidence_check_ids = [c.id for c in [streams_check, oam_check, dashboards_check, anomaly_check, devops_agent_check] if c]
+
+                has_streams = streams_check and isinstance(streams_check.result, dict) and streams_check.result.get('Entries')
+                has_oam = oam_check and isinstance(oam_check.result, dict) and (oam_check.result.get('links_count', 0) > 0 or oam_check.result.get('sinks_count', 0) > 0)
+                has_dashboards = dashboards_check and isinstance(dashboards_check.result, dict) and dashboards_check.result.get('DashboardEntries')
+                has_anomaly = anomaly_check and isinstance(anomaly_check.result, dict) and anomaly_check.result.get('total_bands', 0) > 0
+                has_devops_agent = devops_agent_check and isinstance(devops_agent_check.result, dict) and devops_agent_check.result.get('total_spaces', 0) > 0
+                has_enterprise_access = has_streams or has_oam
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                capabilities = []
+                if has_dashboards: capabilities.append(f"{len(dashboards_check.result['DashboardEntries'])} dashboards")
+                if has_streams: capabilities.append(f"{len(streams_check.result['Entries'])} metric streams")
+                if has_oam: capabilities.append("cross-account observability (OAM)")
+                if has_anomaly: capabilities.append("anomaly detection")
+                if has_devops_agent: capabilities.append("DevOps Agent")
+
+                # L4: Automated insights with proactive root cause
+                if has_enterprise_access and has_anomaly and has_devops_agent:
+                    check.current_level = 4
+                    check.explanation = f"Centralized metrics with automated insights via {', '.join(capabilities)}. Proactive root cause identification with AI-assisted resolution {evidence_refs}."
+                # L3: Correlation and anomaly detection
+                elif has_enterprise_access and has_anomaly:
                     check.current_level = 3
-                    check.explanation = f"Advanced metrics access with {stream_count} metric streams configured (Check #{streams_check.id}), enabling real-time data export and correlation capabilities. This supports sophisticated analytics and cross-service correlation."
-                elif has_metrics:
-                    metric_count = len(metrics_check.result.get('Metrics', []))
+                    check.explanation = f"Centralized metrics with correlation via {', '.join(capabilities)}. Anomaly detection enables immediate root cause determination {evidence_refs}."
+                # L2: Enterprise-wide visibility
+                elif has_dashboards and has_enterprise_access:
                     check.current_level = 2
-                    check.explanation = f"Centralized metrics access through CloudWatch with {metric_count} metrics available (Check #{metrics_check.id}), providing enterprise-wide visibility for analysis and troubleshooting across multiple services and applications."
+                    check.explanation = f"Enterprise-wide metrics visibility with {', '.join(capabilities)}. Teams can analyze and troubleshoot across data sources {evidence_refs}."
+                # L1: Basic centralized collection
+                elif has_dashboards:
+                    check.current_level = 1
+                    check.explanation = f"Basic centralized metrics access with {', '.join(capabilities)}. Lacks cross-account streaming or unified enterprise access {evidence_refs}."
                 else:
                     check.current_level = 1
-                    check.explanation = "Basic metrics access without centralized management or unified visibility across services."
+                    check.explanation = f"Basic metrics access without centralized management or unified visibility {evidence_refs}."
 
     def assess_traces_maturity(self):
         """Assess traces maturity based on discovery checks"""
@@ -3079,7 +3157,7 @@ class ComprehensiveObservabilityAssessment:
             elif check.question_id == 9:  # How do you use traces?
                 xray_check = next((c for c in self.results.discovery_checks if c.name == "Do you use X-Ray service maps to visualize application architecture?"), None)
                 insights_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray Insights configured for anomaly detection?"), None)
-                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Application Signals Services"), None)
+                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS Application Signals to monitor application services?"), None)
                 groups_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray groups configured for focused trace analysis?"), None)
                 transaction_search_check = next((c for c in self.results.discovery_checks if c.name == "Do you have transaction search enabled?"), None)
                 
@@ -3127,16 +3205,18 @@ class ComprehensiveObservabilityAssessment:
         
         for check in dashboard_checks:
             if check.question_id == 10:  # How do you use alarms?
-                alarms_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Alarms"), None)
+                alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
                 composite_check = next((c for c in self.results.discovery_checks if c.name == "Do you use composite alarms to reduce alarm noise?"), None)
-                sns_check = next((c for c in self.results.discovery_checks if c.name == "SNS Topics"), None)
-                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
+                sns_check = next((c for c in self.results.discovery_checks if c.name == "Do your alarms send notifications to SNS topics?"), None)
+                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
+                investigations_check = next((c for c in self.results.discovery_checks if c.name == "Have you configured CloudWatch Investigations action for any alarms?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [alarms_check, composite_check, anomaly_check] if c]
+                check.evidence_check_ids = [c.id for c in [alarms_check, composite_check, sns_check, anomaly_check, investigations_check] if c]
                 
-                has_composite = composite_check and composite_check.result and composite_check.result.get('CompositeAlarms')
-                has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('AnomalyDetectors')
-                has_basic_alarms = alarms_check and alarms_check.result and alarms_check.result.get('MetricAlarms')
+                has_composite = composite_check and isinstance(composite_check.result, dict) and composite_check.result.get('CompositeAlarms')
+                has_anomaly = anomaly_check and isinstance(anomaly_check.result, dict) and anomaly_check.result.get('total_bands', 0) > 0
+                has_basic_alarms = alarms_check and isinstance(alarms_check.result, dict) and alarms_check.result.get('MetricAlarms')
+                has_sns = sns_check and isinstance(sns_check.result, dict) and sns_check.result.get('alarms_with_sns', 0) > 0
                 
                 if has_composite:
                     composite_count = len(composite_check.result.get('CompositeAlarms', []))
@@ -3144,7 +3224,7 @@ class ComprehensiveObservabilityAssessment:
                     check.current_level = 4
                     check.explanation = f"Advanced alarm strategy with {composite_count} composite alarms (Check #{composite_check.id}) aggregating {metric_count} metric alarms (Check #{alarms_check.id if alarms_check else 'N/A'}). This creates summarized health indicators reducing alarm noise and enabling actions at an aggregated application level."
                 elif has_anomaly and has_basic_alarms:
-                    anomaly_count = len(anomaly_check.result.get('AnomalyDetectors', []))
+                    anomaly_count = anomaly_check.result.get('total_bands', 0)
                     alarm_count = len(alarms_check.result.get('MetricAlarms', []))
                     check.current_level = 3
                     check.explanation = f"Sophisticated alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) complementing {alarm_count} traditional alarms (Check #{alarms_check.id}). This provides actionable alerts based on ML-driven anomaly detection that accounts for patterns and seasonality."
@@ -3157,9 +3237,9 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "Basic or no alerting infrastructure detected. Limited ability to proactively notify operators when metrics meet alarm triggers."
             
             elif check.question_id == 11:  # How do you use dashboards?
-                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
                 variables_check = next((c for c in self.results.discovery_checks if c.name == "Do you have dashboards configured with variables?"), None)
-                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Application Signals Services"), None)
+                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS Application Signals to monitor application services?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [dashboards_check, variables_check, app_signals_check] if c]
                 
@@ -3196,16 +3276,16 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "No dashboards detected. Limited or no dashboard usage for operational visibility. Create CloudWatch dashboards to visualize metrics, logs, and alarms for better operational awareness."
             
             elif check.question_id == 12:  # How adaptive are your alarm thresholds?
-                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
-                alarms_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Alarms"), None)
+                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
+                alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [anomaly_check, alarms_check] if c]
                 
-                has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('AnomalyDetectors')
+                has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('total_bands', 0) > 0
                 has_alarms = alarms_check and alarms_check.result and alarms_check.result.get('MetricAlarms')
                 
                 if has_anomaly:
-                    anomaly_count = len(anomaly_check.result.get('AnomalyDetectors', []))
+                    anomaly_count = anomaly_check.result.get('total_bands', 0)
                     check.current_level = 4
                     check.explanation = f"Fully adaptive thresholds with {anomaly_count} ML-based anomaly detectors (Check #{anomaly_check.id}) that continuously analyze metrics, determine normal baselines, and surface anomalies with minimal user intervention. The system accounts for seasonality and trend changes automatically."
                 elif has_alarms:
@@ -3229,7 +3309,7 @@ class ComprehensiveObservabilityAssessment:
         
         for check in org_checks:
             if check.question_id == 13:  # Do you have an enterprise observability strategy?
-                tags_check = next((c for c in self.results.discovery_checks if c.name == "Resource Tags"), None)
+                tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?"), None)
                 
                 check.evidence_check_ids = [tags_check.id] if tags_check else []
                 
@@ -3255,9 +3335,8 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "No formal SLO implementation detected. May have team-level experimentation but lacks enterprise adoption for systematic reliability management."
             
             elif check.question_id == 15:  # Are you getting ROI from your observability tools?
-                # This is typically assessed through tool consolidation and cost optimization evidence
-                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
-                alarms_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Alarms"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
+                alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
                 
                 check.evidence_check_ids = [c.id for c in [dashboards_check, alarms_check] if c]
                 
@@ -3273,19 +3352,45 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "Limited evidence of ROI optimization. Observability tools may be present but without clear consolidation or cost optimization strategies."
             
             elif check.question_id == 16:  # Do you use any AI/ML capability today?
-                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Anomaly Detectors"), None)
-                
-                check.evidence_check_ids = [c.id for c in [anomaly_check] if c]
-                
-                has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('AnomalyDetectors')
-                
-                if has_anomaly:
-                    anomaly_count = len(anomaly_check.result.get('AnomalyDetectors', []))
+                anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
+                devops_agent_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"), None)
+                investigations_check = next((c for c in self.results.discovery_checks if c.name == "Have you configured CloudWatch Investigations action for any alarms?"), None)
+                log_anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Have you enabled anomaly detection?"), None)
+
+                check.evidence_check_ids = [c.id for c in [anomaly_check, devops_agent_check, investigations_check, log_anomaly_check] if c]
+
+                has_metric_anomaly = anomaly_check and isinstance(anomaly_check.result, dict) and anomaly_check.result.get('total_bands', 0) > 0
+                has_log_anomaly = log_anomaly_check and log_anomaly_check.status == 'success'
+                has_devops_agent = devops_agent_check and isinstance(devops_agent_check.result, dict) and devops_agent_check.result.get('total_spaces', 0) > 0
+                has_investigations = investigations_check and isinstance(investigations_check.result, dict) and investigations_check.result.get('alarms_with_investigations', 0) > 0
+                has_anomaly = has_metric_anomaly or has_log_anomaly
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                capabilities = []
+                if has_metric_anomaly: capabilities.append(f"{anomaly_check.result.get('total_bands', 0)} metric anomaly detectors")
+                if has_log_anomaly: capabilities.append("log anomaly detection")
+                if has_devops_agent: capabilities.append("DevOps Agent (NL query)")
+                if has_investigations: capabilities.append("CloudWatch Investigations")
+
+                # L4: Comprehensive AI/ML with real-time
+                if has_anomaly and has_devops_agent and has_investigations:
+                    check.current_level = 4
+                    check.explanation = f"Comprehensive AI/ML with {', '.join(capabilities)}. Real-time anomaly detection combined with AI-assisted troubleshooting and automated investigations {evidence_refs}."
+                # L3: Automatic correlation and patterns
+                elif has_anomaly and (has_devops_agent or has_investigations):
                     check.current_level = 3
-                    check.explanation = f"Active AI/ML capabilities with {anomaly_count} CloudWatch anomaly detectors (Check #{anomaly_check.id}), providing automatic correlation and pattern detection for proactive monitoring and alerting."
+                    check.explanation = f"Automatic correlation and patterns with {', '.join(capabilities)} {evidence_refs}."
+                # L2: Natural language query capability
+                elif has_devops_agent:
+                    check.current_level = 2
+                    check.explanation = f"Natural language query capability via {', '.join(capabilities)} {evidence_refs}."
+                # L1: No AI/ML features
+                elif has_anomaly:
+                    check.current_level = 2
+                    check.explanation = f"Basic AI/ML with {', '.join(capabilities)} but no natural language or automated investigation capabilities {evidence_refs}."
                 else:
                     check.current_level = 1
-                    check.explanation = "No AI/ML features detected in the observability stack. Reliance on traditional threshold-based monitoring without machine learning capabilities."
+                    check.explanation = f"No AI/ML features detected in the observability stack {evidence_refs}."
             
             elif check.question_id == 17:  # Do you have real end-user monitoring?
                 rum_check = next((c for c in self.results.discovery_checks if c.name == "Do you use CloudWatch RUM to monitor real user experiences?"), None)
@@ -3653,6 +3758,79 @@ class ComprehensiveObservabilityAssessment:
                 "What percentage of log groups have subscription filters for real-time processing?",
                 "Have you implemented Cross-Account and Cross-Region Log Centralization?",
                 "Do you use resource tags for organizing and managing AWS resources?",
+            ],
+            5: [  # What type of metrics do you collect?
+                "Are you publishing custom business and application metrics to CloudWatch?",
+                "What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?",
+                "What percentage of ECS Clusters have monitoring enabled?",
+                "Do you have ECS clusters with Container Insights enabled?",
+                "Do you have EKS clusters with CloudWatch Observability add-on enabled?",
+                "What percentage of Lambda functions have Lambda Insights enabled for enhanced metrics?",
+                "Are CloudWatch Agents configured to collect system-level metrics?",
+                "Do you use AWS Application Signals to monitor application services?",
+            ],
+            6: [  # How do you use metrics?
+                "Do you have CloudWatch dashboards for visualizing metrics and logs?",
+                "Do you have CloudWatch alarms configured for your resources?",
+                "Do you use anomaly detection models for adaptive alarming?",
+                "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
+            ],
+            7: [  # How do you access metrics?
+                "Have you configured metric streams for real-time export to third-party tools or data lakes?",
+                "Are you using CloudWatch cross-account observability?",
+                "Do you have CloudWatch dashboards for visualizing metrics and logs?",
+                "Do you use anomaly detection models for adaptive alarming?",
+                "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
+            ],
+            8: [  # How do you collect traces?
+                "Do you use X-Ray service maps to visualize application architecture?",
+                "Do your Lambda functions have X-Ray tracing enabled?",
+                "Do you have custom X-Ray sampling rules configured?",
+                "Do you have X-Ray groups configured for focused trace analysis?",
+                "Do you have transaction search enabled?",
+            ],
+            9: [  # How do you use traces?
+                "Do you use X-Ray service maps to visualize application architecture?",
+                "Do you have X-Ray Insights configured for anomaly detection?",
+                "Do you use AWS Application Signals to monitor application services?",
+                "Do you have X-Ray groups configured for focused trace analysis?",
+                "Do you have transaction search enabled?",
+            ],
+            10: [  # How do you use alarms?
+                "Do you have CloudWatch alarms configured for your resources?",
+                "Do you use composite alarms to reduce alarm noise?",
+                "Do your alarms send notifications to SNS topics?",
+                "Do you use anomaly detection models for adaptive alarming?",
+                "Have you configured CloudWatch Investigations action for any alarms?",
+            ],
+            11: [  # How do you use dashboards?
+                "Do you have CloudWatch dashboards for visualizing metrics and logs?",
+                "Do you have dashboards configured with variables?",
+                "Do you use AWS Application Signals to monitor application services?",
+            ],
+            12: [  # How adaptive are your alarm thresholds?
+                "Do you use anomaly detection models for adaptive alarming?",
+                "Do you have CloudWatch alarms configured for your resources?",
+            ],
+            13: [  # Do you have an enterprise observability strategy?
+                "Do you use resource tags for organizing and managing AWS resources?",
+            ],
+            14: [  # How do you use SLOs?
+                "Have you defined Service Level Objectives (SLOs) for critical application services?",
+            ],
+            15: [  # Are you getting ROI from your observability tools?
+                "Do you have CloudWatch dashboards for visualizing metrics and logs?",
+                "Do you have CloudWatch alarms configured for your resources?",
+            ],
+            16: [  # Do you use any AI/ML capability today?
+                "Do you use anomaly detection models for adaptive alarming?",
+                "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
+                "Have you configured CloudWatch Investigations action for any alarms?",
+                "Have you enabled anomaly detection?",
+            ],
+            17: [  # Do you have real end-user monitoring?
+                "Do you use CloudWatch RUM to monitor real user experiences?",
+                "Do you use CloudWatch Synthetics to monitor application endpoints?",
             ],
         }
         return mapping.get(question_id, [])
