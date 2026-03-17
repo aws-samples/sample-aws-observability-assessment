@@ -2836,41 +2836,62 @@ class ComprehensiveObservabilityAssessment:
                         check.explanation = f"Log usage limited to manual searches and basic queries. No saved queries, metric filters, or anomaly detection detected {evidence_refs}."
             
             elif check.question_id == 3:  # How do you access logs?
-                # Map to discovery checks for log access
+                # Discovery checks for log access
                 log_groups_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)"), None)
-                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "CloudWatch Dashboards"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and c.category == "Logs"), None)
                 subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
-                
-                check.evidence_check_ids = [c.id for c in [log_groups_check, dashboards_check, subscription_filters_check, centralization_check] if c]
-                
-                access_mechanisms = []
-                if log_groups_check and log_groups_check.result and log_groups_check.result.get('logGroups'):
-                    log_count = len(log_groups_check.result.get('logGroups', []))
-                    access_mechanisms.append(f"centralized access to {log_count} log groups")
-                
-                if dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries'):
-                    dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
-                    access_mechanisms.append(f"{dashboard_count} dashboards for visualization")
-                
-                if subscription_filters_check and subscription_filters_check.result:
-                    access_mechanisms.append("subscription filters for cross-service access")
-                
-                if centralization_check and centralization_check.status == 'success':
-                    access_mechanisms.append("centralized logging infrastructure")
-                
-                if len(access_mechanisms) >= 3:
+                oam_check = next((c for c in self.results.discovery_checks if c.name == "Are you using CloudWatch cross-account observability?"), None)
+                anomaly_detection_check = next((c for c in self.results.discovery_checks if c.name == "Have you enabled anomaly detection?"), None)
+                devops_agent_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"), None)
+                investigations_check = next((c for c in self.results.discovery_checks if c.name == "Have you configured CloudWatch Investigations action for any alarms?"), None)
+
+                check.evidence_check_ids = [c.id for c in [log_groups_check, dashboards_check, subscription_filters_check, centralization_check, oam_check, anomaly_detection_check, devops_agent_check, investigations_check] if c]
+
+                has_log_groups = log_groups_check and log_groups_check.result and log_groups_check.result.get('logGroups')
+                has_dashboards = dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries')
+                has_subscription_filters = subscription_filters_check and subscription_filters_check.result and subscription_filters_check.result.get('groups_with_subscription_filters', 0) > 0
+                has_centralization = centralization_check and centralization_check.status == 'success'
+                has_oam = oam_check and isinstance(oam_check.result, dict) and (oam_check.result.get('links_count', 0) > 0 or oam_check.result.get('sinks_count', 0) > 0)
+                has_anomaly_detection = anomaly_detection_check and anomaly_detection_check.status == 'success'
+                has_devops_agent = devops_agent_check and isinstance(devops_agent_check.result, dict) and devops_agent_check.result.get('total_spaces', 0) > 0
+                has_investigations = investigations_check and isinstance(investigations_check.result, dict) and investigations_check.result.get('alarms_with_investigations', 0) > 0
+                has_enterprise_access = has_centralization or has_oam or has_subscription_filters
+
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                capabilities = []
+                if has_dashboards: capabilities.append(f"{len(dashboards_check.result['DashboardEntries'])} dashboards")
+                if has_centralization: capabilities.append("cross-account/region log centralization")
+                if has_oam: capabilities.append("CloudWatch cross-account observability (OAM)")
+                if has_subscription_filters:
+                    sf_count = subscription_filters_check.result.get('groups_with_subscription_filters', 0)
+                    capabilities.append(f"{sf_count} log groups with subscription filters")
+                if has_anomaly_detection: capabilities.append("log anomaly detection")
+                if has_devops_agent: capabilities.append("DevOps Agent")
+                if has_investigations: capabilities.append("CloudWatch Investigations")
+
+                # L4: Automated insights with proactive root cause
+                if has_enterprise_access and has_anomaly_detection and (has_devops_agent or has_investigations):
+                    check.current_level = 4
+                    check.explanation = f"Automated insights with proactive root cause identification via {', '.join(capabilities)}. Enterprise-wide log access with anomaly detection and AI-assisted root cause analysis {evidence_refs}."
+                # L3: Single pane correlation and anomaly detection
+                elif has_enterprise_access and has_anomaly_detection:
                     check.current_level = 3
-                    check.explanation = f"Advanced log access with {', '.join(access_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This provides single pane correlation and anomaly detection capabilities with comprehensive enterprise-wide visibility and unified access patterns."
-                elif len(access_mechanisms) >= 2:
+                    check.explanation = f"Single pane correlation and anomaly detection with {', '.join(capabilities)}. Centralized access combined with anomaly detection enables immediate root cause determination {evidence_refs}."
+                # L2: Enterprise-wide visibility
+                elif has_dashboards and has_enterprise_access:
                     check.current_level = 2
-                    check.explanation = f"Enterprise-wide log access established through {', '.join(access_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). This provides comprehensive visibility into application and infrastructure logs with appropriate access controls and visualization capabilities."
-                elif len(access_mechanisms) >= 1:
+                    check.explanation = f"Enterprise-wide visibility with {', '.join(capabilities)}. Relevant teams can analyze and troubleshoot based on captured information with centralized access patterns {evidence_refs}."
+                # L1: Basic centralized collection
+                elif has_log_groups:
                     check.current_level = 1
-                    check.explanation = f"Basic centralized log access through {', '.join(access_mechanisms)} (Checks #{', #'.join(str(id) for id in check.evidence_check_ids)}). Foundation for enterprise visibility."
+                    if capabilities:
+                        check.explanation = f"Basic centralized log access with {', '.join(capabilities)}. Foundation for enterprise visibility but lacks unified cross-account access or correlation capabilities {evidence_refs}."
+                    else:
+                        check.explanation = f"Basic centralized collection — log groups exist but no dashboards, centralization, or cross-account access detected {evidence_refs}."
                 else:
                     check.current_level = 1
-                    check.explanation = "Log access appears fragmented across different systems without centralized management, unified access patterns, or comprehensive visualization capabilities."
+                    check.explanation = f"Minimal log access detected. No centralized collection or access mechanisms found {evidence_refs}."
             
             elif check.question_id == 4:  # What is your log retention policy?
                 # Map to discovery checks for log retention
@@ -3652,6 +3673,16 @@ class ComprehensiveObservabilityAssessment:
                 "What percentage of ECS tasks use structured logging (JSON)?",
                 "Do you have field index policies configured for faster log queries?",
                 "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
+            ],
+            3: [  # How do you access logs?
+                "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)",
+                "Do you have CloudWatch dashboards for visualizing metrics and logs?",
+                "What percentage of log groups have subscription filters for real-time processing?",
+                "Have you implemented Cross-Account and Cross-Region Log Centralization?",
+                "Are you using CloudWatch cross-account observability?",
+                "Have you enabled anomaly detection?",
+                "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
+                "Have you configured CloudWatch Investigations action for any alarms?",
             ],
         }
         return mapping.get(question_id, [])
