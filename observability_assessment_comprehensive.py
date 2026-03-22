@@ -262,6 +262,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_xray_sampling_rules_check()
             elif check.command == "custom_log_groups_categorization_check":
                 check.result = self.execute_log_groups_categorization_check()
+            elif check.command == "custom_log_group_tags_check":
+                check.result = self.execute_log_group_tags_check()
             else:
                 check.result = self.run_aws_command(check.command)
             
@@ -932,6 +934,19 @@ class ComprehensiveObservabilityAssessment:
                     return f"No anomaly detection bands configured"
             return f"No anomaly detection bands found"
         
+        elif check.name == "Do your log groups have resource tags for retention governance and metadata-based search?":
+            tagged = check.result.get('tagged_log_groups', []) if check.result else []
+            if tagged:
+                summary = f"Found {len(tagged)} tagged log groups"
+                details = ""
+                for i, lg in enumerate(tagged[:15], 1):
+                    tag_str = ', '.join(f"{k}={v}" for k, v in lg['tags'].items())
+                    details += f"{i}. <strong>{lg['name']}</strong><br>   Tags: {tag_str}<br><br>"
+                if len(tagged) > 15:
+                    details += f"... and {len(tagged) - 15} more tagged log groups"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"No tagged log groups found"
+
         elif check.name == "Do you use resource tags for organizing and managing AWS resources?":
             resources = check.result.get('ResourceTagMappingList', []) if check.result else []
             if resources:
@@ -1671,8 +1686,8 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Logs", "aws cloudwatch list-dashboards --output json")
         self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Metrics", "aws cloudwatch list-dashboards --output json")
         
-        # Resource Tags - applies to Logs retention and Organization strategy
-        self.add_discovery_check("Do you use resource tags for organizing and managing AWS resources?", "Logs", "aws resourcegroupstaggingapi get-resources --output json")
+        # Log Group Tags - applies to Logs retention (metadata-based search)
+        self.add_discovery_check("Do your log groups have resource tags for retention governance and metadata-based search?", "Logs", "custom_log_group_tags_check")
 
     def get_largest_log_groups_by_compute_type(self):
         """Get 10 largest log groups for each compute type (EC2, ECS, Lambda, EKS)"""
@@ -2899,7 +2914,7 @@ class ComprehensiveObservabilityAssessment:
                 export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
                 subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
-                tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?" and "Logs" in c.category), None)
+                tags_check = next((c for c in self.results.discovery_checks if c.name == "Do your log groups have resource tags for retention governance and metadata-based search?"), None)
 
                 check.evidence_check_ids = [c.id for c in [top_groups_retention_check, export_tasks_check, subscription_filters_check, centralization_check, tags_check] if c]
 
@@ -2917,7 +2932,7 @@ class ComprehensiveObservabilityAssessment:
                 has_subscription_archival = subscription_filters_check and isinstance(subscription_filters_check.result, dict) and subscription_filters_check.result.get('groups_with_subscription_filters', 0) > 0
                 has_centralization = centralization_check and centralization_check.status == 'success'
                 has_archival = has_export_tasks or has_subscription_archival or has_centralization
-                has_tags = tags_check and isinstance(tags_check.result, dict) and len(tags_check.result.get('ResourceTagMappingList', [])) > 0
+                has_log_group_tags = tags_check and isinstance(tags_check.result, dict) and tags_check.result.get('total_tagged_log_groups', 0) > 0
 
                 evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
                 capabilities = []
@@ -2928,10 +2943,10 @@ class ComprehensiveObservabilityAssessment:
                 if has_subscription_archival:
                     capabilities.append(f"subscription filters on {subscription_filters_check.result.get('groups_with_subscription_filters', 0)} log groups for streaming/archival")
                 if has_centralization: capabilities.append("cross-account/region log centralization")
-                if has_tags: capabilities.append(f"resource tagging ({len(tags_check.result.get('ResourceTagMappingList', []))} tagged resources)")
+                if has_log_group_tags: capabilities.append(f"log group tagging ({tags_check.result.get('total_tagged_log_groups', 0)} tagged log groups)")
 
                 # L4: Easy retrieval with metadata-based search (high retention coverage + archival + tagging)
-                if retention_ratio >= 0.75 and has_archival and has_tags:
+                if retention_ratio >= 0.75 and has_archival and has_log_group_tags:
                     check.current_level = 4
                     check.explanation = f"Comprehensive retention strategy with {', '.join(capabilities)}. High retention coverage combined with archival pipelines and resource tagging enables metadata-based search and easy retrieval {evidence_refs}."
                 # L3: Automated archival with cost optimization (good retention + archival)
@@ -3757,7 +3772,7 @@ class ComprehensiveObservabilityAssessment:
                 "Do you have log export tasks configured for archival?",
                 "What percentage of log groups have subscription filters for real-time processing?",
                 "Have you implemented Cross-Account and Cross-Region Log Centralization?",
-                "Do you use resource tags for organizing and managing AWS resources?",
+                "Do your log groups have resource tags for retention governance and metadata-based search?",
             ],
             5: [  # What type of metrics do you collect?
                 "Are you publishing custom business and application metrics to CloudWatch?",
@@ -4370,6 +4385,30 @@ class ComprehensiveObservabilityAssessment:
             
         except Exception as e:
             return None
+
+    def execute_log_group_tags_check(self):
+        """Check how many log groups have resource tags for retention governance"""
+        try:
+            result = self.run_aws_command(
+                "aws resourcegroupstaggingapi get-resources --resource-type-filters logs:log-group --output json"
+            )
+            if not result or 'ResourceTagMappingList' not in result:
+                return {'total_tagged_log_groups': 0, 'tagged_log_groups': []}
+
+            resources = result['ResourceTagMappingList']
+            tagged = []
+            for r in resources:
+                arn = r.get('ResourceARN', '')
+                name = arn.split(':log-group:')[-1].rstrip(':*') if ':log-group:' in arn else arn
+                tags = {t['Key']: t['Value'] for t in r.get('Tags', [])}
+                tagged.append({'name': name, 'tags': tags})
+
+            return {
+                'total_tagged_log_groups': len(tagged),
+                'tagged_log_groups': tagged
+            }
+        except Exception:
+            return {'total_tagged_log_groups': 0, 'tagged_log_groups': []}
 
     def execute_log_groups_categorization_check(self):
         """Categorize log groups by source type: Vended/AWS Service Logs vs Custom Logs"""
