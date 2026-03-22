@@ -3395,18 +3395,29 @@ class ComprehensiveObservabilityAssessment:
             elif check.question_id == 12:  # How adaptive are your alarm thresholds?
                 anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
                 alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
+                devops_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"), None)
+                investigations_check = next((c for c in self.results.discovery_checks if c.name == "Have you configured CloudWatch Investigations action for any alarms?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [anomaly_check, alarms_check] if c]
+                check.evidence_check_ids = [c.id for c in [anomaly_check, alarms_check, devops_check, investigations_check] if c]
                 
                 has_anomaly = anomaly_check and anomaly_check.result and anomaly_check.result.get('total_bands', 0) > 0
                 has_alarms = alarms_check and alarms_check.result and alarms_check.result.get('MetricAlarms')
+                has_devops = devops_check and devops_check.result and devops_check.result.get('spaces')
+                has_investigations = investigations_check and isinstance(investigations_check.result, dict) and investigations_check.result.get('alarms_with_investigations', 0) > 0
+                has_ai_analysis = has_devops or has_investigations
                 
-                if has_anomaly:
+                if has_anomaly and has_ai_analysis:
                     anomaly_count = anomaly_check.result.get('total_bands', 0)
+                    extras = []
+                    if has_devops: extras.append(f"DevOps Agent (Check #{devops_check.id})")
+                    if has_investigations: extras.append(f"Investigations (Check #{investigations_check.id})")
                     check.current_level = 4
-                    check.explanation = f"Fully adaptive thresholds with {anomaly_count} ML-based anomaly detectors (Check #{anomaly_check.id}) that continuously analyze metrics, determine normal baselines, and surface anomalies with minimal user intervention. The system accounts for seasonality and trend changes automatically."
+                    check.explanation = f"Fully adaptive thresholds with {anomaly_count} ML-based anomaly detectors (Check #{anomaly_check.id}) and {', '.join(extras)} for continuous analysis. The system determines normal baselines, surfaces anomalies with minimal user intervention, and accounts for seasonality and trend changes automatically."
+                elif has_anomaly:
+                    anomaly_count = anomaly_check.result.get('total_bands', 0)
+                    check.current_level = 3
+                    check.explanation = f"Anomaly-based alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) that trigger when metrics exhibit anomalous behavior. The ML model analyzes past metric data and creates expected value bands accounting for hourly, daily, and weekly patterns. Consider adding DevOps Agent or Investigations for continuous automated analysis."
                 elif has_alarms:
-                    # Check if alarms have evaluation periods > 1
                     alarms = alarms_check.result.get('MetricAlarms', [])
                     time_based_alarms = [a for a in alarms if a.get('EvaluationPeriods', 1) > 1 or a.get('DatapointsToAlarm', 1) > 1]
                     
@@ -3938,6 +3949,8 @@ class ComprehensiveObservabilityAssessment:
             12: [  # How adaptive are your alarm thresholds?
                 "Do you use anomaly detection models for adaptive alarming?",
                 "Do you have CloudWatch alarms configured for your resources?",
+                "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
+                "Have you configured CloudWatch Investigations action for any alarms?",
             ],
             13: [  # Do you have an enterprise observability strategy?
                 "Do you use resource tags for organizing and managing AWS resources?",
