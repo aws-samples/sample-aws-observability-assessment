@@ -3438,13 +3438,52 @@ class ComprehensiveObservabilityAssessment:
         for check in org_checks:
             if check.question_id == 13:  # Do you have an enterprise observability strategy?
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?"), None)
+                cross_account_check = next((c for c in self.results.discovery_checks if c.name == "Are you using CloudWatch cross-account observability?"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
+                structured_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of application logs use structured JSON format for easier parsing and analysis?"), None)
+                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS Application Signals to monitor application services?"), None)
+                slo_check = next((c for c in self.results.discovery_checks if c.name == "Have you defined Service Level Objectives (SLOs) for critical application services?"), None)
                 
-                check.evidence_check_ids = [tags_check.id] if tags_check else []
+                all_checks = [tags_check, cross_account_check, dashboards_check, structured_check, app_signals_check, slo_check]
+                check.evidence_check_ids = [c.id for c in all_checks if c]
                 
-                if tags_check and tags_check.result and tags_check.result.get('ResourceTagMappingList'):
-                    tagged_resources = len(tags_check.result.get('ResourceTagMappingList', []))
+                has_tags = bool(tags_check and tags_check.result and tags_check.result.get('ResourceTagMappingList'))
+                has_cross_account = bool(cross_account_check and cross_account_check.result and (cross_account_check.result.get('links_count', 0) > 0 or cross_account_check.result.get('sinks_count', 0) > 0))
+                has_dashboards = bool(dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries'))
+                has_structured = bool(structured_check and structured_check.result and structured_check.result.get('json_percentage', 0) > 50)
+                has_app_signals = bool(app_signals_check and app_signals_check.result and app_signals_check.result.get('Services'))
+                has_slos = bool(slo_check and slo_check.result and slo_check.result.get('SloSummaries'))
+                
+                # Count strategy indicators
+                l2_signals = sum([has_tags, has_cross_account, has_dashboards])
+                l3_signals = sum([has_structured, has_app_signals])
+                
+                if (l2_signals >= 2 and l3_signals >= 1) and has_slos:
+                    parts = []
+                    if has_tags: parts.append(f"resource tagging (Check #{tags_check.id})")
+                    if has_cross_account: parts.append(f"cross-account observability (Check #{cross_account_check.id})")
+                    if has_app_signals: parts.append(f"Application Signals (Check #{app_signals_check.id})")
+                    if has_slos: parts.append(f"SLOs (Check #{slo_check.id})")
+                    check.current_level = 4
+                    check.explanation = f"Culture of continuous improvement with {', '.join(parts)}. SLO-driven reliability targets combined with standardized tooling and cross-account visibility indicate a mature, evolving observability strategy."
+                elif l2_signals >= 2 and l3_signals >= 1:
+                    parts = []
+                    if has_tags: parts.append(f"resource tagging (Check #{tags_check.id})")
+                    if has_cross_account: parts.append(f"cross-account observability (Check #{cross_account_check.id})")
+                    if has_structured: parts.append(f"structured logging (Check #{structured_check.id})")
+                    if has_app_signals: parts.append(f"Application Signals (Check #{app_signals_check.id})")
+                    check.current_level = 3
+                    check.explanation = f"Best practices adoption with {', '.join(parts)}. Standardized observability patterns across the organization indicate established practices and training."
+                elif l2_signals >= 2:
+                    parts = []
+                    if has_tags: parts.append(f"{len(tags_check.result.get('ResourceTagMappingList', []))} tagged resources (Check #{tags_check.id})")
+                    if has_cross_account: parts.append(f"cross-account observability (Check #{cross_account_check.id})")
+                    if has_dashboards: parts.append(f"{len(dashboards_check.result.get('DashboardEntries', []))} dashboards (Check #{dashboards_check.id})")
                     check.current_level = 2
-                    check.explanation = f"Enterprise strategy elements visible through {tagged_resources} tagged resources (Check #{tags_check.id}), indicating unified tools and technologies with standardized resource management practices across the organization."
+                    check.explanation = f"Unified tools and technologies with {', '.join(parts)}, indicating standardized resource management and centralized visibility across the organization."
+                elif has_tags or has_dashboards:
+                    check.current_level = 1
+                    check.explanation = "Basic data collection strategy with some organizational elements. Limited evidence of enterprise-wide standardization or unified observability approach."
                 else:
                     check.current_level = 1
                     check.explanation = "Limited evidence of enterprise observability strategy. Appears to focus primarily on data collection without comprehensive organizational alignment or standardization."
@@ -3954,6 +3993,11 @@ class ComprehensiveObservabilityAssessment:
             ],
             13: [  # Do you have an enterprise observability strategy?
                 "Do you use resource tags for organizing and managing AWS resources?",
+                "Are you using CloudWatch cross-account observability?",
+                "Do you have CloudWatch dashboards for visualizing metrics and logs?",
+                "What percentage of application logs use structured JSON format for easier parsing and analysis?",
+                "Do you use AWS Application Signals to monitor application services?",
+                "Have you defined Service Level Objectives (SLOs) for critical application services?",
             ],
             14: [  # How do you use SLOs?
                 "Have you defined Service Level Objectives (SLOs) for critical application services?",
