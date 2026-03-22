@@ -3134,10 +3134,7 @@ class ComprehensiveObservabilityAssessment:
                 has_service_map = xray_check and xray_check.result and xray_check.result.get('Services')
                 has_sampling = sampling_check and sampling_check.result and sampling_check.result.get('SamplingRuleRecords')
                 has_groups = groups_check and groups_check.result and groups_check.result.get('Groups')
-                has_lambda_tracing = lambda_tracing_check and lambda_tracing_check.result and isinstance(lambda_tracing_check.result, dict) and any(
-                    func.get('TracingConfig', {}).get('Mode') == 'Active' 
-                    for func in lambda_tracing_check.result.get('Functions', [])
-                )
+                has_lambda_tracing = lambda_tracing_check and lambda_tracing_check.result and isinstance(lambda_tracing_check.result, list) and len(lambda_tracing_check.result) > 0
                 has_transaction_search = transaction_search_check and transaction_search_check.result and transaction_search_check.result.get('logGroups')
                 
                 if has_transaction_search and has_service_map and has_sampling and has_groups:
@@ -3161,8 +3158,7 @@ class ComprehensiveObservabilityAssessment:
                         check.current_level = 2
                         check.explanation = f"Active tracing implementation with X-Ray service map tracking {service_count} services (Check #{xray_check.id}). This indicates both auto-instrumentation and manual instrumentation are in use for distributed tracing."
                     else:
-                        traced_functions = sum(1 for func in lambda_tracing_check.result.get('Functions', []) 
-                                             if func.get('TracingConfig', {}).get('Mode') == 'Active') if isinstance(lambda_tracing_check.result, dict) else 0
+                        traced_functions = len(lambda_tracing_check.result) if isinstance(lambda_tracing_check.result, list) else 0
                         check.current_level = 2
                         check.explanation = f"Tracing enabled for {traced_functions} Lambda functions (Check #{lambda_tracing_check.id}), indicating selective instrumentation for serverless workloads."
                 else:
