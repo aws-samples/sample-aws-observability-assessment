@@ -264,6 +264,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_log_groups_categorization_check()
             elif check.command == "custom_log_group_tags_check":
                 check.result = self.execute_log_group_tags_check()
+            elif check.command == "custom_app_signals_list_services_check":
+                check.result = self.execute_app_signals_list_services_check()
             else:
                 check.result = self.run_aws_command(check.command)
             
@@ -1677,8 +1679,8 @@ class ComprehensiveObservabilityAssessment:
         
         # Cross-Category Checks (checks that apply to multiple categories)
         # Application Signals - applies to Metrics, Traces, and Organization
-        self.add_discovery_check("Do you use AWS Application Signals to monitor application services?", "Metrics", "aws application-signals list-services --output json")
-        self.add_discovery_check("Do you use AWS Application Signals to monitor application services?", "Traces", "aws application-signals list-services --output json")
+        self.add_discovery_check("Do you use AWS Application Signals to monitor application services?", "Metrics", "custom_app_signals_list_services_check")
+        self.add_discovery_check("Do you use AWS Application Signals to monitor application services?", "Traces", "custom_app_signals_list_services_check")
         self.add_discovery_check("Have you defined Service Level Objectives (SLOs) for critical application services?", "Metrics", "aws application-signals list-service-level-objectives --output json")
         self.add_discovery_check("Have you defined Service Level Objectives (SLOs) for critical application services?", "Organization", "aws application-signals list-service-level-objectives --output json")
         
@@ -3003,15 +3005,13 @@ class ComprehensiveObservabilityAssessment:
                 if 'Lambda' in active_compute and lambda_insights_check and isinstance(lambda_insights_check.result, dict) and lambda_insights_check.result.get('insights_functions', 0) > 0:
                     infra_signals.append("Lambda Insights")
 
-                has_custom = custom_metrics_check and isinstance(custom_metrics_check.result, dict) and any(
-                    not m.get('Namespace', '').startswith('AWS/') for m in custom_metrics_check.result.get('Metrics', []))
+                has_custom = custom_metrics_check and isinstance(custom_metrics_check.result, dict) and custom_metrics_check.result.get('total_custom_metrics', 0) > 0
                 has_app_signals = app_signals_check and isinstance(app_signals_check.result, dict) and app_signals_check.result.get('Services')
 
                 evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
                 capabilities = list(infra_signals)
                 if has_custom:
-                    custom_count = len([m for m in custom_metrics_check.result.get('Metrics', []) if not m.get('Namespace', '').startswith('AWS/')])
-                    capabilities.append(f"{custom_count} custom metrics")
+                    capabilities.append(f"{custom_metrics_check.result.get('total_custom_metrics', 0)} custom metrics in {', '.join(custom_metrics_check.result.get('custom_namespaces', []))}")
                 if has_app_signals:
                     capabilities.append(f"Application Signals ({len(app_signals_check.result['Services'])} services)")
 
@@ -4409,6 +4409,20 @@ class ComprehensiveObservabilityAssessment:
             }
         except Exception:
             return {'total_tagged_log_groups': 0, 'tagged_log_groups': []}
+
+    def execute_app_signals_list_services_check(self):
+        """List Application Signals services with required time window"""
+        try:
+            from datetime import datetime, timedelta, timezone
+            end = datetime.now(timezone.utc)
+            start = end - timedelta(hours=1)
+            cmd = f"aws application-signals list-services --start-time {start.strftime('%Y-%m-%dT%H:%M:%SZ')} --end-time {end.strftime('%Y-%m-%dT%H:%M:%SZ')} --output json"
+            result = self.run_aws_command(cmd)
+            if result and 'ServiceSummaries' in result:
+                return {'Services': result['ServiceSummaries']}
+            return {'Services': []}
+        except Exception:
+            return {'Services': []}
 
     def execute_log_groups_categorization_check(self):
         """Categorize log groups by source type: Vended/AWS Service Logs vs Custom Logs"""
