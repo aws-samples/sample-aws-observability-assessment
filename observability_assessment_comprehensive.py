@@ -3284,31 +3284,74 @@ class ComprehensiveObservabilityAssessment:
                 sns_check = next((c for c in self.results.discovery_checks if c.name == "Do your alarms send notifications to SNS topics?"), None)
                 anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
                 investigations_check = next((c for c in self.results.discovery_checks if c.name == "Have you configured CloudWatch Investigations action for any alarms?"), None)
+                opsitem_check = next((c for c in self.results.discovery_checks if c.name == "Do you have any Systems Manager OpsCenter actions configured with your alarms?"), None)
+                lambda_check = next((c for c in self.results.discovery_checks if c.name == "Do you have any Lambda actions configured with your alarms?"), None)
+                ec2_check = next((c for c in self.results.discovery_checks if c.name == "Do you have any EC2 actions configured with your alarms?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [alarms_check, composite_check, sns_check, anomaly_check, investigations_check] if c]
+                all_checks = [alarms_check, composite_check, sns_check, anomaly_check, investigations_check, opsitem_check, lambda_check, ec2_check]
+                check.evidence_check_ids = [c.id for c in all_checks if c]
                 
+                has_basic_alarms = alarms_check and isinstance(alarms_check.result, dict) and alarms_check.result.get('MetricAlarms')
                 has_composite = composite_check and isinstance(composite_check.result, dict) and composite_check.result.get('CompositeAlarms')
                 has_anomaly = anomaly_check and isinstance(anomaly_check.result, dict) and anomaly_check.result.get('total_bands', 0) > 0
-                has_basic_alarms = alarms_check and isinstance(alarms_check.result, dict) and alarms_check.result.get('MetricAlarms')
                 has_sns = sns_check and isinstance(sns_check.result, dict) and sns_check.result.get('alarms_with_sns', 0) > 0
+                has_investigations = investigations_check and isinstance(investigations_check.result, dict) and investigations_check.result.get('alarms_with_investigations', 0) > 0
+                has_opsitem = opsitem_check and isinstance(opsitem_check.result, dict) and opsitem_check.result.get('alarms_with_opsitem_actions', 0) > 0
+                has_lambda_actions = lambda_check and isinstance(lambda_check.result, dict) and lambda_check.result.get('alarms_with_lambda_actions', 0) > 0
+                has_ec2_actions = ec2_check and isinstance(ec2_check.result, dict) and ec2_check.result.get('alarms_with_ec2_actions', 0) > 0
+                has_automated_actions = has_opsitem or has_lambda_actions or has_ec2_actions or has_investigations
                 
-                if has_composite:
+                # Analyze alarm names/descriptions for priority indicators
+                import re
+                priority_pattern = re.compile(r'\b(P[1-4]|Sev[1-5]|Critical|High|Medium|Low|Urgent)\b', re.IGNORECASE)
+                priority_alarms = 0
+                if has_basic_alarms:
+                    for a in alarms_check.result.get('MetricAlarms', []):
+                        text = f"{a.get('AlarmName', '')} {a.get('AlarmDescription', '')}"
+                        if priority_pattern.search(text):
+                            priority_alarms += 1
+                has_priority = priority_alarms > 0
+                
+                if has_composite and has_anomaly:
                     composite_count = len(composite_check.result.get('CompositeAlarms', []))
-                    metric_count = len(alarms_check.result.get('MetricAlarms', [])) if alarms_check and alarms_check.result else 0
+                    anomaly_count = anomaly_check.result.get('total_bands', 0)
+                    metric_count = len(alarms_check.result.get('MetricAlarms', [])) if has_basic_alarms else 0
+                    extras = []
+                    if has_investigations: extras.append(f"Investigations (Check #{investigations_check.id})")
+                    if has_opsitem: extras.append(f"OpsCenter (Check #{opsitem_check.id})")
+                    extra_str = f", integrated with {', '.join(extras)}" if extras else ""
+                    check.current_level = 4
+                    check.explanation = f"Advanced alarm strategy with {composite_count} composite alarms (Check #{composite_check.id}) aggregating {metric_count} metric alarms (Check #{alarms_check.id}) with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}){extra_str}. Composite alarms create summarized health indicators reducing alarm noise, while anomaly detection accounts for seasonal patterns."
+                elif has_composite:
+                    composite_count = len(composite_check.result.get('CompositeAlarms', []))
+                    metric_count = len(alarms_check.result.get('MetricAlarms', [])) if has_basic_alarms else 0
                     check.current_level = 4
                     check.explanation = f"Advanced alarm strategy with {composite_count} composite alarms (Check #{composite_check.id}) aggregating {metric_count} metric alarms (Check #{alarms_check.id if alarms_check else 'N/A'}). This creates summarized health indicators reducing alarm noise and enabling actions at an aggregated application level."
                 elif has_anomaly and has_basic_alarms:
                     anomaly_count = anomaly_check.result.get('total_bands', 0)
                     alarm_count = len(alarms_check.result.get('MetricAlarms', []))
+                    extras = []
+                    if has_automated_actions:
+                        action_parts = []
+                        if has_lambda_actions: action_parts.append(f"Lambda (Check #{lambda_check.id})")
+                        if has_ec2_actions: action_parts.append(f"EC2 (Check #{ec2_check.id})")
+                        if has_opsitem: action_parts.append(f"OpsCenter (Check #{opsitem_check.id})")
+                        extras.append(f"automated actions via {', '.join(action_parts)}")
                     check.current_level = 3
-                    check.explanation = f"Sophisticated alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) complementing {alarm_count} traditional alarms (Check #{alarms_check.id}). This provides actionable alerts based on ML-driven anomaly detection that accounts for patterns and seasonality."
+                    check.explanation = f"Actionable alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) complementing {alarm_count} alarms (Check #{alarms_check.id}){' with ' + extras[0] if extras else ''}. ML-driven anomaly detection accounts for hourly, daily, and weekly patterns in metrics."
+                elif has_basic_alarms and has_sns:
+                    alarm_count = len(alarms_check.result.get('MetricAlarms', []))
+                    sns_count = sns_check.result.get('alarms_with_sns', 0)
+                    priority_str = f" {priority_alarms} alarms include priority indicators." if has_priority else ""
+                    check.current_level = 2
+                    check.explanation = f"Structured alerting with {alarm_count} alarms (Check #{alarms_check.id}), {sns_count} configured with SNS notifications (Check #{sns_check.id}).{priority_str} This enables understanding of urgency and customer impact for operational issues."
                 elif has_basic_alarms:
                     alarm_count = len(alarms_check.result.get('MetricAlarms', []))
-                    check.current_level = 2
-                    check.explanation = f"Structured alerting with {alarm_count} alarms (Check #{alarms_check.id}) providing notifications when metrics meet alarm triggers. This enables understanding of urgency and customer impact for operational issues."
+                    check.current_level = 1
+                    check.explanation = f"Basic alerting with {alarm_count} alarms (Check #{alarms_check.id}) but limited notification configuration. Alarms trigger when metrics meet thresholds but lack SNS notification integration for operator awareness."
                 else:
                     check.current_level = 1
-                    check.explanation = "Basic or no alerting infrastructure detected. Limited ability to proactively notify operators when metrics meet alarm triggers."
+                    check.explanation = "No alerting infrastructure detected. Limited ability to proactively notify operators when metrics meet alarm triggers."
             
             elif check.question_id == 11:  # How do you use dashboards?
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
@@ -3883,6 +3926,9 @@ class ComprehensiveObservabilityAssessment:
                 "Do your alarms send notifications to SNS topics?",
                 "Do you use anomaly detection models for adaptive alarming?",
                 "Have you configured CloudWatch Investigations action for any alarms?",
+                "Do you have any Systems Manager OpsCenter actions configured with your alarms?",
+                "Do you have any Lambda actions configured with your alarms?",
+                "Do you have any EC2 actions configured with your alarms?",
             ],
             11: [  # How do you use dashboards?
                 "Do you have CloudWatch dashboards for visualizing metrics and logs?",
