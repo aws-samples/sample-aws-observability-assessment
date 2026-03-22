@@ -268,6 +268,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_app_signals_list_services_check()
             elif check.command == "custom_xray_custom_annotations_check":
                 check.result = self.execute_xray_custom_annotations_check()
+            elif check.command == "custom_xray_insights_check":
+                check.result = self.execute_xray_insights_check()
             else:
                 check.result = self.run_aws_command(check.command)
             
@@ -1252,6 +1254,19 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No custom annotations found in {total} sampled traces"
         
+        elif check.name == "Do you have X-Ray Insights configured for anomaly detection?":
+            if check.result:
+                groups = check.result.get('insights_enabled_groups', 0)
+                notif = check.result.get('notifications_enabled_groups', 0)
+                names = check.result.get('group_names', [])
+                recent = check.result.get('recent_insights', 0)
+                if groups > 0:
+                    summary = f"{groups} X-Ray groups with Insights enabled ({notif} with notifications)"
+                    details = f"Groups: {', '.join(names)}<br>Recent insights (24h): {recent}"
+                    return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+                return "No X-Ray groups have Insights enabled"
+            return "Could not check X-Ray Insights configuration"
+        
         elif check.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)":
             if isinstance(check.result, dict):
                 total = check.result.get('total_log_groups', 0)
@@ -1667,7 +1682,7 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Do you have X-Ray groups configured for focused trace analysis?", "Traces", "aws xray get-groups --output json")
         self.add_discovery_check("Do you have transaction search enabled?", "Traces", "aws logs describe-log-groups --log-group-name-prefix aws/spans --output json")
         self.add_discovery_check("Do your Lambda functions have X-Ray tracing enabled?", "Traces", "aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json")
-        self.add_discovery_check("Do you have X-Ray Insights configured for anomaly detection?", "Traces", "aws xray get-insight-summaries --output json")
+        self.add_discovery_check("Do you have X-Ray Insights configured for anomaly detection?", "Traces", "custom_xray_insights_check")
         self.add_discovery_check("Do your traces contain custom annotations indicating manual instrumentation?", "Traces", "custom_xray_custom_annotations_check")
         
         # Dashboards & Alarms Discovery Checks (Detailed)
@@ -3195,41 +3210,65 @@ class ComprehensiveObservabilityAssessment:
                 app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS Application Signals to monitor application services?"), None)
                 groups_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray groups configured for focused trace analysis?"), None)
                 transaction_search_check = next((c for c in self.results.discovery_checks if c.name == "Do you have transaction search enabled?"), None)
+                rum_check = next((c for c in self.results.discovery_checks if c.name == "Do you use CloudWatch RUM to monitor real user experiences?"), None)
+                synthetics_check = next((c for c in self.results.discovery_checks if c.name == "Do you use CloudWatch Synthetics to monitor application endpoints?"), None)
+                slo_check = next((c for c in self.results.discovery_checks if c.name == "Have you defined Service Level Objectives (SLOs) for critical application services?"), None)
+                dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?"), None)
+                alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
+                composite_check = next((c for c in self.results.discovery_checks if c.name == "Do you use composite alarms to reduce alarm noise?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [xray_check, insights_check, app_signals_check, groups_check, transaction_search_check] if c]
+                all_checks = [xray_check, insights_check, app_signals_check, groups_check, transaction_search_check, rum_check, synthetics_check, slo_check, dashboards_check, alarms_check, composite_check]
+                check.evidence_check_ids = [c.id for c in all_checks if c]
                 
-                has_app_signals = app_signals_check and app_signals_check.result and app_signals_check.result.get('Services')
-                has_insights = insights_check and insights_check.result
                 has_service_map = xray_check and xray_check.result and xray_check.result.get('Services')
+                has_insights = insights_check and insights_check.result and insights_check.result.get('insights_enabled_groups', 0) > 0
+                has_app_signals = app_signals_check and app_signals_check.result and app_signals_check.result.get('Services')
                 has_groups = groups_check and groups_check.result and groups_check.result.get('Groups')
                 has_transaction_search = transaction_search_check and transaction_search_check.result and transaction_search_check.result.get('logGroups')
+                has_rum = rum_check and rum_check.result and rum_check.result.get('AppMonitorSummaries')
+                has_synthetics = synthetics_check and synthetics_check.result and synthetics_check.result.get('Canaries')
+                has_slos = slo_check and slo_check.result and slo_check.result.get('SloSummaries')
+                has_dashboards = dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries')
+                has_alarms = alarms_check and isinstance(alarms_check.result, dict) and alarms_check.result.get('MetricAlarms')
+                has_composite = composite_check and isinstance(composite_check.result, dict) and composite_check.result.get('CompositeAlarms')
                 
-                if has_app_signals and has_transaction_search:
+                # L4: Cross-boundary insights with proactive root cause — App Signals + SLOs or App Signals + Transaction Search + correlation evidence
+                if has_app_signals and has_slos:
                     service_count = len(app_signals_check.result.get('Services', []))
+                    slo_count = len(slo_check.result.get('SloSummaries', []))
                     check.current_level = 4
-                    check.explanation = f"Advanced trace analysis with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}) and Transaction Search enabled (Check #{transaction_search_check.id}), providing cross-boundary insights with complete span visibility and proactive root cause identification. This enables comprehensive correlation across application boundaries with automated issue detection."
-                elif has_app_signals or (has_transaction_search and has_service_map) or (has_groups and has_service_map):
-                    if has_app_signals:
-                        service_count = len(app_signals_check.result.get('Services', []))
-                        check.current_level = 3
-                        check.explanation = f"Advanced trace analysis with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}), providing cross-boundary insights. Consider enabling Transaction Search for complete span visibility."
-                    elif has_groups:
-                        service_count = len(xray_check.result.get('Services', []))
-                        group_count = len(groups_check.result.get('Groups', []))
-                        check.current_level = 3
-                        check.explanation = f"Sophisticated trace usage with {group_count} X-Ray groups (Check #{groups_check.id}) for focused trace analysis and X-Ray service map tracking {service_count} services (Check #{xray_check.id}). This provides targeted trace filtering with custom metrics and CloudWatch integration for correlation and detailed transaction analysis."
-                    else:
-                        service_count = len(xray_check.result.get('Services', []))
-                        check.current_level = 3
-                        check.explanation = f"Sophisticated trace usage with Transaction Search enabled (Check #{transaction_search_check.id}) and X-Ray service map tracking {service_count} services (Check #{xray_check.id}). This provides 360-degree view with complete span visibility for correlation and detailed transaction analysis."
-                elif has_insights and has_service_map:
-                    service_count = len(xray_check.result.get('Services', []))
+                    check.explanation = f"Cross-boundary trace insights with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}) and {slo_count} SLOs defined (Check #{slo_check.id}), enabling proactive root cause identification across application boundaries with automated issue detection and business-aligned reliability targets."
+                elif has_app_signals and has_transaction_search and (has_insights or has_composite):
+                    service_count = len(app_signals_check.result.get('Services', []))
+                    extras = []
+                    if has_insights: extras.append(f"X-Ray Insights on {insights_check.result.get('insights_enabled_groups', 0)} groups (Check #{insights_check.id})")
+                    if has_composite: extras.append(f"{len(composite_check.result.get('CompositeAlarms', []))} composite alarms (Check #{composite_check.id})")
+                    check.current_level = 4
+                    check.explanation = f"Cross-boundary trace insights with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}), Transaction Search (Check #{transaction_search_check.id}), and {', '.join(extras)}. This provides proactive root cause identification with complete span visibility across distributed services."
+                # L3: 360 view — traces + logs + metrics correlation and anomaly detection
+                elif has_app_signals and has_transaction_search:
+                    service_count = len(app_signals_check.result.get('Services', []))
                     check.current_level = 3
-                    check.explanation = f"Sophisticated trace usage with X-Ray Insights (Check #{insights_check.id}) analyzing service map data from {service_count} services (Check #{xray_check.id}). This provides 360-degree view combining traces, logs, and metrics for correlation and anomaly detection."
+                    check.explanation = f"Comprehensive trace analysis with Application Signals monitoring {service_count} services (Check #{app_signals_check.id}) and Transaction Search enabled (Check #{transaction_search_check.id}), providing a 360-degree view combining traces, logs, and metrics for correlation. Consider adding SLOs or X-Ray Insights for proactive root cause identification."
+                elif has_app_signals or (has_service_map and (has_insights or has_groups or has_transaction_search)):
+                    parts = []
+                    if has_app_signals: parts.append(f"Application Signals monitoring {len(app_signals_check.result.get('Services', []))} services (Check #{app_signals_check.id})")
+                    if has_transaction_search: parts.append(f"Transaction Search (Check #{transaction_search_check.id})")
+                    if has_insights: parts.append(f"X-Ray Insights on {insights_check.result.get('insights_enabled_groups', 0)} groups (Check #{insights_check.id})")
+                    if has_groups: parts.append(f"{len(groups_check.result.get('Groups', []))} X-Ray groups (Check #{groups_check.id})")
+                    if has_service_map: parts.append(f"service map with {len(xray_check.result.get('Services', []))} services (Check #{xray_check.id})")
+                    check.current_level = 3
+                    check.explanation = f"Trace correlation with {', '.join(parts)}. This provides a 360-degree view for correlation and anomaly detection across infrastructure and applications."
+                # L2: Analyze and troubleshoot with traces
                 elif has_service_map:
                     service_count = len(xray_check.result.get('Services', []))
+                    extras = []
+                    if has_rum: extras.append(f"RUM (Check #{rum_check.id})")
+                    if has_synthetics: extras.append(f"Synthetics (Check #{synthetics_check.id})")
+                    if has_dashboards: extras.append(f"dashboards (Check #{dashboards_check.id})")
+                    extra_str = f" with {', '.join(extras)}" if extras else ""
                     check.current_level = 2
-                    check.explanation = f"Active trace analysis using X-Ray service map with {service_count} services (Check #{xray_check.id}), enabling troubleshooting and performance analysis based on captured trace information and service dependencies."
+                    check.explanation = f"Active trace analysis using X-Ray service map with {service_count} services (Check #{xray_check.id}){extra_str}, enabling troubleshooting and performance analysis based on captured trace information and service dependencies."
                 else:
                     check.current_level = 1
                     check.explanation = "Basic trace collection without advanced analysis capabilities. Traces may be collected but not actively used for systematic troubleshooting or performance optimization."
@@ -3831,6 +3870,12 @@ class ComprehensiveObservabilityAssessment:
                 "Do you use AWS Application Signals to monitor application services?",
                 "Do you have X-Ray groups configured for focused trace analysis?",
                 "Do you have transaction search enabled?",
+                "Do you use CloudWatch RUM to monitor real user experiences?",
+                "Do you use CloudWatch Synthetics to monitor application endpoints?",
+                "Have you defined Service Level Objectives (SLOs) for critical application services?",
+                "Do you have CloudWatch dashboards for visualizing metrics and logs?",
+                "Do you have CloudWatch alarms configured for your resources?",
+                "Do you use composite alarms to reduce alarm noise?",
             ],
             10: [  # How do you use alarms?
                 "Do you have CloudWatch alarms configured for your resources?",
@@ -4444,6 +4489,26 @@ class ComprehensiveObservabilityAssessment:
             return {'Services': []}
         except Exception:
             return {'Services': []}
+
+    def execute_xray_insights_check(self):
+        """Check X-Ray groups for Insights configuration and recent insight summaries."""
+        try:
+            groups = self.run_aws_command("aws xray get-groups --output json")
+            insights_groups = [g for g in (groups or {}).get('Groups', []) if g.get('InsightsConfiguration', {}).get('InsightsEnabled')]
+            notifications_groups = [g for g in insights_groups if g.get('InsightsConfiguration', {}).get('NotificationsEnabled')]
+            import time
+            end = int(time.time())
+            start = end - 86400
+            summaries = self.run_aws_command(f"aws xray get-insight-summaries --start-time {start} --end-time {end} --output json")
+            insight_count = len((summaries or {}).get('InsightSummaries', []))
+            return {
+                'insights_enabled_groups': len(insights_groups),
+                'notifications_enabled_groups': len(notifications_groups),
+                'group_names': [g['GroupName'] for g in insights_groups],
+                'recent_insights': insight_count,
+            }
+        except Exception:
+            return {'insights_enabled_groups': 0, 'notifications_enabled_groups': 0, 'group_names': [], 'recent_insights': 0}
 
     def execute_xray_custom_annotations_check(self):
         """Check for custom annotations on recent traces indicating manual instrumentation"""
