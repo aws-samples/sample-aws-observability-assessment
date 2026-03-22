@@ -266,6 +266,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_log_group_tags_check()
             elif check.command == "custom_app_signals_list_services_check":
                 check.result = self.execute_app_signals_list_services_check()
+            elif check.command == "custom_xray_custom_annotations_check":
+                check.result = self.execute_xray_custom_annotations_check()
             else:
                 check.result = self.run_aws_command(check.command)
             
@@ -1240,6 +1242,16 @@ class ComprehensiveObservabilityAssessment:
                 default_count = len(sampling_rules)
                 return f"No custom sampling rules configured (only {default_count} default rule exists)"
         
+        elif check.name == "Do your traces contain custom annotations indicating manual instrumentation?":
+            total = check.result.get('total_traces', 0) if check.result else 0
+            custom_count = check.result.get('traces_with_custom_annotations', 0) if check.result else 0
+            keys = check.result.get('custom_annotation_keys', []) if check.result else []
+            if custom_count > 0:
+                summary = f"Found {custom_count}/{total} traces with custom annotations"
+                details = f"Custom annotation keys: {', '.join(keys)}"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return f"No custom annotations found in {total} sampled traces"
+        
         elif check.name == "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)":
             if isinstance(check.result, dict):
                 total = check.result.get('total_log_groups', 0)
@@ -1656,6 +1668,7 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check("Do you have transaction search enabled?", "Traces", "aws logs describe-log-groups --log-group-name-prefix aws/spans --output json")
         self.add_discovery_check("Do your Lambda functions have X-Ray tracing enabled?", "Traces", "aws lambda list-functions --query 'Functions[?TracingConfig.Mode==`Active`]' --output json")
         self.add_discovery_check("Do you have X-Ray Insights configured for anomaly detection?", "Traces", "aws xray get-insight-summaries --output json")
+        self.add_discovery_check("Do your traces contain custom annotations indicating manual instrumentation?", "Traces", "custom_xray_custom_annotations_check")
         
         # Dashboards & Alarms Discovery Checks (Detailed)
         self.add_discovery_check("Do you have CloudWatch dashboards for visualizing metrics and logs?", "Dashboards", "aws cloudwatch list-dashboards --output json")
@@ -3128,14 +3141,16 @@ class ComprehensiveObservabilityAssessment:
                 sampling_check = next((c for c in self.results.discovery_checks if c.name == "Do you have custom X-Ray sampling rules configured?"), None)
                 groups_check = next((c for c in self.results.discovery_checks if c.name == "Do you have X-Ray groups configured for focused trace analysis?"), None)
                 transaction_search_check = next((c for c in self.results.discovery_checks if c.name == "Do you have transaction search enabled?"), None)
+                annotations_check = next((c for c in self.results.discovery_checks if c.name == "Do your traces contain custom annotations indicating manual instrumentation?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [xray_check, lambda_tracing_check, sampling_check, groups_check, transaction_search_check] if c]
+                check.evidence_check_ids = [c.id for c in [xray_check, lambda_tracing_check, sampling_check, groups_check, transaction_search_check, annotations_check] if c]
                 
                 has_service_map = xray_check and xray_check.result and xray_check.result.get('Services')
                 has_sampling = sampling_check and sampling_check.result and sampling_check.result.get('SamplingRuleRecords')
                 has_groups = groups_check and groups_check.result and groups_check.result.get('Groups')
                 has_lambda_tracing = lambda_tracing_check and lambda_tracing_check.result and isinstance(lambda_tracing_check.result, list) and len(lambda_tracing_check.result) > 0
                 has_transaction_search = transaction_search_check and transaction_search_check.result and transaction_search_check.result.get('logGroups')
+                has_custom_annotations = annotations_check and isinstance(annotations_check.result, dict) and annotations_check.result.get('traces_with_custom_annotations', 0) > 0
                 
                 if has_transaction_search and has_service_map and has_sampling and has_groups:
                     service_count = len(xray_check.result.get('Services', []))
@@ -3152,15 +3167,24 @@ class ComprehensiveObservabilityAssessment:
                         check.explanation = f"Comprehensive tracing infrastructure with X-Ray service map showing {service_count} services (Check #{xray_check.id}), {rule_count} sampling rules (Check #{sampling_check.id}), and {group_count} X-Ray groups (Check #{groups_check.id}). This provides end-to-end visibility with optimized trace collection, focused trace analysis, and correlation capabilities across distributed services."
                     else:
                         check.explanation = f"Comprehensive tracing infrastructure with Transaction Search enabled (Check #{transaction_search_check.id}), X-Ray service map showing {service_count} services (Check #{xray_check.id}), and {rule_count} sampling rules (Check #{sampling_check.id}). This provides end-to-end visibility with complete span visibility and optimized trace collection across distributed services."
+                elif (has_service_map or has_lambda_tracing) and (has_custom_annotations or has_sampling):
+                    check.current_level = 2
+                    capabilities = []
+                    if has_service_map: capabilities.append(f"X-Ray service map with {len(xray_check.result.get('Services', []))} services (Check #{xray_check.id})")
+                    if has_lambda_tracing: capabilities.append(f"{len(lambda_tracing_check.result)} Lambda functions with tracing (Check #{lambda_tracing_check.id})")
+                    if has_custom_annotations:
+                        keys = annotations_check.result.get('custom_annotation_keys', [])
+                        capabilities.append(f"custom annotations [{', '.join(keys[:5])}] (Check #{annotations_check.id})")
+                    if has_sampling: capabilities.append(f"{len(sampling_check.result.get('SamplingRuleRecords', []))} sampling rules (Check #{sampling_check.id})")
+                    check.explanation = f"Auto and manual instrumentation detected: {', '.join(capabilities)}. Custom annotations or sampling rules indicate developers have gone beyond auto-instrumentation."
                 elif has_service_map or has_lambda_tracing:
+                    check.current_level = 1
                     if has_service_map:
                         service_count = len(xray_check.result.get('Services', []))
-                        check.current_level = 2
-                        check.explanation = f"Active tracing implementation with X-Ray service map tracking {service_count} services (Check #{xray_check.id}). This indicates both auto-instrumentation and manual instrumentation are in use for distributed tracing."
+                        check.explanation = f"Auto-instrumented tracing with X-Ray service map tracking {service_count} services (Check #{xray_check.id}). No evidence of manual instrumentation (custom annotations or sampling rules)."
                     else:
                         traced_functions = len(lambda_tracing_check.result) if isinstance(lambda_tracing_check.result, list) else 0
-                        check.current_level = 2
-                        check.explanation = f"Tracing enabled for {traced_functions} Lambda functions (Check #{lambda_tracing_check.id}), indicating selective instrumentation for serverless workloads."
+                        check.explanation = f"Auto-instrumented tracing for {traced_functions} Lambda functions (Check #{lambda_tracing_check.id}). No evidence of manual instrumentation."
                 else:
                     check.current_level = 1
                     check.explanation = "Limited or no distributed tracing detected. Basic auto-instrumented SDKs may be present but without comprehensive trace collection."
@@ -3799,6 +3823,7 @@ class ComprehensiveObservabilityAssessment:
                 "Do you have custom X-Ray sampling rules configured?",
                 "Do you have X-Ray groups configured for focused trace analysis?",
                 "Do you have transaction search enabled?",
+                "Do your traces contain custom annotations indicating manual instrumentation?",
             ],
             9: [  # How do you use traces?
                 "Do you use X-Ray service maps to visualize application architecture?",
@@ -4419,6 +4444,39 @@ class ComprehensiveObservabilityAssessment:
             return {'Services': []}
         except Exception:
             return {'Services': []}
+
+    def execute_xray_custom_annotations_check(self):
+        """Check for custom annotations on recent traces indicating manual instrumentation"""
+        try:
+            import time
+            end = int(time.time())
+            start = end - 21600  # 6 hours
+            result = self.run_aws_command(
+                f"aws xray get-trace-summaries --start-time {start} --end-time {end} "
+                f"--sampling-strategy '{{\"Name\":\"FixedRate\",\"Value\":0.5}}' --output json"
+            )
+            if not result or 'TraceSummaries' not in result:
+                return {'total_traces': 0, 'traces_with_custom_annotations': 0, 'custom_annotation_keys': []}
+
+            # Auto-generated annotation prefixes to exclude
+            auto_prefixes = ('aws:', 'span.', 'otel.', 'http.', 'rpc.', 'db.', 'net.', 'messaging.')
+            summaries = result['TraceSummaries']
+            custom_keys = set()
+            traces_with_custom = 0
+            for t in summaries:
+                annotations = t.get('Annotations') or {}
+                trace_custom = [k for k in annotations if not any(k.startswith(p) or k == p.rstrip('.') for p in auto_prefixes)]
+                if trace_custom:
+                    traces_with_custom += 1
+                    custom_keys.update(trace_custom)
+
+            return {
+                'total_traces': len(summaries),
+                'traces_with_custom_annotations': traces_with_custom,
+                'custom_annotation_keys': sorted(custom_keys)
+            }
+        except Exception:
+            return {'total_traces': 0, 'traces_with_custom_annotations': 0, 'custom_annotation_keys': []}
 
     def execute_log_groups_categorization_check(self):
         """Categorize log groups by source type: Vended/AWS Service Logs vs Custom Logs"""
