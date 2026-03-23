@@ -3554,20 +3554,32 @@ class ComprehensiveObservabilityAssessment:
                 
                 check.evidence_check_ids = [c.id for c in [rum_check, synthetics_check] if c]
                 
-                has_rum = rum_check and rum_check.result and rum_check.result.get('AppMonitors')
-                has_synthetics = synthetics_check and synthetics_check.result and synthetics_check.result.get('Canaries')
+                has_rum = rum_check and rum_check.result and rum_check.result.get('AppMonitorSummaries')
+                canaries = synthetics_check.result.get('Canaries', []) if synthetics_check and synthetics_check.result else []
+                has_synthetics = len(canaries) > 0
+                tracing_canaries = [c for c in canaries if c.get('RunConfig', {}).get('ActiveTracing')]
+                has_synthetics_with_tracing = len(tracing_canaries) > 0
                 
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                
+                # L4: Real user monitoring with proactive anomalies
                 if has_rum:
-                    rum_count = len(rum_check.result.get('AppMonitors', []))
+                    rum_count = len(rum_check.result.get('AppMonitorSummaries', []))
+                    extras = f" Also has {len(canaries)} Synthetics canaries." if has_synthetics else ""
                     check.current_level = 4
-                    check.explanation = f"Advanced end-user monitoring with {rum_count} Real User Monitoring applications (Check #{rum_check.id}), providing actual user experience data with proactive anomaly detection and performance insights from real user interactions."
+                    check.explanation = f"Real user monitoring with {rum_count} RUM application(s) capturing actual user experience data {evidence_refs}.{extras}"
+                # L3: Scripted interaction tests with correlation (synthetics + X-Ray tracing)
+                elif has_synthetics_with_tracing:
+                    check.current_level = 3
+                    check.explanation = f"Synthetic monitoring with X-Ray correlation: {len(tracing_canaries)} of {len(canaries)} canaries have active tracing enabled for end-to-end visibility {evidence_refs}."
+                # L2: Synthetic scripts on schedule
                 elif has_synthetics:
-                    canary_count = len(synthetics_check.result.get('Canaries', []))
                     check.current_level = 2
-                    check.explanation = f"Synthetic monitoring implemented with {canary_count} CloudWatch Synthetics canaries (Check #{synthetics_check.id}), providing scheduled validation of application functionality and user workflows from simulated user perspectives."
+                    check.explanation = f"Synthetic monitoring with {len(canaries)} CloudWatch Synthetics canaries running on schedule {evidence_refs}. Enable X-Ray active tracing on canaries for L3 correlation."
+                # L1: Test users for validation
                 else:
                     check.current_level = 1
-                    check.explanation = "No end-user monitoring detected. Reliance on test users or manual validation without systematic monitoring of actual user experience or synthetic user journey testing."
+                    check.explanation = f"No end-user monitoring detected {evidence_refs}. Reliance on test users or manual validation."
             
             elif check.question_id == 16:  # Do you have an enterprise observability strategy?
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?"), None)
