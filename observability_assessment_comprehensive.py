@@ -3523,19 +3523,41 @@ class ComprehensiveObservabilityAssessment:
             elif check.question_id == 15:  # Are you getting ROI from your observability tools?
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
                 alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
+                retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
+                tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?"), None)
+                export_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
+                composite_check = next((c for c in self.results.discovery_checks if c.name == "Do you use composite alarms to reduce alarm noise?"), None)
                 
-                check.evidence_check_ids = [c.id for c in [dashboards_check, alarms_check] if c]
+                all_checks = [dashboards_check, alarms_check, retention_check, tags_check, export_check, composite_check]
+                check.evidence_check_ids = [c.id for c in all_checks if c]
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
                 
-                has_consolidated_tools = dashboards_check and alarms_check and dashboards_check.result and alarms_check.result
+                # Tool consolidation: dashboards + alarms in a single platform
+                has_dashboards = dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries')
+                has_alarms = alarms_check and alarms_check.result and alarms_check.result.get('MetricAlarms')
+                has_consolidated = has_dashboards and has_alarms
                 
-                if has_consolidated_tools:
+                # Cost governance signals (supporting evidence for L2)
+                has_retention = retention_check and isinstance(retention_check.result, dict) and retention_check.result.get('groups_with_retention', 0) > 0
+                has_export = export_check and isinstance(export_check.result, dict) and export_check.result.get('exported_log_groups', 0) > 0
+                has_tags = bool(tags_check and tags_check.result and tags_check.result.get('ResourceTagMappingList'))
+                has_composite = composite_check and composite_check.result and composite_check.result.get('CompositeAlarms')
+                cost_signals = [s for s in ['retention policies' if has_retention else None, 'log archival' if has_export else None, 'resource tagging' if has_tags else None, 'composite alarms' if has_composite else None] if s]
+                
+                manual_questions_l3 = "To assess Level 3, ask: (1) Do you track total observability spend across all tools? (2) Have you consolidated or eliminated redundant tooling? (3) Do you review which logs/metrics you collect vs. actually use? (4) Do you use tiered storage (Infrequent Access log class, S3 archival) for rarely-accessed data?"
+                manual_questions_l4 = "To assess Level 4, ask: (1) Can you tie observability investment to business outcomes (uptime SLAs, revenue protection)? (2) Do you measure MTTR improvement from observability investments? (3) Do you track observability cost per workload or team? (4) Does leadership view observability as a value driver rather than a cost center?"
+                
+                # L2: Vendor consolidation — dashboards + alarms in CloudWatch
+                if has_consolidated:
                     dashboard_count = len(dashboards_check.result.get('DashboardEntries', []))
                     alarm_count = len(alarms_check.result.get('MetricAlarms', []))
+                    cost_detail = f" Additional cost governance signals detected: {', '.join(cost_signals)}." if cost_signals else ""
                     check.current_level = 2
-                    check.explanation = f"Evidence of tool consolidation with {dashboard_count} dashboards and {alarm_count} alarms centralized in CloudWatch (Checks #{dashboards_check.id}, #{alarms_check.id}). This suggests vendor consolidation efforts to optimize costs and reduce tool sprawl."
+                    check.explanation = f"Tool consolidation detected with {dashboard_count} dashboards and {alarm_count} alarms centralized in CloudWatch {evidence_refs}.{cost_detail} {manual_questions_l3} {manual_questions_l4}"
+                # L1: Want optimization without knowledge
                 else:
                     check.current_level = 1
-                    check.explanation = "Limited evidence of ROI optimization. Observability tools may be present but without clear consolidation or cost optimization strategies."
+                    check.explanation = f"Limited evidence of observability tool consolidation {evidence_refs}. {manual_questions_l3}"
             
             elif check.question_id == 16:  # Do you use any AI/ML capability today?
                 anomaly_check = next((c for c in self.results.discovery_checks if c.name == "Do you use anomaly detection models for adaptive alarming?"), None)
@@ -4098,6 +4120,10 @@ class ComprehensiveObservabilityAssessment:
             15: [  # Are you getting ROI from your observability tools?
                 "Do you have CloudWatch dashboards for visualizing metrics and logs?",
                 "Do you have CloudWatch alarms configured for your resources?",
+                "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?",
+                "Do you use resource tags for organizing and managing AWS resources?",
+                "Do you have log export tasks configured for archival?",
+                "Do you use composite alarms to reduce alarm noise?",
             ],
             16: [  # Do you use any AI/ML capability today?
                 "Do you use anomaly detection models for adaptive alarming?",
