@@ -3616,6 +3616,117 @@ class ComprehensiveObservabilityAssessment:
                     check.current_level = 1
                     check.explanation = f"No evidence of enterprise observability strategy detected {evidence_refs}. {manual_questions_l3}"
 
+    def get_recommendations(self, question_id, current_level):
+        """Return list of (title, description, url) recommendations for advancing from current_level to current_level+1"""
+        recs = {
+            1: {  # Q1: How do you collect logs?
+                1: [  # L1 → L2
+                    ("Install CloudWatch Agent on all EC2 instances",
+                     "Deploy the CloudWatch Agent across your EC2 fleet using Systems Manager for consistent log and metric collection.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/install-CloudWatch-Agent-on-EC2-Instance.html"),
+                    ("Enable JSON structured logging for Lambda functions",
+                     "Set LogFormat to JSON in your Lambda function logging configuration for automatic field discovery in Logs Insights.",
+                     "https://docs.aws.amazon.com/lambda/latest/dg/python-logging.html"),
+                    ("Configure ECS task logging with awslogs driver",
+                     "Set up the awslogs log driver in ECS task definitions to send container logs to CloudWatch in structured format.",
+                     "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html"),
+                    ("Enable EKS control plane logging",
+                     "Enable all 5 EKS control plane log types: api, audit, authenticator, controllerManager, and scheduler.",
+                     "https://docs.aws.amazon.com/prescriptive-guidance/latest/amazon-eks-observability-best-practices/logging-best-practices.html"),
+                    ("Start using CloudWatch Logs Insights for analytics",
+                     "Create and save common Logs Insights queries for error patterns, latency analysis, and security events.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AnalyzingLogData.html"),
+                ],
+                2: [  # L2 → L3
+                    ("Implement cross-account log centralization",
+                     "Use CloudWatch Logs Centralization rules to consolidate logs from multiple accounts and regions into a central account.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html"),
+                    ("Adopt structured JSON logging across all services",
+                     "Ensure all application logs use JSON format. Use Powertools for AWS Lambda for zero-effort structured logging.",
+                     "https://docs.powertools.aws.dev/lambda/python/latest/core/logger/"),
+                    ("Set up CloudWatch cross-account observability",
+                     "Use Observability Access Manager to give a central monitoring account visibility into log groups across accounts.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Unified-Cross-Account.html"),
+                    ("Simplify log management with CloudWatch Logs Centralization",
+                     "Consolidate log data from multiple accounts and regions into a central account, eliminating custom aggregation solutions.",
+                     "https://aws.amazon.com/blogs/mt/simplifying-log-management-using-amazon-cloudwatch-logs-centralization/"),
+                ],
+                3: [  # L3 → L4
+                    ("Enable CloudWatch log anomaly detection",
+                     "Activate anomaly detection on log groups to automatically identify unusual patterns without manual threshold configuration.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/LogsAnomalyDetection.html"),
+                    ("Deploy EKS CloudWatch Observability add-on",
+                     "Install the add-on for auto-instrumented collection with Container Insights and Application Signals.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-addon.html"),
+                    ("Implement automated log analysis with DevOps Agent",
+                     "Use AWS DevOps Agent for AI-assisted log analysis and troubleshooting to reduce MTTR.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
+                ],
+            },
+            2: {  # Q2: How do you use logs?
+                1: [  # L1 → L2
+                    ("Create metric filters to extract KPIs from logs",
+                     "Use CloudWatch metric filters to turn log patterns (error counts, latency values) into CloudWatch metrics you can alarm on.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/MonitoringLogData.html"),
+                    ("Build saved Logs Insights queries for common investigations",
+                     "Create and save Logs Insights queries for error analysis, latency percentiles, and top talkers to speed up troubleshooting.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AnalyzingLogData.html"),
+                    ("Set up alarms on log-derived metrics",
+                     "Create CloudWatch alarms on metric filters so you are notified when error rates or latency thresholds are breached.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Alarm-On-Logs.html"),
+                    ("Extract metric data from your logs",
+                     "Identify key operational data locked in logs (slow queries, transaction times, error counts) and publish it as metrics for correlation.",
+                     "https://aws-observability.github.io/observability-best-practices/signals/logs/#collect-metric-data-from-your-logs"),
+                ],
+                2: [  # L2 → L3
+                    ("Enable log anomaly detection for automated pattern analysis",
+                     "Activate CloudWatch log anomaly detectors to automatically identify unusual patterns without manual threshold configuration.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/LogsAnomalyDetection.html"),
+                    ("Use subscription filters for real-time log processing",
+                     "Set up subscription filters to stream logs to Lambda or Kinesis for automated correlation, enrichment, and alerting.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Subscriptions.html"),
+                    ("Leverage Logs Insights PPL and SQL for advanced analytics",
+                     "Use OpenSearch PPL/SQL support in Logs Insights for complex joins, correlations, and on-demand anomaly detection across log groups.",
+                     "https://aws.amazon.com/blogs/mt/advanced-analytics-using-amazon-cloudwatch-logs-insights/"),
+                    ("Adopt structured logging best practices",
+                     "Standardize on JSON structured logging with proper log levels to enable automated filtering, parsing, and anomaly detection.",
+                     "https://aws-observability.github.io/observability-best-practices/signals/logs/#structured-logging-is-key-to-success"),
+                ],
+                3: [  # L3 → L4
+                    ("Implement automated log analysis with DevOps Agent",
+                     "Use AWS DevOps Agent for AI-assisted root cause analysis across logs, metrics, and traces to reduce MTTR.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
+                    ("Use CloudWatch Investigations for automated correlation",
+                     "Enable Investigations to automatically correlate log anomalies with metric and trace signals during incidents.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/investigations.html"),
+                    ("Automate remediation with log-triggered workflows",
+                     "Connect log anomaly detections to EventBridge rules and Systems Manager automation runbooks for self-healing responses.",
+                     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/LogsAnomalyDetection.html"),
+                ],
+            },
+        }
+        q_recs = recs.get(question_id, {})
+        return q_recs.get(current_level, [])
+
+    def generate_recommendations_html(self, question_id, current_level):
+        """Generate expandable recommendations HTML for a question"""
+        recs = self.get_recommendations(question_id, current_level)
+        if not recs or current_level >= 4:
+            return ""
+        next_level = current_level + 1
+        level_names = {2: "Developing", 3: "Defined", 4: "Optimized"}
+        items = ""
+        for title, desc, url in recs:
+            items += f"""<li style="margin-bottom: 0.75rem;">
+                <strong><a href="{url}" target="_blank" style="color: #667eea; text-decoration: none;">{title}</a></strong><br>
+                <span style="color: #6b7280; font-size: 0.9em;">{desc}</span>
+            </li>"""
+        return f"""
+                    <details style="margin-top: 1rem; border: 1px solid #e0e7ff; border-radius: 6px; padding: 0.75rem; background: #f5f3ff;">
+                        <summary style="cursor: pointer; font-weight: 600; color: #667eea;">📋 Recommendations to reach Level {next_level} ({level_names.get(next_level, '')})</summary>
+                        <ul style="margin: 0.75rem 0 0 1.5rem; list-style-type: disc;">{items}</ul>
+                    </details>"""
+
     def generate_radar_chart(self):
         """Generate SVG radar chart of category maturity scores"""
         import math
@@ -3806,6 +3917,7 @@ class ComprehensiveObservabilityAssessment:
         logs_checks = [c for c in self.results.assessment_checks if c.category == "Logs"]
         for check in logs_checks:
             evidence_refs = ", ".join([f"#{id}" for id in check.evidence_check_ids]) if check.evidence_check_ids else "No evidence"
+            recs_html = self.generate_recommendations_html(check.question_id, check.current_level)
             html_content += f"""
                 <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
                     <h3>Q{check.question_id}: {check.question}</h3>
@@ -3825,7 +3937,7 @@ class ComprehensiveObservabilityAssessment:
                         <strong>Selected Answer:</strong> Level {check.current_level}<br>
                         <strong>Evidence:</strong> {check.explanation}<br>
                         <strong>Discovery Checks:</strong> {evidence_refs}
-                    </div>
+                    </div>{recs_html}
                 </div>"""
         
         html_content += """
@@ -3839,6 +3951,7 @@ class ComprehensiveObservabilityAssessment:
         metrics_checks = [c for c in self.results.assessment_checks if c.category == "Metrics"]
         for check in metrics_checks:
             evidence_refs = ", ".join([f"#{id}" for id in check.evidence_check_ids]) if check.evidence_check_ids else "No evidence"
+            recs_html = self.generate_recommendations_html(check.question_id, check.current_level)
             html_content += f"""
                 <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
                     <h3>Q{check.question_id}: {check.question}</h3>
@@ -3858,7 +3971,7 @@ class ComprehensiveObservabilityAssessment:
                         <strong>Selected Answer:</strong> Level {check.current_level}<br>
                         <strong>Evidence:</strong> {check.explanation}<br>
                         <strong>Discovery Checks:</strong> {evidence_refs}
-                    </div>
+                    </div>{recs_html}
                 </div>"""
         
         html_content += """
@@ -3872,6 +3985,7 @@ class ComprehensiveObservabilityAssessment:
         traces_checks = [c for c in self.results.assessment_checks if c.category == "Traces"]
         for check in traces_checks:
             evidence_refs = ", ".join([f"#{id}" for id in check.evidence_check_ids]) if check.evidence_check_ids else "No evidence"
+            recs_html = self.generate_recommendations_html(check.question_id, check.current_level)
             html_content += f"""
                 <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
                     <h3>Q{check.question_id}: {check.question}</h3>
@@ -3891,7 +4005,7 @@ class ComprehensiveObservabilityAssessment:
                         <strong>Selected Answer:</strong> Level {check.current_level}<br>
                         <strong>Evidence:</strong> {check.explanation}<br>
                         <strong>Discovery Checks:</strong> {evidence_refs}
-                    </div>
+                    </div>{recs_html}
                 </div>"""
         
         html_content += """
@@ -3905,6 +4019,7 @@ class ComprehensiveObservabilityAssessment:
         dashboard_checks = [c for c in self.results.assessment_checks if c.category == "Dashboards & Alerting"]
         for check in dashboard_checks:
             evidence_refs = ", ".join([f"#{id}" for id in check.evidence_check_ids]) if check.evidence_check_ids else "No evidence"
+            recs_html = self.generate_recommendations_html(check.question_id, check.current_level)
             html_content += f"""
                 <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
                     <h3>Q{check.question_id}: {check.question}</h3>
@@ -3924,7 +4039,7 @@ class ComprehensiveObservabilityAssessment:
                         <strong>Selected Answer:</strong> Level {check.current_level}<br>
                         <strong>Evidence:</strong> {check.explanation}<br>
                         <strong>Discovery Checks:</strong> {evidence_refs}
-                    </div>
+                    </div>{recs_html}
                 </div>"""
         
         html_content += """
@@ -3938,6 +4053,7 @@ class ComprehensiveObservabilityAssessment:
         org_checks = [c for c in self.results.assessment_checks if c.category == "Organization"]
         for check in org_checks:
             evidence_refs = ", ".join([f"#{id}" for id in check.evidence_check_ids]) if check.evidence_check_ids else "No evidence"
+            recs_html = self.generate_recommendations_html(check.question_id, check.current_level)
             html_content += f"""
                 <div style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px;">
                     <h3>Q{check.question_id}: {check.question}</h3>
@@ -3957,7 +4073,7 @@ class ComprehensiveObservabilityAssessment:
                         <strong>Selected Answer:</strong> Level {check.current_level}<br>
                         <strong>Evidence:</strong> {check.explanation}<br>
                         <strong>Discovery Checks:</strong> {evidence_refs}
-                    </div>
+                    </div>{recs_html}
                 </div>"""
         
         html_content += """
