@@ -3591,46 +3591,30 @@ class ComprehensiveObservabilityAssessment:
                 
                 all_checks = [tags_check, cross_account_check, dashboards_check, structured_check, app_signals_check, slo_check]
                 check.evidence_check_ids = [c.id for c in all_checks if c]
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
                 
                 has_tags = bool(tags_check and tags_check.result and tags_check.result.get('ResourceTagMappingList'))
                 has_cross_account = bool(cross_account_check and cross_account_check.result and (cross_account_check.result.get('links_count', 0) > 0 or cross_account_check.result.get('sinks_count', 0) > 0))
                 has_dashboards = bool(dashboards_check and dashboards_check.result and dashboards_check.result.get('DashboardEntries'))
                 has_structured = bool(structured_check and structured_check.result and structured_check.result.get('json_percentage', 0) > 50)
                 has_app_signals = bool(app_signals_check and app_signals_check.result and app_signals_check.result.get('Services'))
-                has_slos = bool(slo_check and slo_check.result and slo_check.result.get('SloSummaries'))
                 
-                l2_signals = sum([has_tags, has_cross_account, has_dashboards])
-                l3_signals = sum([has_structured, has_app_signals])
+                strategy_signals = [s for s in ['resource tagging' if has_tags else None, 'cross-account observability' if has_cross_account else None, 'centralized dashboards' if has_dashboards else None, 'structured logging' if has_structured else None, 'Application Signals' if has_app_signals else None] if s]
                 
-                if (l2_signals >= 2 and l3_signals >= 1) and has_slos:
-                    parts = []
-                    if has_tags: parts.append(f"resource tagging (Check #{tags_check.id})")
-                    if has_cross_account: parts.append(f"cross-account observability (Check #{cross_account_check.id})")
-                    if has_app_signals: parts.append(f"Application Signals (Check #{app_signals_check.id})")
-                    if has_slos: parts.append(f"SLOs (Check #{slo_check.id})")
-                    check.current_level = 4
-                    check.explanation = f"Culture of continuous improvement with {', '.join(parts)}. SLO-driven reliability targets combined with standardized tooling and cross-account visibility indicate a mature, evolving observability strategy."
-                elif l2_signals >= 2 and l3_signals >= 1:
-                    parts = []
-                    if has_tags: parts.append(f"resource tagging (Check #{tags_check.id})")
-                    if has_cross_account: parts.append(f"cross-account observability (Check #{cross_account_check.id})")
-                    if has_structured: parts.append(f"structured logging (Check #{structured_check.id})")
-                    if has_app_signals: parts.append(f"Application Signals (Check #{app_signals_check.id})")
-                    check.current_level = 3
-                    check.explanation = f"Best practices adoption with {', '.join(parts)}. Standardized observability patterns across the organization indicate established practices and training."
-                elif l2_signals >= 2:
-                    parts = []
-                    if has_tags: parts.append(f"{len(tags_check.result.get('ResourceTagMappingList', []))} tagged resources (Check #{tags_check.id})")
-                    if has_cross_account: parts.append(f"cross-account observability (Check #{cross_account_check.id})")
-                    if has_dashboards: parts.append(f"{len(dashboards_check.result.get('DashboardEntries', []))} dashboards (Check #{dashboards_check.id})")
+                manual_questions_l3 = "To assess Level 3, ask: (1) Do you have documented observability standards and naming conventions? (2) Do teams receive training on observability best practices? (3) Are there runbooks or playbooks tied to your alerts? (4) Do you conduct regular operational reviews (e.g., weekly ops meetings, post-incident reviews)?"
+                manual_questions_l4 = "To assess Level 4, ask: (1) Is observability embedded in your CI/CD pipeline (e.g., auto-instrumentation, deployment gates based on SLOs)? (2) Do you have a dedicated observability team or CoE driving continuous improvement? (3) Do teams proactively improve observability coverage without being asked? (4) Does leadership champion observability as a strategic capability?"
+                
+                # L2: Unified tools and technologies
+                if len(strategy_signals) >= 2:
                     check.current_level = 2
-                    check.explanation = f"Unified tools and technologies with {', '.join(parts)}, indicating standardized resource management and centralized visibility across the organization."
-                elif has_tags or has_dashboards:
+                    check.explanation = f"Unified tools and technologies detected: {', '.join(strategy_signals)} {evidence_refs}. {manual_questions_l3} {manual_questions_l4}"
+                # L1: Data collection strategy only
+                elif strategy_signals:
                     check.current_level = 1
-                    check.explanation = "Basic data collection strategy with some organizational elements. Limited evidence of enterprise-wide standardization or unified observability approach."
+                    check.explanation = f"Basic data collection strategy with {', '.join(strategy_signals)} {evidence_refs}. Limited evidence of enterprise-wide standardization. {manual_questions_l3}"
                 else:
                     check.current_level = 1
-                    check.explanation = "Limited evidence of enterprise observability strategy. Appears to focus primarily on data collection without comprehensive organizational alignment or standardization."
+                    check.explanation = f"No evidence of enterprise observability strategy detected {evidence_refs}. {manual_questions_l3}"
 
     def generate_radar_chart(self):
         """Generate SVG radar chart of category maturity scores"""
