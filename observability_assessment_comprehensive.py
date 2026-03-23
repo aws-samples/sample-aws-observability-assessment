@@ -3516,7 +3516,7 @@ class ComprehensiveObservabilityAssessment:
                 check.evidence_check_ids = [c.id for c in [anomaly_check, devops_agent_check, investigations_check, log_anomaly_check] if c]
 
                 has_metric_anomaly = anomaly_check and isinstance(anomaly_check.result, dict) and anomaly_check.result.get('total_bands', 0) > 0
-                has_log_anomaly = log_anomaly_check and log_anomaly_check.status == 'success'
+                has_log_anomaly = log_anomaly_check and isinstance(log_anomaly_check.result, dict) and len(log_anomaly_check.result.get('anomalyDetectors', [])) > 0
                 has_devops_agent = devops_agent_check and isinstance(devops_agent_check.result, dict) and devops_agent_check.result.get('total_spaces', 0) > 0
                 has_investigations = investigations_check and isinstance(investigations_check.result, dict) and investigations_check.result.get('alarms_with_investigations', 0) > 0
                 has_anomaly = has_metric_anomaly or has_log_anomaly
@@ -3524,7 +3524,7 @@ class ComprehensiveObservabilityAssessment:
                 evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
                 capabilities = []
                 if has_metric_anomaly: capabilities.append(f"{anomaly_check.result.get('total_bands', 0)} metric anomaly detectors")
-                if has_log_anomaly: capabilities.append("log anomaly detection")
+                if has_log_anomaly: capabilities.append(f"{len(log_anomaly_check.result.get('anomalyDetectors', []))} log anomaly detectors")
                 if has_devops_agent: capabilities.append("DevOps Agent (NL query)")
                 if has_investigations: capabilities.append("CloudWatch Investigations")
 
