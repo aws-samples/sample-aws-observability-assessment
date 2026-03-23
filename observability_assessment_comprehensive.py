@@ -3489,17 +3489,36 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = "Limited evidence of enterprise observability strategy. Appears to focus primarily on data collection without comprehensive organizational alignment or standardization."
             
             elif check.question_id == 14:  # How do you use SLOs?
-                app_signals_slo_check = next((c for c in self.results.discovery_checks if c.name == "Have you defined Service Level Objectives (SLOs) for critical application services?"), None)
+                app_signals_slo_check = next((c for c in self.results.discovery_checks if c.name == "Have you defined Service Level Objectives (SLOs) for critical application services?" and "Organization" in c.category), None)
+                app_signals_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS Application Signals to monitor application services?" and "Metrics" in c.category), None)
+                alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
                 
-                check.evidence_check_ids = [app_signals_slo_check.id] if app_signals_slo_check else []
+                check.evidence_check_ids = [c.id for c in [app_signals_slo_check, app_signals_check, alarms_check] if c]
                 
-                if app_signals_slo_check and app_signals_slo_check.result and app_signals_slo_check.result.get('SloSummaries'):
-                    slo_count = len(app_signals_slo_check.result.get('SloSummaries', []))
+                has_slos = app_signals_slo_check and app_signals_slo_check.result and app_signals_slo_check.result.get('SloSummaries')
+                slo_count = len(app_signals_slo_check.result.get('SloSummaries', [])) if has_slos else 0
+                has_app_signals = app_signals_check and app_signals_check.result and app_signals_check.result.get('ServiceSummaries')
+                has_alarms = alarms_check and alarms_check.result and (alarms_check.result.get('MetricAlarms') or alarms_check.result.get('CompositeAlarms'))
+                
+                evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
+                
+                # L4: Integrated platforms with error budgets — SLOs + App Signals + alarms working together
+                if has_slos and has_app_signals and has_alarms:
                     check.current_level = 4
-                    check.explanation = f"Mature SLO implementation with {slo_count} Service Level Objectives configured through Application Signals (Check #{app_signals_slo_check.id}). This indicates integrated platforms with error budgets and business-aligned reliability targets."
+                    check.explanation = f"Integrated SLO platform with {slo_count} SLOs configured through Application Signals, backed by alarms for error budget tracking {evidence_refs}. This indicates integrated platforms with error budgets and business-aligned reliability targets."
+                # L3: Prioritization for users and business — SLOs defined and actively used
+                elif has_slos and has_app_signals:
+                    check.current_level = 3
+                    check.explanation = f"Found {slo_count} SLOs configured through Application Signals {evidence_refs}. SLOs are defined with service-level visibility but lack alarm integration for error budget enforcement."
+                # L2: Enterprise adoption for reliability — App Signals adopted but no SLOs yet
+                elif has_slos or has_app_signals:
+                    check.current_level = 2
+                    details = f"{slo_count} SLOs defined" if has_slos else "Application Signals enabled for service monitoring"
+                    check.explanation = f"Early SLO adoption detected: {details} {evidence_refs}. Enterprise adoption is underway but not yet fully integrated with error budgets and business prioritization."
+                # L1: Team experimentation without adoption
                 else:
                     check.current_level = 1
-                    check.explanation = "No formal SLO implementation detected. May have team-level experimentation but lacks enterprise adoption for systematic reliability management."
+                    check.explanation = f"No formal SLO implementation detected {evidence_refs}. May have team-level experimentation but lacks enterprise adoption for systematic reliability management."
             
             elif check.question_id == 15:  # Are you getting ROI from your observability tools?
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
@@ -3580,6 +3599,76 @@ class ComprehensiveObservabilityAssessment:
                     check.current_level = 1
                     check.explanation = "No end-user monitoring detected. Reliance on test users or manual validation without systematic monitoring of actual user experience or synthetic user journey testing."
 
+    def generate_radar_chart(self):
+        """Generate SVG radar chart of category maturity scores"""
+        import math
+        cat_map = [
+            ("Logs", "Logs"),
+            ("Metrics", "Metrics"),
+            ("Traces", "Traces"),
+            ("Dashboards\n& Alerting", "Dashboards & Alerting"),
+            ("Organization", "Organization"),
+        ]
+        scores = []
+        for label, cat in cat_map:
+            checks = [c for c in self.results.assessment_checks if c.category == cat]
+            scores.append((label, sum(c.current_level for c in checks) / len(checks) if checks else 0))
+
+        n = len(scores)
+        cx, cy, r = 200, 200, 150
+        angle_offset = -math.pi / 2  # start from top
+
+        def polar(value, i):
+            angle = angle_offset + (2 * math.pi * i / n)
+            dist = (value / 4.0) * r
+            return cx + dist * math.cos(angle), cy + dist * math.sin(angle)
+
+        # Grid rings
+        grid_svg = ""
+        for level in [1, 2, 3, 4]:
+            pts = " ".join(f"{polar(level, i)[0]:.1f},{polar(level, i)[1]:.1f}" for i in range(n))
+            opacity = "0.3" if level < 4 else "0.5"
+            grid_svg += f'<polygon points="{pts}" fill="none" stroke="#cbd5e1" stroke-width="1" opacity="{opacity}"/>\n'
+
+        # Axis lines and labels
+        axes_svg = ""
+        level_names = {1: "Initial", 2: "Developing", 3: "Defined", 4: "Optimized"}
+        for i, (label, score) in enumerate(scores):
+            ex, ey = polar(4, i)
+            axes_svg += f'<line x1="{cx}" y1="{cy}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#cbd5e1" stroke-width="1"/>\n'
+            # Label position (pushed out a bit further)
+            lx, ly = polar(4.7, i)
+            lines = label.split("\n")
+            for j, line in enumerate(lines):
+                axes_svg += f'<text x="{lx:.1f}" y="{ly + j * 16:.1f}" text-anchor="middle" font-size="13" font-weight="600" fill="#374151">{line}</text>\n'
+            # Score value
+            axes_svg += f'<text x="{lx:.1f}" y="{ly + len(lines) * 16:.1f}" text-anchor="middle" font-size="12" fill="#667eea" font-weight="700">{score:.1f}</text>\n'
+
+        # Level labels along first axis
+        level_labels_svg = ""
+        for level in [1, 2, 3, 4]:
+            lx, ly = polar(level, 0)
+            level_labels_svg += f'<text x="{lx + 8:.1f}" y="{ly - 4:.1f}" font-size="10" fill="#9ca3af">{level}</text>\n'
+
+        # Score polygon
+        pts = " ".join(f"{polar(s, i)[0]:.1f},{polar(s, i)[1]:.1f}" for i, (_, s) in enumerate(scores))
+        score_svg = f'<polygon points="{pts}" fill="rgba(102,126,234,0.25)" stroke="#667eea" stroke-width="2.5"/>\n'
+        # Score dots
+        for i, (_, s) in enumerate(scores):
+            dx, dy = polar(s, i)
+            score_svg += f'<circle cx="{dx:.1f}" cy="{dy:.1f}" r="4" fill="#667eea"/>\n'
+
+        return f"""
+        <div style="background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem; text-align: center;">
+            <h2 style="margin-bottom: 1rem; color: #374151;">Observability Maturity Radar</h2>
+            <svg viewBox="0 0 400 400" width="450" height="450" xmlns="http://www.w3.org/2000/svg">
+                {grid_svg}
+                {axes_svg}
+                {level_labels_svg}
+                {score_svg}
+            </svg>
+        </div>"""
+
     def generate_html_report(self):
         """Generate comprehensive HTML report with discovery section and assessment tabs"""
         
@@ -3649,6 +3738,8 @@ class ComprehensiveObservabilityAssessment:
                 <p>Evaluated</p>
             </div>
         </div>
+        
+        {self.generate_radar_chart()}
         
         <div class="tabs">
             <div class="tab-buttons">
@@ -4001,6 +4092,8 @@ class ComprehensiveObservabilityAssessment:
             ],
             14: [  # How do you use SLOs?
                 "Have you defined Service Level Objectives (SLOs) for critical application services?",
+                "Do you use AWS Application Signals to monitor application services?",
+                "Do you have CloudWatch alarms configured for your resources?",
             ],
             15: [  # Are you getting ROI from your observability tools?
                 "Do you have CloudWatch dashboards for visualizing metrics and logs?",
