@@ -102,10 +102,3 @@ Reports (HTML + CSV) are uploaded to the S3 bucket automatically.
 ## IAM Permissions
 
 The assessment requires read-only access to CloudWatch, X-Ray, Lambda, ECS, EKS, SNS, SSM, Application Signals, Organizations, and related services. See `observability-assessment-role.json` for the complete list of 58 IAM actions.
-
-## TODO
-
-- Remove check for Logs Insights Query History (filled by automatic queries from App Signals and Container Insights)
-- Ignore default Field Indexes created by Facets
-- Check for alarm enable/disable during maintenance windows
-- Dashboard dynamic variables widgets
