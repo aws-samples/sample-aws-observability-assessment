@@ -1056,9 +1056,17 @@ class ComprehensiveObservabilityAssessment:
                 summary = f"Found {len(services)} Application Signals services"
                 details = ""
                 for i, service in enumerate(services[:10], 1):
-                    service_name = service.get('ServiceName', 'Unknown')
-                    namespace = service.get('Namespace', 'Unknown')
-                    details += f"{i}. <strong>{service_name}</strong><br>   Namespace: {namespace}<br><br>"
+                    key_attrs = service.get('KeyAttributes', {})
+                    service_name = key_attrs.get('Name', 'Unknown')
+                    environment = key_attrs.get('Environment', 'Unknown')
+                    svc_type = key_attrs.get('Type', 'Unknown')
+                    # Get platform from AttributeMaps
+                    platform = 'Unknown'
+                    for attr_map in service.get('AttributeMaps', []):
+                        if 'PlatformType' in attr_map:
+                            platform = attr_map['PlatformType']
+                            break
+                    details += f"{i}. <strong>{service_name}</strong><br>   Environment: {environment} | Platform: {platform} | Type: {svc_type}<br><br>"
                 if len(services) > 10:
                     details += f"... and {len(services) - 10} more services"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
