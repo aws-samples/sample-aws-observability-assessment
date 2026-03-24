@@ -264,6 +264,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_log_groups_categorization_check()
             elif check.command == "custom_log_group_tags_check":
                 check.result = self.execute_log_group_tags_check()
+            elif check.command == "custom_stale_log_groups_check":
+                check.result = self.execute_stale_log_groups_check()
             elif check.command == "custom_app_signals_list_services_check":
                 check.result = self.execute_app_signals_list_services_check()
             elif check.command == "custom_xray_custom_annotations_check":
@@ -952,6 +954,26 @@ class ComprehensiveObservabilityAssessment:
                     details += f"... and {len(tagged) - 15} more tagged log groups"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No tagged log groups found"
+
+        elif check.name == "Do you have stale or unused log groups that are collecting data but not being used?":
+            total = check.result.get('total_checked', 0) if check.result else 0
+            stale = check.result.get('stale_log_groups', 0) if check.result else 0
+            active = check.result.get('active_log_groups', 0) if check.result else 0
+            pct = check.result.get('stale_percentage', 0) if check.result else 0
+            stale_list = check.result.get('stale_details', []) if check.result else []
+            if total == 0:
+                return "No log groups checked"
+            summary = f"Checked {total} largest log groups: {active} active, {stale} stale/unused ({pct}%)"
+            if stale_list:
+                details = ""
+                for i, s in enumerate(stale_list[:20], 1):
+                    days = s.get('days_since_ingestion', -1)
+                    reason = f"{days} days since last ingestion" if days > 0 else s.get('reason', 'unknown')
+                    details += f"{i}. <strong>{s['name']}</strong> — {reason}<br>"
+                if len(stale_list) > 20:
+                    details += f"... and {len(stale_list) - 20} more"
+                return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
+            return summary
 
         elif check.name == "Do you use resource tags for organizing and managing AWS resources?":
             resources = check.result.get('ResourceTagMappingList', []) if check.result else []
@@ -1718,6 +1740,9 @@ class ComprehensiveObservabilityAssessment:
         
         # Log Group Tags - applies to Logs retention (metadata-based search)
         self.add_discovery_check("Do your log groups have resource tags for retention governance and metadata-based search?", "Logs", "custom_log_group_tags_check")
+
+        # Stale Log Groups - applies to log usage and ROI
+        self.add_discovery_check("Do you have stale or unused log groups that are collecting data but not being used?", "Logs", "custom_stale_log_groups_check")
 
     def get_largest_log_groups_by_compute_type(self):
         """Get 10 largest log groups for each compute type (EC2, ECS, Lambda, EKS)"""
@@ -2835,8 +2860,9 @@ class ComprehensiveObservabilityAssessment:
                 devops_agent_check = next((c for c in self.results.discovery_checks if c.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"), None)
                 lambda_json_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of Lambda functions use JSON structured logging?"), None)
                 ecs_json_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of ECS tasks use structured logging (JSON)?"), None)
+                stale_check = next((c for c in self.results.discovery_checks if c.name == "Do you have stale or unused log groups that are collecting data but not being used?"), None)
 
-                check.evidence_check_ids = [c.id for c in [query_definitions_check, metric_filters_check, anomaly_detection_check, structured_json_check, field_indexes_check, devops_agent_check, lambda_json_check, ecs_json_check] if c]
+                check.evidence_check_ids = [c.id for c in [query_definitions_check, metric_filters_check, anomaly_detection_check, structured_json_check, field_indexes_check, devops_agent_check, lambda_json_check, ecs_json_check, stale_check] if c]
 
                 has_saved_queries = query_definitions_check and query_definitions_check.result and query_definitions_check.result.get('queryDefinitions')
                 has_metric_filters = metric_filters_check and metric_filters_check.result and metric_filters_check.result.get('metricFilters')
@@ -2860,25 +2886,34 @@ class ComprehensiveObservabilityAssessment:
                 if has_field_indexes: capabilities.append("field index policies")
                 if has_devops_agent: capabilities.append("DevOps Agent for AI-assisted troubleshooting")
 
+                # Stale log groups signal
+                stale_pct = 0
+                stale_warning = ""
+                if stale_check and isinstance(stale_check.result, dict) and stale_check.result.get('total_checked', 0) > 0:
+                    stale_pct = stale_check.result.get('stale_percentage', 0)
+                    stale_count = stale_check.result.get('stale_log_groups', 0)
+                    if stale_pct > 0:
+                        stale_warning = f" ⚠️ {stale_count} of {stale_check.result['total_checked']} largest log groups are stale ({stale_pct}%) — logs collected but not actively used."
+
                 # L4: Automated resolution — anomaly detection + metric filters (logs→metrics→alarms) + AI resolution
                 if has_anomaly_detection and has_metric_filters and has_devops_agent:
                     check.current_level = 4
-                    check.explanation = f"Automated resolution and MTTR reduction with {', '.join(capabilities)}. Logs drive automated alerting via metric filters, anomaly detection identifies issues proactively, and DevOps Agent enables AI-assisted resolution {evidence_refs}."
+                    check.explanation = f"Automated resolution and MTTR reduction with {', '.join(capabilities)}. Logs drive automated alerting via metric filters, anomaly detection identifies issues proactively, and DevOps Agent enables AI-assisted resolution {evidence_refs}.{stale_warning}"
                 # L3: Automated correlation and anomaly detection
                 elif has_anomaly_detection and (has_metric_filters or has_saved_queries):
                     check.current_level = 3
-                    check.explanation = f"Automated correlation and anomaly detection with {', '.join(capabilities)}. Anomaly detection proactively identifies issues while structured analysis capabilities enable faster root cause identification {evidence_refs}."
+                    check.explanation = f"Automated correlation and anomaly detection with {', '.join(capabilities)}. Anomaly detection proactively identifies issues while structured analysis capabilities enable faster root cause identification {evidence_refs}.{stale_warning}"
                 # L2: Structured queries with faster analysis
                 elif has_saved_queries or has_metric_filters or (has_structured_json and has_field_indexes):
                     check.current_level = 2
-                    check.explanation = f"Structured queries with faster analysis using {', '.join(capabilities)}. Repeatable analysis patterns and log-derived metrics enable faster troubleshooting beyond manual searches {evidence_refs}."
+                    check.explanation = f"Structured queries with faster analysis using {', '.join(capabilities)}. Repeatable analysis patterns and log-derived metrics enable faster troubleshooting beyond manual searches {evidence_refs}.{stale_warning}"
                 # L1: Manual log searches
                 else:
                     check.current_level = 1
                     if capabilities:
-                        check.explanation = f"Basic log usage with {', '.join(capabilities)}. Limited structured analysis — primarily manual log searches for troubleshooting {evidence_refs}."
+                        check.explanation = f"Basic log usage with {', '.join(capabilities)}. Limited structured analysis — primarily manual log searches for troubleshooting {evidence_refs}.{stale_warning}"
                     else:
-                        check.explanation = f"Log usage limited to manual searches and basic queries. No saved queries, metric filters, or anomaly detection detected {evidence_refs}."
+                        check.explanation = f"Log usage limited to manual searches and basic queries. No saved queries, metric filters, or anomaly detection detected {evidence_refs}.{stale_warning}"
             
             elif check.question_id == 3:  # How do you access logs?
                 # Discovery checks for log access
@@ -4693,6 +4728,7 @@ class ComprehensiveObservabilityAssessment:
                 "What percentage of ECS tasks use structured logging (JSON)?",
                 "Do you have field index policies configured for faster log queries?",
                 "Do you use AWS DevOps Agent for AI-assisted troubleshooting?",
+                "Do you have stale or unused log groups that are collecting data but not being used?",
             ],
             3: [  # How do you access logs?
                 "What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)",
@@ -4710,6 +4746,7 @@ class ComprehensiveObservabilityAssessment:
                 "What percentage of log groups have subscription filters for real-time processing?",
                 "Have you implemented Cross-Account and Cross-Region Log Centralization?",
                 "Do your log groups have resource tags for retention governance and metadata-based search?",
+                "Do you have stale or unused log groups that are collecting data but not being used?",
             ],
             5: [  # What type of metrics do you collect?
                 "Are you publishing custom business and application metrics to CloudWatch?",
@@ -4806,6 +4843,7 @@ class ComprehensiveObservabilityAssessment:
                 "Do you use resource tags for organizing and managing AWS resources?",
                 "Do you have log export tasks configured for archival?",
                 "Do you use composite alarms to reduce alarm noise?",
+                "Do you have stale or unused log groups that are collecting data but not being used?",
             ],
         }
         return mapping.get(question_id, [])
@@ -5372,6 +5410,49 @@ class ComprehensiveObservabilityAssessment:
             }
         except Exception:
             return {'total_tagged_log_groups': 0, 'tagged_log_groups': []}
+
+    def execute_stale_log_groups_check(self):
+        """Check largest log groups for staleness using most recent log stream ingestion time."""
+        import time
+        try:
+            if not self.largest_log_groups:
+                return {'total_checked': 0, 'stale_log_groups': 0, 'active_log_groups': 0, 'stale_details': []}
+            # Flatten all largest log group names
+            all_names = []
+            for names in self.largest_log_groups.values():
+                all_names.extend(names)
+            if not all_names:
+                return {'total_checked': 0, 'stale_log_groups': 0, 'active_log_groups': 0, 'stale_details': []}
+            now_ms = int(time.time() * 1000)
+            stale_details = []
+            active_count = 0
+            for name in all_names:
+                try:
+                    resp = self.run_aws_command(f'aws logs describe-log-streams --log-group-name "{name}" --order-by LastEventTime --descending --limit 1 --output json')
+                    streams = (resp or {}).get('logStreams', [])
+                    if not streams:
+                        stale_details.append({'name': name, 'days_since_ingestion': -1, 'reason': 'no streams'})
+                        continue
+                    last = streams[0].get('lastIngestionTime') or streams[0].get('lastEventTimestamp', 0)
+                    if last == 0:
+                        stale_details.append({'name': name, 'days_since_ingestion': -1, 'reason': 'no ingestion time'})
+                    else:
+                        days = (now_ms - last) / (1000 * 60 * 60 * 24)
+                        if days > 90:
+                            stale_details.append({'name': name, 'days_since_ingestion': int(days), 'reason': 'stale'})
+                        else:
+                            active_count += 1
+                except Exception:
+                    continue
+            return {
+                'total_checked': len(all_names),
+                'stale_log_groups': len(stale_details),
+                'active_log_groups': active_count,
+                'stale_percentage': round(len(stale_details) / len(all_names) * 100, 1) if all_names else 0,
+                'stale_details': stale_details
+            }
+        except Exception:
+            return {'total_checked': 0, 'stale_log_groups': 0, 'active_log_groups': 0, 'stale_details': []}
 
     def execute_app_signals_list_services_check(self):
         """List Application Signals services with required time window"""
