@@ -9,6 +9,7 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 import argparse
+import os
 import boto3
 from botocore.exceptions import ClientError
 
@@ -49,7 +50,7 @@ class AssessmentResults:
     timestamp: str = ""
 
 class ComprehensiveObservabilityAssessment:
-    def __init__(self, profile=None, region='us-west-2'):
+    def __init__(self, profile=None, region='us-west-2', role_arn=None):
         self.profile = profile
         self.region = region
         self.results = AssessmentResults()
@@ -58,11 +59,28 @@ class ComprehensiveObservabilityAssessment:
         self.discovery_check_counter = 0
         self.largest_log_groups = None  # Will be populated during setup
         self.csv_file = None  # Will be set after getting account_id
+        self.env_override = None  # For assumed role credentials
         
+        if role_arn:
+            self._assume_role(role_arn)
+        
+    def _assume_role(self, role_arn):
+        """Assume IAM role and set env vars for all subprocess AWS CLI calls"""
+        import os
+        sts = boto3.client('sts', region_name=self.region)
+        creds = sts.assume_role(RoleArn=role_arn, RoleSessionName='ObservabilityAssessment')['Credentials']
+        self.env_override = {**os.environ,
+            'AWS_ACCESS_KEY_ID': creds['AccessKeyId'],
+            'AWS_SECRET_ACCESS_KEY': creds['SecretAccessKey'],
+            'AWS_SESSION_TOKEN': creds['SessionToken']}
+        # Clear profile since we're using assumed role creds
+        self.profile = None
+
     def export_check_to_csv(self, check_name, found_count, total_count, details=None):
         """Export check results to CSV file"""
         if not self.csv_file:
-            self.csv_file = f"sample-result/discovery_checks_{self.timestamp}.csv"
+            self.csv_file = f"assessment-result/discovery_checks_{self.timestamp}.csv"
+            os.makedirs("assessment-result", exist_ok=True)
             # Create CSV with headers
             with open(self.csv_file, 'w', newline='') as f:
                 writer = csv.writer(f)
@@ -168,7 +186,7 @@ class ComprehensiveObservabilityAssessment:
         
         try:
             # Use shell=True to handle complex commands with quotes
-            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)
             if result.returncode == 0:
                 return json.loads(result.stdout) if result.stdout.strip() else {}
             return None
@@ -4703,9 +4721,9 @@ class ComprehensiveObservabilityAssessment:
 </body>
 </html>"""
         
-        # Ensure sample-result directory exists
+        # Ensure assessment-result directory exists
         import os
-        os.makedirs("sample-result", exist_ok=True)
+        os.makedirs("assessment-result", exist_ok=True)
         
         with open(self.html_file, 'w') as f:
             f.write(html_content)
@@ -4968,10 +4986,10 @@ class ComprehensiveObservabilityAssessment:
             self.results.account_id = identity.get('Account', 'Unknown')
             self.results.user_arn = identity.get('Arn', 'Unknown')
             # Set html_file with account_id
-            self.html_file = f"sample-result/observability_assessment_{self.timestamp}_{self.results.account_id}.html"
+            self.html_file = f"assessment-result/observability_assessment_{self.timestamp}_{self.results.account_id}.html"
         else:
             self.results.account_id = 'Unknown'
-            self.html_file = f"sample-result/observability_assessment_{self.timestamp}_{self.results.account_id}.html"
+            self.html_file = f"assessment-result/observability_assessment_{self.timestamp}_{self.results.account_id}.html"
         
         # Setup and execute discovery
         self.setup_discovery_checks()
@@ -5573,13 +5591,6 @@ class ComprehensiveObservabilityAssessment:
             
         except Exception as e:
             return None
-            
-        except Exception as e:
-            return {
-                'total_spaces': 0,
-                'spaces_details': [],
-                'regions_checked': []
-            }
 
     def execute_alarm_lambda_actions_check(self):
         """Check first 50 alarms for Lambda function invocation actions"""
@@ -5840,12 +5851,13 @@ def main():
     parser = argparse.ArgumentParser(description='AWS Comprehensive Observability Assessment')
     parser.add_argument('--profile', help='AWS profile to use')
     parser.add_argument('--region', default='us-west-2', help='AWS region')
+    parser.add_argument('--role-arn', help='IAM role ARN to assume before running checks')
     parser.add_argument('--single-check', type=int, help='Run only a specific check by ID (outputs to console)')
     parser.add_argument('--single-question', type=int, help='Run only discovery checks for a specific question (1-17) and score it')
     
     args = parser.parse_args()
     
-    assessment = ComprehensiveObservabilityAssessment(profile=args.profile, region=args.region)
+    assessment = ComprehensiveObservabilityAssessment(profile=args.profile, region=args.region, role_arn=args.role_arn)
     
     if args.single_check:
         assessment.run_single_check(args.single_check)

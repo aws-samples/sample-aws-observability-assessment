@@ -1,0 +1,309 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Deploys a CodeBuild project that runs the AWS Observability Assessment,
+  an S3 bucket for reports, and a Lambda function to trigger the first build.
+
+Parameters:
+  AssessmentRegion:
+    Description: AWS region to assess.
+    Type: String
+    Default: us-west-2
+  CreateAssessmentRole:
+    Description: >-
+      Set to 'yes' for single-account mode (creates the assessment role in this account).
+      Set to 'no' if you already deployed 1-observability-assessment-role.yaml separately.
+    Type: String
+    Default: 'yes'
+    AllowedValues: ['yes', 'no']
+
+Conditions:
+  CreateAssessmentRole: !Equals [!Ref CreateAssessmentRole, 'yes']
+
+Resources:
+
+  # --- S3 Bucket for reports ---
+  ReportBucket:
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  ReportBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ReportBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowSSLRequestsOnly
+            Principal: '*'
+            Action: 's3:*'
+            Effect: Deny
+            Resource:
+              - !Sub '${ReportBucket.Arn}'
+              - !Sub '${ReportBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  # --- Assessment role (single-account mode) ---
+  ObservabilityAssessmentRole:
+    Condition: CreateAssessmentRole
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: ObservabilityAssessmentRole
+      Path: '/service-role/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              ArnEquals:
+                aws:PrincipalArn: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentCodeBuildRole'
+      Policies:
+        - PolicyName: ObservabilityAssessmentPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:DescribeQueries
+                  - logs:DescribeQueryDefinitions
+                  - logs:DescribeMetricFilters
+                  - logs:DescribeSubscriptionFilters
+                  - logs:DescribeExportTasks
+                  - logs:DescribeIndexPolicies
+                  - logs:DescribeDestinations
+                  - logs:DescribeFieldIndexes
+                  - logs:GetLogGroupFields
+                  - logs:ListLogAnomalyDetectors
+                  - logs:ListLogGroupFieldIndexes
+                  - logs:StartQuery
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:DescribeAnomalyDetectors
+                  - cloudwatch:ListDashboards
+                  - cloudwatch:GetDashboard
+                  - cloudwatch:ListMetricStreams
+                  - ec2:DescribeInstances
+                  - ec2:DescribeFlowLogs
+                  - lambda:ListFunctions
+                  - lambda:GetFunctionConfiguration
+                  - xray:GetServiceGraph
+                  - xray:GetSamplingRules
+                  - xray:GetGroups
+                  - xray:GetInsightSummaries
+                  - xray:GetTraceSummaries
+                  - sns:ListTopics
+                  - sns:ListSubscriptions
+                  - ecs:ListClusters
+                  - ecs:DescribeClusters
+                  - ecs:ListTasks
+                  - ecs:DescribeTasks
+                  - ecs:DescribeTaskDefinition
+                  - ecs:ListTaskDefinitions
+                  - eks:ListClusters
+                  - eks:DescribeCluster
+                  - eks:ListAddons
+                  - eks:DescribeAddon
+                  - synthetics:DescribeCanaries
+                  - rum:ListAppMonitors
+                  - ssm:DescribeInstanceInformation
+                  - ssm:SendCommand
+                  - ssm:GetCommandInvocation
+                  - application-signals:ListServices
+                  - application-signals:ListServiceLevelObjectives
+                  - organizations:DescribeOrganization
+                  - organizations:DescribeAccount
+                  - tag:GetResources
+                  - oam:ListLinks
+                  - oam:ListSinks
+                  - observabilityadmin:ListCentralizationRulesForOrganization
+                  - firehose:ListDeliveryStreams
+                  - firehose:DescribeDeliveryStream
+                  - kinesis:ListStreams
+                Resource: '*'
+
+  # --- CodeBuild IAM Role ---
+  ObservabilityAssessmentCodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ObservabilityAssessmentCodeBuildRole
+      Path: '/service-role/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/ObservabilityAssessmentCodeBuild'
+      Policies:
+        - PolicyName: LogGroup
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: !Sub '${ReportBucket.Arn}/*'
+        - PolicyName: AssumeAssessmentRole
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource: !Sub 'arn:${AWS::Partition}:iam::*:role/service-role/ObservabilityAssessmentRole'
+
+  # --- CodeBuild Project ---
+  ObservabilityAssessmentCodeBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: ObservabilityAssessmentCodeBuild
+      Description: Run AWS Observability Maturity Assessment
+      ServiceRole: !GetAtt ObservabilityAssessmentCodeBuildRole.Arn
+      TimeoutInMinutes: 60
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:5.0'
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: BUCKET_REPORT
+            Value: !Ref ReportBucket
+            Type: PLAINTEXT
+          - Name: ASSESSMENT_REGION
+            Value: !Ref AssessmentRegion
+            Type: PLAINTEXT
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                python: 3.11
+              commands:
+                - echo "Installing DevOps Agent CLI model..."
+                - curl -sf -o devopsagent.json https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json
+                - aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
+            build:
+              commands:
+                - set -e
+                - |
+                  echo "Downloading assessment script..."
+                  SCRIPT_URL="https://raw.githubusercontent.com/resco/resco-observability/main/observability_assessment_comprehensive.py"
+                  if ! curl -sfL -o observability_assessment_comprehensive.py "$SCRIPT_URL"; then
+                    echo "GitHub repo not available, downloading from S3..."
+                    aws s3 cp s3://$BUCKET_REPORT/observability_assessment_comprehensive.py .
+                  fi
+                - |
+                  ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                  python3 observability_assessment_comprehensive.py --region $ASSESSMENT_REGION --role-arn arn:aws:iam::${ACCOUNT_ID}:role/service-role/ObservabilityAssessmentRole
+                - aws s3 cp assessment-result/ s3://$BUCKET_REPORT/ --recursive --exclude "*" --include "*.html" --include "*.csv"
+                - echo "Assessment complete. Reports uploaded to s3://$BUCKET_REPORT/"
+
+  # --- Lambda to trigger first build ---
+  CodeBuildStartBuildLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Sub '${AWS::AccountId}'
+      Path: /
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: StartBuildInline
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                Resource: !GetAtt ObservabilityAssessmentCodeBuild.Arn
+
+  CodeBuildStartBuildLogGroup:
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${CodeBuildStartBuildLambda}'
+      RetentionInDays: 7
+
+  CodeBuildStartBuildLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: !Sub '${CodeBuildStartBuildLambdaRole.Arn}'
+      Timeout: 120
+      Runtime: python3.12
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def lambda_handler(event, context):
+              if event['RequestType'] == 'Create':
+                  try:
+                      cb = boto3.client('codebuild')
+                      response = cb.start_build(projectName=event['ResourceProperties']['ProjectName'])
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {'buildID': response['build']['id']})
+                  except Exception as e:
+                      print(e)
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {'error': str(e)})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+
+  CodeBuildStartBuild:
+    Type: Custom::CodeBuildStartBuild
+    Properties:
+      ServiceToken: !GetAtt CodeBuildStartBuildLambda.Arn
+      ProjectName: !Ref ObservabilityAssessmentCodeBuild
+
+Outputs:
+  ReportBucketName:
+    Description: S3 bucket where assessment reports are stored
+    Value: !Ref ReportBucket
+  CodeBuildProject:
+    Description: CodeBuild project name
+    Value: !Ref ObservabilityAssessmentCodeBuild
+  ManualUploadCommand:
+    Description: >-
+      If the GitHub repo is not public yet, upload the script manually after stack creation
+    Value: !Sub 'aws s3 cp observability_assessment_comprehensive.py s3://${ReportBucket}/'
