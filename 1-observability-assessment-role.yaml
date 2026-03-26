@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Deploys the read-only IAM role needed for the Observability Assessment
+  to run in this account. Deploy this template in each account you want to assess.
+
+Parameters:
+  AssessmentAccountID:
+    Description: The 12-digit account ID where the CodeBuild assessment project runs.
+    Type: String
+    Default: '012345678910'
+    AllowedPattern: \d{12}
+    ConstraintDescription: Enter the 12-digit account ID with no spaces.
+
+Resources:
+  ObservabilityAssessmentRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: ObservabilityAssessmentRole
+      Path: '/service-role/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:${AWS::Partition}:iam::${AssessmentAccountID}:root'
+            Action:
+              - 'sts:AssumeRole'
+            Condition:
+              ArnEquals:
+                aws:PrincipalArn: !Sub 'arn:${AWS::Partition}:iam::${AssessmentAccountID}:role/service-role/ObservabilityAssessmentCodeBuildRole'
+      Policies:
+        - PolicyName: ObservabilityAssessmentPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:DescribeQueries
+                  - logs:DescribeQueryDefinitions
+                  - logs:DescribeMetricFilters
+                  - logs:DescribeSubscriptionFilters
+                  - logs:DescribeExportTasks
+                  - logs:DescribeIndexPolicies
+                  - logs:DescribeDestinations
+                  - logs:DescribeFieldIndexes
+                  - logs:GetLogGroupFields
+                  - logs:ListLogAnomalyDetectors
+                  - logs:ListLogGroupFieldIndexes
+                  - logs:StartQuery
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:DescribeAnomalyDetectors
+                  - cloudwatch:ListDashboards
+                  - cloudwatch:GetDashboard
+                  - cloudwatch:ListMetricStreams
+                  - ec2:DescribeInstances
+                  - ec2:DescribeFlowLogs
+                  - lambda:ListFunctions
+                  - lambda:GetFunctionConfiguration
+                  - xray:GetServiceGraph
+                  - xray:GetSamplingRules
+                  - xray:GetGroups
+                  - xray:GetInsightSummaries
+                  - xray:GetTraceSummaries
+                  - sns:ListTopics
+                  - sns:ListSubscriptions
+                  - ecs:ListClusters
+                  - ecs:DescribeClusters
+                  - ecs:ListTasks
+                  - ecs:DescribeTasks
+                  - ecs:DescribeTaskDefinition
+                  - ecs:ListTaskDefinitions
+                  - eks:ListClusters
+                  - eks:DescribeCluster
+                  - eks:ListAddons
+                  - eks:DescribeAddon
+                  - synthetics:DescribeCanaries
+                  - rum:ListAppMonitors
+                  - ssm:DescribeInstanceInformation
+                  - ssm:SendCommand
+                  - ssm:GetCommandInvocation
+                  - application-signals:ListServices
+                  - application-signals:ListServiceLevelObjectives
+                  - organizations:DescribeOrganization
+                  - organizations:DescribeAccount
+                  - tag:GetResources
+                  - oam:ListLinks
+                  - oam:ListSinks
+                  - observabilityadmin:ListCentralizationRulesForOrganization
+                  - firehose:ListDeliveryStreams
+                  - firehose:DescribeDeliveryStream
+                  - kinesis:ListStreams
+                Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: ARN of the Observability Assessment role
+    Value: !GetAtt ObservabilityAssessmentRole.Arn

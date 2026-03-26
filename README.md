@@ -1,93 +1,104 @@
-# resco-observability
+# AWS Comprehensive Observability Assessment Tool
 
+Automated evaluation of observability maturity across AWS environments. Runs 50 discovery checks across 5 categories (Logs, Metrics, Traces, Dashboards & Alerting, Organization) and generates an HTML report with maturity scoring, evidence, and actionable recommendations.
 
+## Quick Start
 
-## Getting started
+### Option 1: Run Locally
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+```bash
+# Install DevOps Agent CLI model (required for AI/ML check)
+curl -o devopsagent.json https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json
+aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.aws.dev/resco/resco-observability.git
-git branch -M main
-git push -uf origin main
+# Run assessment
+python3 observability_assessment_comprehensive.py --profile YOUR_PROFILE --region us-west-2
 ```
 
-## Integrate with your tools
+### Option 2: Deploy via CodeBuild (Recommended)
 
-- [ ] [Set up project integrations](https://gitlab.aws.dev/resco/resco-observability/-/settings/integrations)
+Two-step CloudFormation deployment that runs the assessment automatically in your account.
 
-## Collaborate with your team
+#### Step 1: Deploy the Read-Only Assessment Role
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```bash
+aws cloudformation create-stack \
+  --stack-name ObservabilityAssessmentRole \
+  --template-body file://1-observability-assessment-role.yaml \
+  --parameters ParameterKey=AssessmentAccountID,ParameterValue=YOUR_ACCOUNT_ID \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-west-2
+```
 
-## Test and Deploy
+Set `AssessmentAccountID` to the account where CodeBuild will run (your own account for single-account mode).
 
-Use the built-in continuous integration in GitLab.
+#### Step 2: Deploy the CodeBuild Pipeline
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+```bash
+aws cloudformation create-stack \
+  --stack-name ObservabilityAssessmentCodeBuild \
+  --template-body file://2-observability-assessment-codebuild.yaml \
+  --parameters ParameterKey=AssessmentRegion,ParameterValue=us-west-2 \
+               ParameterKey=CreateAssessmentRole,ParameterValue=no \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-west-2
+```
 
-***
+Set `CreateAssessmentRole` to `yes` if you skipped Step 1 (single-account mode creates the role inline).
 
-# Editing this README
+#### Step 3: Upload the Assessment Script
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+The CodeBuild project downloads the script from a public GitHub repo. If the repo is not yet public, upload the script manually to the S3 bucket created by Step 2:
 
-## Suggestions for a good README
+```bash
+# Get the bucket name from stack outputs
+BUCKET=$(aws cloudformation describe-stacks \
+  --stack-name ObservabilityAssessmentCodeBuild \
+  --query 'Stacks[0].Outputs[?OutputKey==`ReportBucketName`].OutputValue' \
+  --output text --region us-west-2)
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+# Upload the assessment script
+aws s3 cp observability_assessment_comprehensive.py s3://$BUCKET/
+```
 
-## Name
-Choose a self-explaining name for your project.
+#### Step 4: Run the Assessment
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+A build is triggered automatically on stack creation. To re-run:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+aws codebuild start-build --project-name ObservabilityAssessmentCodeBuild --region us-west-2
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+Reports (HTML + CSV) are uploaded to the S3 bucket automatically.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## CLI Options
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+| Option | Description |
+|--------|-------------|
+| `--profile` | AWS profile to use for authentication |
+| `--region` | AWS region to assess (default: `us-west-2`) |
+| `--role-arn` | IAM role ARN to assume before running checks (used by CodeBuild) |
+| `--single-check N` | Run only a specific discovery check by ID |
+| `--single-question N` | Run discovery checks for a specific question (1-17) and score it |
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Assessment Coverage
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+50 discovery checks across 17 questions in 5 categories:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+| Category | Questions | What's Assessed |
+|----------|-----------|-----------------|
+| Logs | Q1-Q4 | Collection, usage, access, retention |
+| Metrics | Q5-Q7 | Collection types, usage patterns, centralized access |
+| Traces | Q8-Q9 | Collection instrumentation, usage and correlation |
+| Dashboards & Alerting | Q10-Q12 | Alarm strategies, dashboard maturity, adaptive thresholds |
+| Organization | Q13-Q17 | Strategy, SLOs, ROI, AI/ML, real user monitoring |
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## Output
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+- **HTML Report** with radar chart visualization, maturity scoring (1.0-4.0), evidence-based results, and recommendations
+- **CSV** with discovery check details
+- Reports saved to `assessment-result/` locally or uploaded to S3 via CodeBuild
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## IAM Permissions
 
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+The assessment requires read-only access to CloudWatch, X-Ray, Lambda, ECS, EKS, SNS, SSM, Application Signals, Organizations, and related services. See `observability-assessment-role.json` for the complete list of 58 IAM actions.

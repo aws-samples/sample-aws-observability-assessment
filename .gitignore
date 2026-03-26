@@ -1,0 +1,7 @@
+# Ignore local files directory and all contents
+localfiles/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
