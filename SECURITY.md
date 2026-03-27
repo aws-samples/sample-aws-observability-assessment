@@ -235,3 +235,24 @@ Before deploying to a new account:
 - AWS CloudTrail is enabled for API activity auditing
 - The assessment role is only assumed by the CodeBuild execution role or authorized operators
 - Network access to AWS APIs is available (no air-gapped environments without VPC endpoints)
+
+## Shared Responsibility Model
+
+This tool operates under the [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/shared-responsibility-model/). The following table clarifies responsibilities:
+
+### AWS Responsibility (Security OF the Cloud)
+- Securing the underlying infrastructure for all AWS services used (Amazon CloudWatch, AWS X-Ray, Amazon EC2, etc.)
+- Encrypting data in transit between the assessment tool and AWS API endpoints (TLS)
+- Managing the security of AWS-managed AI/ML services (Amazon CloudWatch anomaly detection, AWS DevOps Agent)
+- Physical security of data centers and hardware
+
+### Customer Responsibility (Security IN the Cloud)
+- **IAM configuration**: Deploying the assessment role with least-privilege permissions and reviewing access quarterly
+- **S3 bucket security**: Verifying encryption, public access blocks, and access logging are configured correctly
+- **Network security**: Controlling network access to the account where the assessment runs (VPC, security groups, NACLs)
+- **Data classification**: Determining the sensitivity of assessment report data and applying appropriate controls
+- **Compliance**: Determining applicable compliance requirements for log retention, data residency, and encryption standards — the tool provides example thresholds, not compliance mandates
+- **Key management**: Deciding whether SSE-S3 or customer-managed AWS KMS keys are required based on organizational policy
+- **Access control**: Managing who can trigger assessments, view reports, and assume the assessment role
+- **Monitoring**: Enabling AWS CloudTrail and reviewing logs for unexpected assessment role activity
+- **Patching**: Keeping the assessment script and its dependencies (Python, boto3, AWS CLI) up to date
