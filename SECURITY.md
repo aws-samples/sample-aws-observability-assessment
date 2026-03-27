@@ -183,9 +183,34 @@ Before deploying to a new account:
 4. Review AWS CloudTrail logs for any unexpected API calls made by the assessment role
 
 ### Policy Design Rationale
-- `Resource: "*"` is required because all 56 read-only actions are describe/list operations that do not support resource-level permissions per [AWS IAM documentation](https://docs.aws.amazon.com/service-authorization/latest/reference/)
+- `Resource: "*"` is required for the 56 read-only actions because AWS describe/list API actions [do not support resource-level permissions](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_understand-policy-summary-access-level-reference.html). These actions return metadata across all resources of that type and cannot be scoped to individual ARNs.
 - SSM `SendCommand` and `GetCommandInvocation` are separated into their own statement with a condition restricting to `AWS-RunShellScript` document only
-- Region condition limits the assessment to the specified region
+- Region condition (`aws:RequestedRegion`) limits the assessment to the specified region, preventing cross-region access
+- The trust policy uses `aws:PrincipalArn` to restrict role assumption to the specific AWS CodeBuild execution role ARN
+
+### IAM Permissions by AWS Service
+
+| Service | Actions | Access Level | Justification |
+|---------|---------|-------------|---------------|
+| Amazon CloudWatch | DescribeAlarms, DescribeAnomalyDetectors, ListMetrics, ListDashboards, GetDashboard, ListMetricStreams | Read | Metrics, alarms, and dashboard discovery |
+| Amazon CloudWatch Logs | DescribeLogGroups, DescribeLogStreams, DescribeMetricFilters, DescribeSubscriptionFilters, DescribeExportTasks, DescribeQueryDefinitions, DescribeIndexPolicies, DescribeDestinations, DescribeFieldIndexes, GetLogGroupFields, ListLogAnomalyDetectors, ListLogGroupFieldIndexes, StartQuery | Read | Log group configuration and query capability checks |
+| AWS X-Ray | GetServiceGraph, GetSamplingRules, GetGroups, GetInsightSummaries, GetTraceSummaries | Read | Trace collection and configuration checks |
+| Amazon EC2 | DescribeInstances, DescribeFlowLogs | Read | Instance and VPC flow log discovery |
+| AWS Lambda | ListFunctions, GetFunctionConfiguration | Read | Function configuration and tracing checks |
+| Amazon ECS | ListClusters, DescribeClusters, ListTasks, DescribeTasks, DescribeTaskDefinition, ListTaskDefinitions | Read | Container monitoring configuration |
+| Amazon EKS | ListClusters, DescribeCluster, ListAddons, DescribeAddon | Read | Kubernetes observability add-on checks |
+| AWS Systems Manager | DescribeInstanceInformation | Read | SSM-managed instance discovery |
+| AWS Systems Manager | SendCommand, GetCommandInvocation | Write (conditioned) | Amazon CloudWatch Agent status check on EC2 — restricted to `AWS-RunShellScript` |
+| Amazon SNS | ListTopics, ListSubscriptions | Read | Alarm notification channel discovery |
+| Amazon CloudWatch Synthetics | DescribeCanaries | Read | Synthetic monitoring checks |
+| Amazon CloudWatch RUM | ListAppMonitors | Read | Real user monitoring checks |
+| Amazon CloudWatch Application Signals | ListServices, ListServiceLevelObjectives | Read | SLO configuration checks |
+| AWS Organizations | DescribeOrganization, DescribeAccount | Read | Organization context |
+| AWS STS | GetCallerIdentity | Read | Account identity |
+| Resource Groups Tagging | GetResources | Read | Tag governance checks |
+| CloudWatch Observability Access Manager | ListLinks, ListSinks | Read | Cross-account observability |
+| Amazon Data Firehose | ListDeliveryStreams, DescribeDeliveryStream | Read | Log delivery stream checks |
+| Amazon Kinesis | ListStreams | Read | Stream-based log aggregation checks |
 
 ## Risk Assessment
 
