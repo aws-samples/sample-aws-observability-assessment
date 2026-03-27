@@ -163,8 +163,9 @@ Before deploying to a new account:
 
 ## Key Management Strategy
 
-- **S3 report bucket**: Uses SSE-S3 (AES-256) server-side encryption by default. For environments requiring customer-managed keys, replace `SSEAlgorithm: AES256` with `aws:kms` and specify a KMS key ARN in the CloudFormation template.
-- **CloudWatch Logs**: Uses default service encryption. For customer-managed keys, add a `KmsKeyId` to the log group resource.
+- **S3 report bucket**: Uses SSE-S3 (AES-256) server-side encryption by default. For environments requiring customer-managed keys, replace `SSEAlgorithm: AES256` with `aws:kms` and specify an AWS KMS key ARN in the CloudFormation template.
+- **Amazon CloudWatch Logs**: Uses default service encryption. For customer-managed keys, add a `KmsKeyId` to the log group resource in `2-observability-assessment-codebuild.yaml`.
+- **Local reports**: When running locally, reports are written to `assessment-result/` without encryption. Customers are responsible for applying disk-level encryption (e.g., LUKS, BitLocker, FileVault) on the host where reports are stored.
 - **No local key storage**: The tool does not generate, store, or manage encryption keys directly.
 
 ## Access Logging
