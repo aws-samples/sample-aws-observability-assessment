@@ -189,7 +189,7 @@ class ComprehensiveObservabilityAssessment:
             needs_shell = any(ch in command for ch in ('|', '>', '<', '$', '`', '&&', '||'))
             if needs_shell:
                 # nosemgrep: dangerous-subprocess-use-audit, subprocess-shell-true
-                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)
+                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)  # nosec B602
             else:
                 result = subprocess.run(shlex.split(command), capture_output=True, text=True, timeout=30, env=self.env_override)
             if result.returncode == 0:
