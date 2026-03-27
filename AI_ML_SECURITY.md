@@ -50,3 +50,18 @@ No inference, prediction, or generative AI is performed by the assessment tool.
 - All referenced AI/ML services are AWS-managed and covered under the [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/shared-responsibility-model/)
 - Customers should review the [AWS AI Service Cards](https://aws.amazon.com/machine-learning/responsible-machine-learning/) for detailed information on each service
 - No third-party AI/ML services or models are used
+
+## Legal Approval and Dataset Compliance
+
+- This tool does not train, fine-tune, or deploy AI/ML models — no dataset compliance review is required for the tool itself
+- Customers enabling AWS AI/ML services (Amazon CloudWatch anomaly detection, AWS DevOps Agent) in their accounts are responsible for reviewing the applicable [AWS Service Terms](https://aws.amazon.com/service-terms/) for those services
+- No customer data is sent to external AI/ML endpoints; all processing occurs within the customer's AWS account and Region
+- The assessment tool's recommendations to enable AI/ML services are informational only — customers should obtain appropriate internal approvals before enabling AI/ML services in production environments
+
+## Bias and Fairness Considerations
+
+- The maturity scoring algorithm is deterministic and rule-based (not ML-driven)
+- Scoring criteria are documented in `assessment_mapping.md` and applied uniformly across all assessed accounts
+- No demographic or personal data is collected or used in scoring
+- AI/ML service recommendations are based solely on whether the service is configured, not on the quality or nature of the data being analyzed
+- Customers should review the [AWS AI Service Cards](https://aws.amazon.com/machine-learning/responsible-machine-learning/) for bias and fairness information specific to each AWS AI/ML service they enable
