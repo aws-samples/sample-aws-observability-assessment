@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
+#
+# Architecture: See ARCHITECTURE.md for system design, threat model, and data flow.
+#
+# This script executes 50 read-only AWS CLI discovery checks across 5 categories
+# (Logs, Metrics, Traces, Dashboards & Alerting, Organization), scores 17 assessment
+# questions on a 1-4 maturity scale, and generates an HTML report.
+#
+# Security: All AWS API calls are read-only (describe/list). Commands are executed
+# via subprocess with shlex.split() (shell=False). See SECURITY.md for details.
 
 import json
 import shlex
