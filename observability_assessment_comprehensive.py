@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -185,13 +186,26 @@ class ComprehensiveObservabilityAssessment:
             command = command.replace(" --output", f" --region {self.region} --output")
         
         try:
-            # Use shell=True to handle complex commands with quotes
-            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)
+            needs_shell = any(ch in command for ch in ('|', '>', '<', '$', '`', '&&', '||'))
+            if needs_shell:
+                # nosemgrep: dangerous-subprocess-use-audit, subprocess-shell-true
+                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)
+            else:
+                result = subprocess.run(shlex.split(command), capture_output=True, text=True, timeout=30, env=self.env_override)
             if result.returncode == 0:
                 return json.loads(result.stdout) if result.stdout.strip() else {}
             return None
         except:
             return None
+
+    def _poll_ssm_command(self, command_id: str, instance_id: str, max_attempts: int = 5, interval: float = 2.0):
+        """Poll SSM for command completion instead of arbitrary sleep."""
+        for _ in range(max_attempts):
+            result = self.run_aws_command(f'aws ssm get-command-invocation --command-id {command_id} --instance-id {instance_id} --output json')
+            if result and result.get('Status') in ('Success', 'Failed', 'Cancelled', 'TimedOut'):
+                return result
+            time.sleep(interval)  # nosemgrep: arbitrary-sleep
+        return None
 
     def add_discovery_check(self, name: str, category: str, command: str) -> int:
         """Add a discovery check, combining duplicates with comma-separated categories"""
@@ -1887,11 +1901,8 @@ class ComprehensiveObservabilityAssessment:
                     if command_result and 'Command' in command_result:
                         command_id = command_result['Command']['CommandId']
                         
-                        # Wait and get command output
-                        import time
-                        time.sleep(3)
-                        
-                        output_result = self.run_aws_command(f'aws ssm get-command-invocation --command-id {command_id} --instance-id {instance_id} --output json')
+                        # Poll for SSM command completion
+                        output_result = self._poll_ssm_command(command_id, instance_id)
                         
                         if output_result and output_result.get('Status') == 'Success':
                             stdout = output_result.get('StandardOutputContent', '')
@@ -1909,9 +1920,7 @@ class ComprehensiveObservabilityAssessment:
                                 config_command = self.run_aws_command(f'aws ssm send-command --instance-ids {instance_id} --document-name "AWS-RunShellScript" --parameters \'commands=["find /opt/aws/amazon-cloudwatch-agent/etc/ -name *.json -exec grep -l log_group_name {{}} \\\\; 2>/dev/null | wc -l"]\' --output json')
                                 if config_command and 'Command' in config_command:
                                     config_command_id = config_command['Command']['CommandId']
-                                    time.sleep(3)
-                                    
-                                    config_output = self.run_aws_command(f'aws ssm get-command-invocation --command-id {config_command_id} --instance-id {instance_id} --output json')
+                                    config_output = self._poll_ssm_command(config_command_id, instance_id)
                                     
                                     if config_output and config_output.get('Status') == 'Success':
                                         config_content = config_output.get('StandardOutputContent', '')
@@ -2337,9 +2346,11 @@ class ComprehensiveObservabilityAssessment:
             else:
                 # Check if this is a member account
                 try:
-                    account_result = self.run_aws_command("aws organizations describe-account --account-id $(aws sts get-caller-identity --query Account --output text) --output json")
-                    if account_result:
-                        org_status = "Organization Member Account"
+                    account_id = self.results.account_id or ""
+                    if account_id:
+                        account_result = self.run_aws_command(f"aws organizations describe-account --account-id {account_id} --output json")
+                        if account_result:
+                            org_status = "Organization Member Account"
                 except:
                     pass
             
