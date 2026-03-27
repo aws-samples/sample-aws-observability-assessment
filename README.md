@@ -30,7 +30,7 @@ aws cloudformation create-stack \
   --region us-west-2
 ```
 
-Set `AssessmentAccountID` to the account where CodeBuild will run (your own account for single-account mode).
+Set `AssessmentAccountID` to the account where AWS CodeBuild runs (your own account for single-account mode).
 
 #### Step 2: Deploy the CodeBuild Pipeline
 

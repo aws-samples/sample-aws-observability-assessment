@@ -3731,7 +3731,7 @@ class ComprehensiveObservabilityAssessment:
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html"),
                     ("Adopt structured JSON logging across all services",
                      "Ensure all application logs use JSON format. Use Powertools for AWS Lambda for zero-effort structured logging.",
-                     "https://docs.powertools.aws.dev/lambda/python/latest/core/logger/"),
+                     "https://docs.aws.amazon.com/lambda/latest/dg/python-logging.html"),
                     ("Set up CloudWatch cross-account observability",
                      "Use Observability Access Manager to give a central monitoring account visibility into log groups across accounts.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Unified-Cross-Account.html"),

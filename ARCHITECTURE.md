@@ -93,7 +93,7 @@ Two separate IAM roles are used:
 - Metrics: Custom metric names should not contain PII
 
 ### AWS X-Ray
-- Trace data may contain request/response metadata — ensure sampling rules limit sensitive data capture
+- Trace data may contain request/response metadata — consider configuring sampling rules to limit sensitive data capture
 - X-Ray groups and insights do not store raw request payloads
 
 ### Amazon EC2
