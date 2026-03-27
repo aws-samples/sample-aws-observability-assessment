@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Deploys a CodeBuild project that runs the AWS Observability Assessment,
-  an S3 bucket for reports, and a Lambda function to trigger the first build.
+  an Amazon S3 bucket for reports, and an AWS Lambda function to trigger the first build.
 
 Parameters:
   AssessmentRegion:
@@ -213,7 +213,7 @@ Resources:
               runtime-versions:
                 python: 3.11
               commands:
-                - echo "Installing DevOps Agent CLI model..."
+                - echo "Installing AWS DevOps Agent CLI model..."
                 - curl -sf -o devopsagent.json https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json
                 - aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
             build:

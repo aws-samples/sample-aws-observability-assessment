@@ -7,7 +7,7 @@ Automated evaluation of observability maturity across AWS environments. Runs 50 
 ### Option 1: Run Locally
 
 ```bash
-# Install DevOps Agent CLI model (required for AI/ML check)
+# Install AWS DevOps Agent CLI model (required for AI/ML check)
 curl -o devopsagent.json https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json
 aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
 
@@ -101,4 +101,4 @@ Reports (HTML + CSV) are uploaded to the S3 bucket automatically.
 
 ## IAM Permissions
 
-The assessment requires read-only access to CloudWatch, X-Ray, Lambda, ECS, EKS, SNS, SSM, Application Signals, Organizations, and related services. See `observability-assessment-role.json` for the complete list of 58 IAM actions.
+The assessment requires read-only access to Amazon CloudWatch, AWS X-Ray, AWS Lambda, Amazon ECS, Amazon EKS, Amazon SNS, AWS Systems Manager, Amazon CloudWatch Application Signals, AWS Organizations, and related services. See `observability-assessment-role.json` for the complete list of 58 IAM actions.
