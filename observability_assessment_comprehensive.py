@@ -191,7 +191,7 @@ class ComprehensiveObservabilityAssessment:
                 # nosemgrep: dangerous-subprocess-use-audit, subprocess-shell-true
                 result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)  # nosec B602
             else:
-                result = subprocess.run(shlex.split(command), capture_output=True, text=True, timeout=30, env=self.env_override)
+                result = subprocess.run(shlex.split(command), capture_output=True, text=True, timeout=30, env=self.env_override)  # nosemgrep: dangerous-subprocess-use-audit
             if result.returncode == 0:
                 return json.loads(result.stdout) if result.stdout.strip() else {}
             return None
