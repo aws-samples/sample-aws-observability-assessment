@@ -2,7 +2,8 @@
 localfiles/
 
 # Assessment output files (may contain account-specific data)
-sample-result/
+sample-result/*
+!sample-result/observability_assessment_sample.html
 assessment-result/
 
 # Python cache files
