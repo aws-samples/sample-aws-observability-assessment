@@ -1154,10 +1154,10 @@ class ComprehensiveObservabilityAssessment:
                 regions_checked = check.result.get('regions_checked', [])
                 
                 if total_spaces > 0:
-                    summary = f"Found {total_spaces} DevOps Agent spaces"
+                    summary = f"Found {total_spaces} AWS DevOps Agent spaces"
                     
                     # Create detailed breakdown
-                    details = f"<strong>DevOps Agent Spaces ({total_spaces}):</strong><br>"
+                    details = f"<strong>AWS DevOps Agent Spaces ({total_spaces}):</strong><br>"
                     details += f"<em>Regions checked: {', '.join(regions_checked)}</em><br><br>"
                     
                     for i, space in enumerate(spaces_details, 1):
@@ -1175,8 +1175,8 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
                     regions_str = ', '.join(regions_checked) if regions_checked else 'none'
-                    return f"No DevOps Agent spaces found (checked regions: {regions_str})"
-            return f"DevOps Agent service not accessible"
+                    return f"No AWS DevOps Agent spaces found (checked regions: {regions_str})"
+            return f"AWS DevOps Agent service not accessible"
         
         elif check.name == "Do you have any Lambda actions configured with your alarms?":
             if check.result:
@@ -2932,7 +2932,7 @@ class ComprehensiveObservabilityAssessment:
                 if has_anomaly_detection: capabilities.append("log anomaly detection")
                 if has_structured_json: capabilities.append("structured JSON logging")
                 if has_field_indexes: capabilities.append("field index policies")
-                if has_devops_agent: capabilities.append("DevOps Agent for AI-assisted troubleshooting")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent for AI-assisted troubleshooting")
 
                 # Stale log groups signal
                 stale_pct = 0
@@ -2946,7 +2946,7 @@ class ComprehensiveObservabilityAssessment:
                 # L4: Automated resolution — anomaly detection + metric filters (logs→metrics→alarms) + AI resolution
                 if has_anomaly_detection and has_metric_filters and has_devops_agent:
                     check.current_level = 4
-                    check.explanation = f"Automated resolution and MTTR reduction with {', '.join(capabilities)}. Logs drive automated alerting via metric filters, anomaly detection identifies issues proactively, and DevOps Agent enables AI-assisted resolution {evidence_refs}.{stale_warning}"
+                    check.explanation = f"Automated resolution and MTTR reduction with {', '.join(capabilities)}. Logs drive automated alerting via metric filters, anomaly detection identifies issues proactively, and AWS DevOps Agent enables AI-assisted resolution {evidence_refs}.{stale_warning}"
                 # L3: Automated correlation and anomaly detection
                 elif has_anomaly_detection and (has_metric_filters or has_saved_queries):
                     check.current_level = 3
@@ -2995,7 +2995,7 @@ class ComprehensiveObservabilityAssessment:
                     sf_count = subscription_filters_check.result.get('groups_with_subscription_filters', 0)
                     capabilities.append(f"{sf_count} log groups with subscription filters")
                 if has_anomaly_detection: capabilities.append("log anomaly detection")
-                if has_devops_agent: capabilities.append("DevOps Agent")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent")
                 if has_investigations: capabilities.append("CloudWatch Investigations")
 
                 # L4: Automated insights with proactive root cause
@@ -3164,9 +3164,9 @@ class ComprehensiveObservabilityAssessment:
                     alarm_count = len(alarms_check.result.get('MetricAlarms', [])) + len(alarms_check.result.get('CompositeAlarms', []))
                     capabilities.append(f"{alarm_count} alarms")
                 if has_anomaly: capabilities.append(f"{anomaly_check.result.get('total_bands', 0)} anomaly detectors")
-                if has_devops_agent: capabilities.append("DevOps Agent")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent")
 
-                # L4: AI/ML capabilities (anomaly detection + DevOps Agent)
+                # L4: AI/ML capabilities (anomaly detection + AWS DevOps Agent)
                 if has_anomaly and has_devops_agent:
                     check.current_level = 4
                     check.explanation = f"AI/ML-driven metrics usage with {', '.join(capabilities)}. Proactive issue identification via anomaly detection and AI-assisted troubleshooting {evidence_refs}."
@@ -3206,7 +3206,7 @@ class ComprehensiveObservabilityAssessment:
                 if has_streams: capabilities.append(f"{len(streams_check.result['Entries'])} metric streams")
                 if has_oam: capabilities.append("cross-account observability (OAM)")
                 if has_anomaly: capabilities.append("anomaly detection")
-                if has_devops_agent: capabilities.append("DevOps Agent")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent")
 
                 # L4: Automated insights with proactive root cause
                 if has_enterprise_access and has_anomaly and has_devops_agent:
@@ -3492,14 +3492,14 @@ class ComprehensiveObservabilityAssessment:
                 if has_anomaly and has_ai_analysis:
                     anomaly_count = anomaly_check.result.get('total_bands', 0)
                     extras = []
-                    if has_devops: extras.append(f"DevOps Agent (Check #{devops_check.id})")
+                    if has_devops: extras.append(f"AWS DevOps Agent (Check #{devops_check.id})")
                     if has_investigations: extras.append(f"Investigations (Check #{investigations_check.id})")
                     check.current_level = 4
                     check.explanation = f"Fully adaptive thresholds with {anomaly_count} ML-based anomaly detectors (Check #{anomaly_check.id}) and {', '.join(extras)} for continuous analysis. The system determines normal baselines, surfaces anomalies with minimal user intervention, and accounts for seasonality and trend changes automatically."
                 elif has_anomaly:
                     anomaly_count = anomaly_check.result.get('total_bands', 0)
                     check.current_level = 3
-                    check.explanation = f"Anomaly-based alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) that trigger when metrics exhibit anomalous behavior. The ML model analyzes past metric data and creates expected value bands accounting for hourly, daily, and weekly patterns. Consider adding DevOps Agent or Investigations for continuous automated analysis."
+                    check.explanation = f"Anomaly-based alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) that trigger when metrics exhibit anomalous behavior. The ML model analyzes past metric data and creates expected value bands accounting for hourly, daily, and weekly patterns. Consider adding AWS DevOps Agent or Investigations for continuous automated analysis."
                 elif has_alarms:
                     alarms = alarms_check.result.get('MetricAlarms', [])
                     time_based_alarms = [a for a in alarms if a.get('EvaluationPeriods', 1) > 1 or a.get('DatapointsToAlarm', 1) > 1]
@@ -3608,7 +3608,7 @@ class ComprehensiveObservabilityAssessment:
                 capabilities = []
                 if has_metric_anomaly: capabilities.append(f"{anomaly_check.result.get('total_bands', 0)} metric anomaly detectors")
                 if has_log_anomaly: capabilities.append(f"{len(log_anomaly_check.result.get('anomalyDetectors', []))} log anomaly detectors")
-                if has_devops_agent: capabilities.append("DevOps Agent (NL query)")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent (NL query)")
                 if has_investigations: capabilities.append("CloudWatch Investigations")
 
                 # L4: Comprehensive AI/ML with real-time
@@ -3741,7 +3741,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Deploy EKS CloudWatch Observability add-on",
                      "Install the add-on for auto-instrumented collection with Container Insights and Application Signals.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-addon.html"),
-                    ("Implement automated log analysis with DevOps Agent",
+                    ("Implement automated log analysis with AWS DevOps Agent",
                      "Use AWS DevOps Agent for AI-assisted log analysis and troubleshooting to reduce MTTR.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
@@ -3776,7 +3776,7 @@ class ComprehensiveObservabilityAssessment:
                      "https://aws-observability.github.io/observability-best-practices/signals/logs/#structured-logging-is-key-to-success"),
                 ],
                 3: [  # L3 → L4
-                    ("Implement automated log analysis with DevOps Agent",
+                    ("Implement automated log analysis with AWS DevOps Agent",
                      "Use AWS DevOps Agent for AI-assisted root cause analysis across logs, metrics, and traces to reduce MTTR.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Use CloudWatch Investigations for automated correlation",
@@ -3817,7 +3817,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Enable CloudWatch Investigations for automated root cause analysis",
                      "Use Investigations to automatically correlate anomalies across logs, metrics, and traces with AI-assisted root cause identification.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/investigations.html"),
-                    ("Deploy DevOps Agent for proactive insights",
+                    ("Deploy AWS DevOps Agent for proactive insights",
                      "Use AWS DevOps Agent to automatically analyze cross-account observability data and surface actionable insights.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Automate incident correlation with EventBridge and Systems Manager",
@@ -3963,7 +3963,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Enable CloudWatch Investigations for automated metric correlation",
                      "Use Investigations to automatically correlate metric anomalies with related logs and traces for proactive root cause identification.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/investigations.html"),
-                    ("Deploy DevOps Agent for AI-assisted metric analysis",
+                    ("Deploy AWS DevOps Agent for AI-assisted metric analysis",
                      "Use AWS DevOps Agent to automatically analyze metric patterns and surface resolution options.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Use automation and ML for proactive insights",
@@ -4004,8 +4004,8 @@ class ComprehensiveObservabilityAssessment:
                     ("Configure X-Ray Insights for proactive anomaly alerts",
                      "Enable X-Ray Insights notifications to automatically detect latency spikes and error rate anomalies.",
                      "https://docs.aws.amazon.com/xray/latest/devguide/xray-console-insights.html"),
-                    ("Use DevOps Agent for AI-assisted trace analysis",
-                     "Leverage DevOps Agent to automatically analyze trace patterns and identify cross-service root causes.",
+                    ("Use AWS DevOps Agent for AI-assisted trace analysis",
+                     "Leverage AWS DevOps Agent to automatically analyze trace patterns and identify cross-service root causes.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
             },
@@ -4042,7 +4042,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Configure EventBridge rules for X-Ray Insights events",
                      "Set up EventBridge rules that trigger automated workflows when X-Ray detects anomalous trace patterns.",
                      "https://docs.aws.amazon.com/xray/latest/devguide/xray-console-insights.html"),
-                    ("Use DevOps Agent for proactive cross-boundary root cause identification",
+                    ("Use AWS DevOps Agent for proactive cross-boundary root cause identification",
                      "Leverage AI-assisted analysis to automatically identify root causes that span multiple services and accounts.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
@@ -4115,7 +4115,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Leverage Application Signals auto-generated dashboards",
                      "Use Application Signals pre-built service dashboards that automatically show relevant metrics, traces, and dependencies.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Application-Signals.html"),
-                    ("Use DevOps Agent for context-aware dashboard generation",
+                    ("Use AWS DevOps Agent for context-aware dashboard generation",
                      "Leverage AI to automatically surface the most relevant visualizations during troubleshooting sessions.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
@@ -4144,7 +4144,7 @@ class ComprehensiveObservabilityAssessment:
                      "https://aws-observability.github.io/observability-best-practices/signals/metrics/#use-anomaly-detection-algorithms"),
                 ],
                 3: [  # L3 → L4
-                    ("Enable DevOps Agent for continuous metric analysis",
+                    ("Enable AWS DevOps Agent for continuous metric analysis",
                      "Use AI to continuously analyze metrics, determine normal baselines, and surface anomalies with minimal intervention.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Use CloudWatch Investigations for automated anomaly correlation",
@@ -4277,7 +4277,7 @@ class ComprehensiveObservabilityAssessment:
             },
             16: {  # Q16: Do you use any AI/ML capability today?
                 1: [  # L1 → L2: no AI/ML → natural language query capability
-                    ("Enable DevOps Agent for natural language queries",
+                    ("Enable AWS DevOps Agent for natural language queries",
                      "Use AWS DevOps Agent to ask questions about your environment in natural language — the first step into AI-assisted observability.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Start using CloudWatch Logs Insights pattern analytics",
@@ -4302,8 +4302,8 @@ class ComprehensiveObservabilityAssessment:
                      "https://docs.aws.amazon.com/xray/latest/devguide/xray-console-insights.html"),
                 ],
                 3: [  # L3 → L4: automatic correlation → comprehensive AI/ML with real-time
-                    ("Use DevOps Agent for comprehensive real-time AI troubleshooting",
-                     "Leverage DevOps Agent for real-time AI analysis across all signals — logs, metrics, traces — with automated root cause identification.",
+                    ("Use AWS DevOps Agent for comprehensive real-time AI troubleshooting",
+                     "Leverage AWS DevOps Agent for real-time AI analysis across all signals — logs, metrics, traces — with automated root cause identification.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Automate remediation with AI-triggered workflows",
                      "Connect AI-detected anomalies to Systems Manager automation runbooks and Incident Manager for self-healing infrastructure.",
@@ -5351,7 +5351,7 @@ class ComprehensiveObservabilityAssessment:
             }
 
     def execute_devops_agent_spaces_check(self):
-        """Check for DevOps Agent Spaces in current region and us-east-1"""
+        """Check for AWS DevOps Agent Spaces in current region and us-east-1"""
         try:
             all_spaces = []
             regions_checked = []
@@ -5368,7 +5368,7 @@ class ComprehensiveObservabilityAssessment:
                     # Build region-specific endpoint URL
                     endpoint_url = f"https://api.prod.cp.aidevops.{region}.api.aws"
                     
-                    # Execute the DevOps Agent command with custom endpoint
+                    # Execute the AWS DevOps Agent command with custom endpoint
                     command = f"aws devopsagent list-agent-spaces --endpoint-url \"{endpoint_url}\" --region {region} --output json"
                     result = self.run_aws_command(command)
                     

@@ -34,7 +34,7 @@ The tool does not train, fine-tune, or deploy any AI/ML models. It only checks w
 
 The assessment tool itself does **not** use AI/ML. It performs deterministic checks:
 - Calls `cloudwatch:DescribeAnomalyDetectors` to check if anomaly detection is configured
-- Calls the DevOps Agent API to check if agent spaces exist
+- Calls the AWS DevOps Agent API to check if agent spaces exist
 - Checks CloudWatch Investigations alarm actions for configuration presence
 
 No inference, prediction, or generative AI is performed by the assessment tool.
