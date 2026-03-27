@@ -1,6 +1,10 @@
 # Ignore local files directory and all contents
 localfiles/
 
+# Assessment output files (may contain account-specific data)
+sample-result/
+assessment-result/
+
 # Python cache files
 __pycache__/
 *.py[cod]
