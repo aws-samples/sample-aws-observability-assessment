@@ -116,3 +116,24 @@ Before deploying to a new account:
 - [ ] Assessment role trust policy does not use wildcard principals
 - [ ] Assessment role permissions match `observability-assessment-role.json` exactly
 - [ ] Build timeout is set to 60 minutes or less
+
+## Data Classification
+
+| Data Type | Classification | Encryption at Rest | Encryption in Transit |
+|-----------|---------------|-------------------|----------------------|
+| Assessment HTML reports | Internal — contains resource ARNs and counts | SSE-S3 (AES-256) on S3 bucket | HTTPS enforced via bucket policy |
+| Discovery CSV files | Internal — contains AWS CLI command outputs | SSE-S3 (AES-256) on S3 bucket | HTTPS enforced via bucket policy |
+| Temporary STS credentials | Confidential — short-lived access tokens | In-memory only, not persisted | AWS SDK uses HTTPS |
+| CloudWatch Logs (build logs) | Internal — contains build output | CloudWatch Logs default encryption | HTTPS via AWS API |
+
+## Key Management Strategy
+
+- **S3 report bucket**: Uses SSE-S3 (AES-256) server-side encryption by default. For environments requiring customer-managed keys, replace `SSEAlgorithm: AES256` with `aws:kms` and specify a KMS key ARN in the CloudFormation template.
+- **CloudWatch Logs**: Uses default service encryption. For customer-managed keys, add a `KmsKeyId` to the log group resource.
+- **No local key storage**: The tool does not generate, store, or manage encryption keys directly.
+
+## Access Logging
+
+- **S3 bucket access**: Enable S3 server access logging by adding a `LoggingConfiguration` to the `ReportBucket` resource pointing to a dedicated logging bucket.
+- **API activity**: AWS CloudTrail captures all API calls made by the assessment role for audit purposes.
+- **Build execution**: AWS CodeBuild logs all build activity to Amazon CloudWatch Logs with 7-day retention.
