@@ -4465,6 +4465,8 @@ class ComprehensiveObservabilityAssessment:
             self.results.maturity_level = "Initial"
         
         html_content = f"""<!DOCTYPE html>
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: MIT-0 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -4745,6 +4747,9 @@ class ComprehensiveObservabilityAssessment:
             }
         </script>
     </div>
+    <footer style="text-align: center; padding: 1rem; color: #6b7280; font-size: 0.8em;">
+        <p>&copy; Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under MIT-0.</p>
+    </footer>
 </body>
 </html>"""
         
