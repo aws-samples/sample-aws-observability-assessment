@@ -170,9 +170,14 @@ Before deploying to a new account:
 
 ## Access Logging
 
-- **S3 bucket access**: Enable S3 server access logging by adding a `LoggingConfiguration` to the `ReportBucket` resource pointing to a dedicated logging bucket.
+- **S3 bucket access**: S3 server access logging is enabled on the report bucket, writing logs to a dedicated `ReportBucketAccessLogs` bucket with 90-day expiration.
 - **API activity**: AWS CloudTrail captures all API calls made by the assessment role for audit purposes.
 - **Build execution**: AWS CodeBuild logs all build activity to Amazon CloudWatch Logs with 7-day retention.
+
+## S3 MFA Delete and BYOK
+
+- **MFA Delete**: Not enabled by default. To enable MFA Delete on the report bucket for additional protection against accidental deletion, use the AWS CLI with root account credentials: `aws s3api put-bucket-versioning --bucket <bucket-name> --versioning-configuration Status=Enabled,MFADelete=Enabled --mfa "arn:aws:iam::<account>:mfa/<device> <code>"`. This is optional and recommended only for production deployments with strict data retention requirements.
+- **BYOK (Bring Your Own Key)**: The default configuration uses SSE-S3 (AES-256). To use a customer-managed AWS KMS key, update the `BucketEncryption` in `2-observability-assessment-codebuild.yaml` to use `aws:kms` with your KMS key ARN. Review your organization's key management policies to determine if BYOK is required.
 
 ## IAM Access Review Procedures
 
