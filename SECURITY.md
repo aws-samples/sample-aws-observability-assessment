@@ -150,3 +150,22 @@ Before deploying to a new account:
 - `Resource: "*"` is required because all 56 read-only actions are describe/list operations that do not support resource-level permissions per [AWS IAM documentation](https://docs.aws.amazon.com/service-authorization/latest/reference/)
 - SSM `SendCommand` and `GetCommandInvocation` are separated into their own statement with a condition restricting to `AWS-RunShellScript` document only
 - Region condition limits the assessment to the specified region
+
+## Risk Assessment
+
+### Risk Summary
+
+| Risk | Likelihood | Impact | Mitigation | Residual Risk |
+|------|-----------|--------|------------|---------------|
+| Unauthorized access to assessment reports | Low | Medium | S3 bucket policy, encryption, public access block | Low |
+| IAM role privilege escalation | Low | High | Read-only policy, scoped trust, region condition | Low |
+| Command injection in subprocess calls | Very Low | High | shlex.split(), no user input in commands | Very Low |
+| SSM command abuse on EC2 instances | Low | Medium | Restricted to AWS-RunShellScript, read-only checks | Low |
+| Stale credentials or role access | Medium | Medium | Quarterly access review, temporary STS credentials | Low |
+| Report data containing sensitive metadata | Medium | Low | No data plane access, only describe/list APIs | Low |
+
+### Assumptions
+- The tool is deployed in a trusted AWS account with appropriate access controls
+- AWS CloudTrail is enabled for API activity auditing
+- The assessment role is only assumed by the CodeBuild execution role or authorized operators
+- Network access to AWS APIs is available (no air-gapped environments without VPC endpoints)
