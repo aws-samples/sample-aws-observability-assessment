@@ -1255,7 +1255,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?":
+        elif check.name == "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?":
             if check.result:
                 top_groups = check.result.get('top_log_groups', [])
                 groups_with_retention = check.result.get('groups_with_retention', 0)
@@ -1722,7 +1722,7 @@ class ComprehensiveObservabilityAssessment:
         
         # Logs Discovery Checks (Enhanced)
         self.add_discovery_check("What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)", "Logs", "custom_log_groups_categorization_check")
-        self.add_discovery_check("What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?", "Logs", "custom_top_log_groups_retention_check")
+        self.add_discovery_check("What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?", "Logs", "custom_top_log_groups_retention_check")
         self.add_discovery_check("Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?", "Logs", "aws logs describe-query-definitions --output json")
         self.add_discovery_check("Do you have a history of Log Insights queries being executed?", "Logs", "aws logs describe-queries --output json")
         self.add_discovery_check("Have you created metric filters to extract KPIs from logs?", "Logs", "aws logs describe-metric-filters --output json")
@@ -3028,7 +3028,7 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 4:  # What is your log retention policy?
                 # Discovery checks for log retention
-                top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
+                top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?"), None)
                 export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
                 subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
@@ -3559,7 +3559,7 @@ class ComprehensiveObservabilityAssessment:
             elif check.question_id == 17:  # Are you getting ROI from your observability tools?
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
                 alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
-                retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
+                retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?"), None)
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?"), None)
                 export_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
                 composite_check = next((c for c in self.results.discovery_checks if c.name == "Do you use composite alarms to reduce alarm noise?"), None)
@@ -3833,7 +3833,7 @@ class ComprehensiveObservabilityAssessment:
             4: {  # Q4: What is your log retention policy?
                 1: [  # L1 → L2
                     ("Set consistent retention policies across all log groups",
-                     "Configure CloudWatch Logs retention periods on every log group to match your compliance requirements (e.g., 90, 365, 3653 days).",
+                     "Configure Amazon CloudWatch Logs retention periods on every log group based on your organization's requirements (e.g., 90, 365, 3653 days).",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html"),
                     ("Export logs to S3 for long-term archival",
                      "Set up subscription filters or export tasks to send logs to S3 with lifecycle policies for cost-effective long-term storage.",
@@ -4799,7 +4799,7 @@ class ComprehensiveObservabilityAssessment:
                 "Have you configured CloudWatch Investigations action for any alarms?",
             ],
             4: [  # What is your log retention policy?
-                "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?",
+                "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?",
                 "Do you have log export tasks configured for archival?",
                 "What percentage of log groups have subscription filters for real-time processing?",
                 "Have you implemented Cross-Account and Cross-Region Log Centralization?",
@@ -4897,7 +4897,7 @@ class ComprehensiveObservabilityAssessment:
             17: [  # Are you getting ROI from your observability tools?
                 "Do you have CloudWatch dashboards for visualizing metrics and logs?",
                 "Do you have CloudWatch alarms configured for your resources?",
-                "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?",
+                "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?",
                 "Do you use resource tags for organizing and managing AWS resources?",
                 "Do you have log export tasks configured for archival?",
                 "Do you use composite alarms to reduce alarm noise?",
