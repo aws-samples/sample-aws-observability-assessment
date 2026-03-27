@@ -22,6 +22,7 @@
 1. Default execution uses `shlex.split()` with `shell=False` — prevents shell metacharacter interpretation
 2. Only 3 commands (SSM remote checks with pipes/redirects) use `shell=True`, suppressed with `# nosec B602` and `# nosemgrep`
 3. The `$(...)` shell subcommand was replaced with a Python variable reference (`self.results.account_id`)
+4. All variables interpolated into CLI commands are sanitized via `shlex.quote()` through the `_sanitize()` helper method
 
 **Residual Risk**: Minimal. An attacker would need to modify the Python source code itself to inject commands, at which point they already have arbitrary code execution.
 

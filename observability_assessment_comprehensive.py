@@ -209,10 +209,15 @@ class ComprehensiveObservabilityAssessment:
         except:
             return None
 
+    @staticmethod
+    def _sanitize(value: str) -> str:
+        """Sanitize a value for safe interpolation into AWS CLI commands."""
+        return shlex.quote(str(value))
+
     def _poll_ssm_command(self, command_id: str, instance_id: str, max_attempts: int = 5, interval: float = 2.0):
         """Poll SSM for command completion instead of arbitrary sleep."""
         for _ in range(max_attempts):
-            result = self.run_aws_command(f'aws ssm get-command-invocation --command-id {command_id} --instance-id {instance_id} --output json')
+            result = self.run_aws_command(f'aws ssm get-command-invocation --command-id {self._sanitize(command_id)} --instance-id {self._sanitize(instance_id)} --output json')
             if result and result.get('Status') in ('Success', 'Failed', 'Cancelled', 'TimedOut'):
                 return result
             time.sleep(interval)  # nosemgrep: arbitrary-sleep
@@ -1907,7 +1912,7 @@ class ComprehensiveObservabilityAssessment:
             for instance_id in ssm_instances[:5]:  # Limit to first 5 for performance
                 try:
                     # Check multiple ways CloudWatch agent can be running
-                    command_result = self.run_aws_command(f'aws ssm send-command --instance-ids {instance_id} --document-name "AWS-RunShellScript" --parameters \'commands=["pgrep -f amazon-cloudwatch-agent >/dev/null && echo PROCESS_RUNNING || echo PROCESS_NOT_RUNNING","systemctl is-active amazon-cloudwatch-agent 2>/dev/null || echo SERVICE_NOT_ACTIVE","ps aux | grep -E cloudwatch | grep -v grep | wc -l"]\' --output json')
+                    command_result = self.run_aws_command(f'aws ssm send-command --instance-ids {self._sanitize(instance_id)} --document-name "AWS-RunShellScript" --parameters \'commands=["pgrep -f amazon-cloudwatch-agent >/dev/null && echo PROCESS_RUNNING || echo PROCESS_NOT_RUNNING","systemctl is-active amazon-cloudwatch-agent 2>/dev/null || echo SERVICE_NOT_ACTIVE","ps aux | grep -E cloudwatch | grep -v grep | wc -l"]\' --output json')
                     
                     if command_result and 'Command' in command_result:
                         command_id = command_result['Command']['CommandId']
@@ -1928,7 +1933,7 @@ class ComprehensiveObservabilityAssessment:
                                 cw_agent_instances.append(instance_id)
                                 
                                 # Step 4: Check for actual log collection configuration (not agent's own logs)
-                                config_command = self.run_aws_command(f'aws ssm send-command --instance-ids {instance_id} --document-name "AWS-RunShellScript" --parameters \'commands=["find /opt/aws/amazon-cloudwatch-agent/etc/ -name *.json -exec grep -l log_group_name {{}} \\\\; 2>/dev/null | wc -l"]\' --output json')
+                                config_command = self.run_aws_command(f'aws ssm send-command --instance-ids {self._sanitize(instance_id)} --document-name "AWS-RunShellScript" --parameters \'commands=["find /opt/aws/amazon-cloudwatch-agent/etc/ -name *.json -exec grep -l log_group_name {{}} \\\\; 2>/dev/null | wc -l"]\' --output json')
                                 if config_command and 'Command' in config_command:
                                     config_command_id = config_command['Command']['CommandId']
                                     config_output = self._poll_ssm_command(config_command_id, instance_id)
@@ -1977,7 +1982,7 @@ class ComprehensiveObservabilityAssessment:
                 
                 try:
                     # Get function configuration
-                    config_result = self.run_aws_command(f'aws lambda get-function-configuration --function-name {func_name} --output json')
+                    config_result = self.run_aws_command(f'aws lambda get-function-configuration --function-name {self._sanitize(func_name)} --output json')
                     if config_result:
                         # Check environment variables for JSON logging indicators
                         env_vars = config_result.get('Environment', {}).get('Variables', {})
@@ -2021,20 +2026,20 @@ class ComprehensiveObservabilityAssessment:
             # Step 2: For each cluster, get running tasks
             for cluster in clusters[:3]:  # Limit to first 3 clusters for performance
                 try:
-                    tasks_result = self.run_aws_command(f'aws ecs list-tasks --cluster {cluster} --desired-status RUNNING --output json')
+                    tasks_result = self.run_aws_command(f'aws ecs list-tasks --cluster {self._sanitize(cluster)} --desired-status RUNNING --output json')
                     if tasks_result and 'taskArns' in tasks_result:
                         task_arns = tasks_result['taskArns']
                         all_running_tasks.extend(task_arns)
                         
                         if task_arns:
                             # Step 3: Get task details to find task definition
-                            tasks_detail = self.run_aws_command(f'aws ecs describe-tasks --cluster {cluster} --tasks {" ".join(task_arns)} --output json')
+                            tasks_detail = self.run_aws_command(f'aws ecs describe-tasks --cluster {self._sanitize(cluster)} --tasks {" ".join(self._sanitize(a) for a in task_arns)} --output json')
                             if tasks_detail and 'tasks' in tasks_detail:
                                 for task in tasks_detail['tasks']:
                                     task_def_arn = task.get('taskDefinitionArn', '')
                                     if task_def_arn:
                                         # Step 4: Check task definition for logging configuration
-                                        task_def_result = self.run_aws_command(f'aws ecs describe-task-definition --task-definition {task_def_arn} --output json')
+                                        task_def_result = self.run_aws_command(f'aws ecs describe-task-definition --task-definition {self._sanitize(task_def_arn)} --output json')
                                         if task_def_result and 'taskDefinition' in task_def_result:
                                             task_def = task_def_result['taskDefinition']
                                             task_def_name = task_def.get('family', 'Unknown')
@@ -2170,7 +2175,7 @@ class ComprehensiveObservabilityAssessment:
                     # Check for field indexes on this log group
                     import shlex
                     escaped_name = shlex.quote(log_group_name)
-                    index_result = self.run_aws_command(f'aws logs describe-field-indexes --log-group-identifiers {escaped_name} --output json')
+                    index_result = self.run_aws_command(f'aws logs describe-field-indexes --log-group-identifiers {self._sanitize(escaped_name)} --output json')
                     if index_result and index_result.get('fieldIndexes'):
                         # Filter out default/system field indexes (those starting with @)
                         custom_indexes = [fi for fi in index_result['fieldIndexes'] if not fi.get('fieldIndexName', '').startswith('@')]
@@ -2313,7 +2318,7 @@ class ComprehensiveObservabilityAssessment:
                     # Check for subscription filters on this log group
                     import shlex
                     escaped_name = shlex.quote(log_group_name)
-                    filters_result = self.run_aws_command(f'aws logs describe-subscription-filters --log-group-name {escaped_name} --output json')
+                    filters_result = self.run_aws_command(f'aws logs describe-subscription-filters --log-group-name {self._sanitize(escaped_name)} --output json')
                     if filters_result and filters_result.get('subscriptionFilters'):
                         filtered_groups.append(log_group_name)
                 except Exception as e:
@@ -2578,7 +2583,7 @@ class ComprehensiveObservabilityAssessment:
                 log_group_name = log_group.get('logGroupName', '')
                 try:
                     # Check for field index policies on this log group
-                    index_result = self.run_aws_command(f'aws logs describe-index-policies --log-group-identifiers "{log_group_name}" --output json')
+                    index_result = self.run_aws_command(f'aws logs describe-index-policies --log-group-identifiers {self._sanitize(log_group_name)} --output json')
                     if index_result and index_result.get('indexPolicies'):
                         indexed_groups.append(log_group_name)
                 except:
@@ -5043,7 +5048,7 @@ class ComprehensiveObservabilityAssessment:
             # Check for observability add-on in each cluster
             for cluster_name in cluster_names:
                 try:
-                    addons_result = self.run_aws_command(f'aws eks list-addons --cluster-name "{cluster_name}" --output json')
+                    addons_result = self.run_aws_command(f'aws eks list-addons --cluster-name {self._sanitize(cluster_name)} --output json')
                     if addons_result and 'addons' in addons_result:
                         cluster_addons = addons_result['addons']
                         if 'amazon-cloudwatch-observability' in cluster_addons:
@@ -5476,7 +5481,7 @@ class ComprehensiveObservabilityAssessment:
             active_count = 0
             for name in all_names:
                 try:
-                    resp = self.run_aws_command(f'aws logs describe-log-streams --log-group-name "{name}" --order-by LastEventTime --descending --limit 1 --output json')
+                    resp = self.run_aws_command(f'aws logs describe-log-streams --log-group-name {self._sanitize(name)} --order-by LastEventTime --descending --limit 1 --output json')
                     streams = (resp or {}).get('logStreams', [])
                     if not streams:
                         stale_details.append({'name': name, 'days_since_ingestion': -1, 'reason': 'no streams'})
