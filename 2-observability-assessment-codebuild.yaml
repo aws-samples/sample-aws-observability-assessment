@@ -1,5 +1,11 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
+#
+# Security controls implemented in this template:
+#   - S3 bucket: SSE-S3 encryption, public access blocked, SSL-only policy, versioning (Priority: HIGH)
+#   - AWS CodeBuild role: scoped to S3 PutObject, CloudWatch Logs, and sts:AssumeRole only (Priority: MEDIUM)
+#   - Build timeout: 60 minutes maximum (Priority: MEDIUM)
+#   - See SECURITY.md for full implementation guidance and verification steps
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Deploys a CodeBuild project that runs the AWS Observability Assessment,

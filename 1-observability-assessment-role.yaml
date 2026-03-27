@@ -1,5 +1,11 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
+#
+# Security controls implemented in this template:
+#   - IAM role scoped to read-only observability actions (Priority: HIGH)
+#   - Trust policy restricted to a single assessment account (Priority: HIGH)
+#   - SSM write actions separated with document-name condition (Priority: HIGH)
+#   - See SECURITY.md for full implementation guidance and verification steps
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Deploys the read-only IAM role needed for the Observability Assessment

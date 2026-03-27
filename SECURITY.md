@@ -8,18 +8,35 @@ This document provides actionable security implementation guidance for deploying
 
 ### 1. IAM Least-Privilege Access (Priority: HIGH)
 
-**Control**: The assessment uses a dedicated read-only IAM role (`ObservabilityAssessmentRole`) scoped to 58 specific API actions required for discovery checks. No write permissions are granted except `ssm:SendCommand` (used to check CloudWatch Agent status on EC2 instances).
+**Control**: The assessment uses a dedicated read-only IAM role (`ObservabilityAssessmentRole`) scoped to 58 specific API actions required for discovery checks. No write permissions are granted except `ssm:SendCommand` (used to check Amazon CloudWatch Agent status on Amazon EC2 instances).
 
 **Implementation Steps**:
 1. Deploy `1-observability-assessment-role.yaml` in each target account
-2. Set `AssessmentAccountID` to restrict the trust policy to only the account running CodeBuild
+2. Set `AssessmentAccountID` to restrict the trust policy to only the account running AWS CodeBuild
 3. Verify the role has no write permissions beyond `ssm:SendCommand` and `ssm:GetCommandInvocation`
 4. Review `observability-assessment-role.json` for the complete list of permitted actions
+
+**Code Example — Deploy the role**:
+```bash
+aws cloudformation deploy \
+  --template-file 1-observability-assessment-role.yaml \
+  --stack-name ObservabilityAssessmentRole \
+  --parameter-overrides AssessmentAccountID=111122223333 \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+**Code Example — Verify the role permissions**:
+```bash
+aws iam get-role-policy --role-name ObservabilityAssessmentRole \
+  --policy-name ObservabilityReadOnlyAccess \
+  --query 'PolicyDocument.Statement[].Action' --output table
+```
 
 **Measurable Metrics**:
 - Number of IAM actions granted: 58 (all read-only except SSM command execution)
 - Trust policy scope: single account (not wildcard)
 - Resource scope: verify no overly broad resource ARNs beyond `*` (required for read-only describe/list calls)
+- **Improvement target**: Reduce to <50 actions by removing unused checks quarterly
 
 ### 2. Cross-Account Trust Policy (Priority: HIGH)
 
@@ -44,11 +61,29 @@ This document provides actionable security implementation guidance for deploying
 3. Verify the bucket policy includes `aws:SecureTransport` condition denying non-SSL requests
 4. Verify `BucketEncryption` uses `AES256` (SSE-S3) at minimum
 
+**Code Example — Verify bucket security post-deployment**:
+```bash
+BUCKET=$(aws cloudformation describe-stacks \
+  --stack-name ObservabilityAssessmentCodeBuild \
+  --query 'Stacks[0].Outputs[?OutputKey==`ReportBucketName`].OutputValue' \
+  --output text)
+
+# Verify public access block
+aws s3api get-public-access-block --bucket $BUCKET
+
+# Verify encryption
+aws s3api get-bucket-encryption --bucket $BUCKET
+
+# Verify bucket policy requires SSL
+aws s3api get-bucket-policy --bucket $BUCKET --query Policy --output text | python3 -m json.tool
+```
+
 **Measurable Metrics**:
 - Public access blocked: 4/4 settings enabled
 - SSL-only policy: present
 - Encryption: enabled (SSE-S3)
 - Versioning: enabled
+- **Improvement target**: Upgrade to SSE-KMS with customer-managed key for regulated environments
 
 ### 4. CodeBuild Execution Security (Priority: MEDIUM)
 
