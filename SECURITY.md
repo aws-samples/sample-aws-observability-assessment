@@ -137,3 +137,16 @@ Before deploying to a new account:
 - **S3 bucket access**: Enable S3 server access logging by adding a `LoggingConfiguration` to the `ReportBucket` resource pointing to a dedicated logging bucket.
 - **API activity**: AWS CloudTrail captures all API calls made by the assessment role for audit purposes.
 - **Build execution**: AWS CodeBuild logs all build activity to Amazon CloudWatch Logs with 7-day retention.
+
+## IAM Access Review Procedures
+
+### Quarterly Review
+1. Review `observability-assessment-role.json` for any actions that are no longer needed by the assessment
+2. Verify the trust policy in `1-observability-assessment-role.yaml` still references the correct assessment account
+3. Confirm no additional inline or managed policies have been attached to the assessment role
+4. Review AWS CloudTrail logs for any unexpected API calls made by the assessment role
+
+### Policy Design Rationale
+- `Resource: "*"` is required because all 56 read-only actions are describe/list operations that do not support resource-level permissions per [AWS IAM documentation](https://docs.aws.amazon.com/service-authorization/latest/reference/)
+- SSM `SendCommand` and `GetCommandInvocation` are separated into their own statement with a condition restricting to `AWS-RunShellScript` document only
+- Region condition limits the assessment to the specified region
