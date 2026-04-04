@@ -1,0 +1,15 @@
+AWS Comprehensive Observability Assessment Tool
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+***********************
+THIRD PARTY COMPONENTS
+***********************
+
+This project uses the following AWS services and tools at runtime:
+
+- AWS CLI v2 — Licensed under Apache License 2.0, https://aws.amazon.com/cli/
+- boto3 (AWS SDK for Python) — Licensed under Apache License 2.0, https://github.com/boto/boto3
+- AWS DevOps Agent CLI model — AWS proprietary service, https://docs.aws.amazon.com/devopsagent/
+
+No third-party libraries are bundled with this project. All dependencies (AWS CLI, boto3) are expected
+to be pre-installed in the execution environment.
