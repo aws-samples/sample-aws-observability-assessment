@@ -67,10 +67,10 @@ class ComprehensiveObservabilityAssessment:
         self.region = region
         self.results = AssessmentResults()
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.html_file = None  # Will be set after getting account_id
+        self.html_file = None  # Set after getting account_id
         self.discovery_check_counter = 0
-        self.largest_log_groups = None  # Will be populated during setup
-        self.csv_file = None  # Will be set after getting account_id
+        self.largest_log_groups = None  # Populated during setup
+        self.csv_file = None  # Set after getting account_id
         self.env_override = None  # For assumed role credentials
         
         if role_arn:
@@ -206,7 +206,7 @@ class ComprehensiveObservabilityAssessment:
             if result.returncode == 0:
                 return json.loads(result.stdout) if result.stdout.strip() else {}
             return None
-        except:
+        except Exception:
             return None
 
     @staticmethod
@@ -1860,7 +1860,7 @@ class ComprehensiveObservabilityAssessment:
                     group_name = groups[0]  # Take first group from each service
                     try:
                         # Properly quote the log group name for shell execution
-                        command = f'aws logs describe-log-streams --log-group-name "{group_name}" --limit 10 --output json'
+                        command = f'aws logs describe-log-streams --log-group-name {self._sanitize(group_name)} --limit 10 --output json'
                         streams_result = self.run_aws_command(command)
                         if streams_result and 'logStreams' in streams_result:
                             all_streams.extend(streams_result['logStreams'])
@@ -1902,7 +1902,7 @@ class ComprehensiveObservabilityAssessment:
                 if ssm_result and 'InstanceInformationList' in ssm_result:
                     ssm_instance_ids = [info.get('InstanceId') for info in ssm_result['InstanceInformationList']]
                     ssm_instances = [inst_id for inst_id in instance_ids if inst_id in ssm_instance_ids]
-            except:
+            except Exception:
                 pass
             
             # Step 3: Check CloudWatch agent status on SSM-enabled instances
@@ -1949,7 +1949,7 @@ class ComprehensiveObservabilityAssessment:
                                         if lines and lines[0].strip().isdigit() and int(lines[0].strip()) > 0:
                                             print(f"DEBUG: Adding {instance_id} to logging_configured_instances")
                                             logging_configured_instances.append(instance_id)
-                except:
+                except Exception:
                     continue  # Skip instances that fail
             
             return {
@@ -1998,7 +1998,7 @@ class ComprehensiveObservabilityAssessment:
                         
                         if any(json_indicators):
                             functions_with_json.append(func_name)
-                except:
+                except Exception:
                     continue
             
             return {
@@ -2076,7 +2076,7 @@ class ComprehensiveObservabilityAssessment:
                                             
                                             if has_logging:
                                                 tasks_with_logging.append(task.get('taskArn', ''))
-                except:
+                except Exception:
                     continue  # Skip clusters that fail
             
             return {
@@ -2107,7 +2107,7 @@ class ComprehensiveObservabilityAssessment:
             # Check each cluster's logging configuration
             for cluster_name in clusters[:5]:  # Limit to first 5 clusters
                 try:
-                    cluster_result = self.run_aws_command(f'aws eks describe-cluster --name {cluster_name} --output json')
+                    cluster_result = self.run_aws_command(f'aws eks describe-cluster --name {self._sanitize(cluster_name)} --output json')
                     if cluster_result and 'cluster' in cluster_result:
                         logging_config = cluster_result['cluster'].get('logging', {})
                         cluster_logging = logging_config.get('clusterLogging', [])
@@ -2123,7 +2123,7 @@ class ComprehensiveObservabilityAssessment:
                             'enabled_types': list(enabled_types),
                             'all_enabled': enabled_types == required_types
                         })
-                except:
+                except Exception:
                     continue
             
             # Return count of unique enabled types across all clusters
@@ -2188,7 +2188,7 @@ class ComprehensiveObservabilityAssessment:
                                 'log_group': log_group_name,
                                 'field_names': field_names
                             })
-                except:
+                except Exception:
                     continue  # Skip groups that fail
             
             return {
@@ -2364,10 +2364,10 @@ class ComprehensiveObservabilityAssessment:
                 try:
                     account_id = self.results.account_id or ""
                     if account_id:
-                        account_result = self.run_aws_command(f"aws organizations describe-account --account-id {account_id} --output json")
+                        account_result = self.run_aws_command(f"aws organizations describe-account --account-id {self._sanitize(account_id)} --output json")
                         if account_result:
                             org_status = "Organization Member Account"
-                except:
+                except Exception:
                     pass
             
             # 2. Check for CloudWatch Logs Centralization Rules (native centralization) using CLI
@@ -2378,7 +2378,7 @@ class ComprehensiveObservabilityAssessment:
                     rule_count = len(rules)
                     healthy_rules = len([r for r in rules if r.get('RuleHealth') == 'Healthy'])
                     patterns.append(f"CloudWatch Logs Centralization Rules ({rule_count} rules, {healthy_rules} healthy)")
-            except:
+            except Exception:
                 pass
             
             # 3. Check for CloudWatch Observability Access Manager
@@ -2391,7 +2391,7 @@ class ComprehensiveObservabilityAssessment:
                 
                 if oam_links and oam_links.get('Items'):
                     patterns.append("Observability Access Manager Link (Source Account)")
-            except:
+            except Exception:
                 pass
             
             # 4. Check for cross-account subscription filters
@@ -2406,7 +2406,7 @@ class ComprehensiveObservabilityAssessment:
                     
                     if cross_account_filters > 0:
                         patterns.append(f"Cross-account Subscription Filters ({cross_account_filters} filters)")
-            except:
+            except Exception:
                 pass
             
             # 5. Check for Kinesis/Firehose destinations
@@ -2420,7 +2420,7 @@ class ComprehensiveObservabilityAssessment:
                 if firehose_streams and firehose_streams.get('DeliveryStreamNames'):
                     firehose_details = []
                     for stream_name in firehose_streams['DeliveryStreamNames']:
-                        stream_desc = self.run_aws_command(f"aws firehose describe-delivery-stream --delivery-stream-name {stream_name} --output json")
+                        stream_desc = self.run_aws_command(f"aws firehose describe-delivery-stream --delivery-stream-name {self._sanitize(stream_name)} --output json")
                         if stream_desc and stream_desc.get('DeliveryStreamDescription'):
                             desc = stream_desc['DeliveryStreamDescription']
                             destinations = desc.get('Destinations', [])
@@ -2439,7 +2439,7 @@ class ComprehensiveObservabilityAssessment:
                     
                     if firehose_details:
                         patterns.append(f"Kinesis Data Firehose: {', '.join(firehose_details)}")
-            except:
+            except Exception:
                 pass
             
             # 6. Check for centralized S3 buckets with log-like naming
@@ -2451,7 +2451,7 @@ class ComprehensiveObservabilityAssessment:
                 if destinations and destinations.get('destinations'):
                     dest_count = len(destinations['destinations'])
                     patterns.append(f"CloudWatch Logs Destinations ({dest_count} destinations)")
-            except:
+            except Exception:
                 pass
             
             # Determine account type based on actual configurations
@@ -2586,7 +2586,7 @@ class ComprehensiveObservabilityAssessment:
                     index_result = self.run_aws_command(f'aws logs describe-index-policies --log-group-identifiers {self._sanitize(log_group_name)} --output json')
                     if index_result and index_result.get('indexPolicies'):
                         indexed_groups.append(log_group_name)
-                except:
+                except Exception:
                     continue  # Skip groups that fail
             
             return {
@@ -2801,7 +2801,7 @@ class ComprehensiveObservabilityAssessment:
                 maturity_descriptions={
                     1: "Data collection strategy only",
                     2: "Unified tools and technologies",
-                    3: "Best practices and training",
+                    3: "Established practices and training",
                     4: "Culture of continuous improvement"
                 }
             ),
@@ -3081,7 +3081,7 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = f"Partial retention coverage with {', '.join(capabilities)}. Some log groups have retention policies but coverage is below 50%, indicating disparate department-level policies {evidence_refs}."
                 else:
                     check.current_level = 1
-                    check.explanation = f"No retention policies detected on largest log groups. Logs may be using default 'Never expire' settings, leading to uncontrolled storage costs {evidence_refs}."
+                    check.explanation = f"No retention policies detected on largest log groups. Logs may be using the default retention setting ('Never expire'), leading to uncontrolled storage costs {evidence_refs}."
 
     def assess_metrics_maturity(self):
         """Assess metrics maturity based on discovery checks"""
@@ -3730,7 +3730,7 @@ class ComprehensiveObservabilityAssessment:
                      "Use CloudWatch Logs Centralization rules to consolidate logs from multiple accounts and regions into a central account.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html"),
                     ("Adopt structured JSON logging across all services",
-                     "Ensure all application logs use JSON format. Use Powertools for AWS Lambda for zero-effort structured logging.",
+                     "Configure all application logs to use JSON format. Use Powertools for AWS Lambda for zero-effort structured logging.",
                      "https://docs.aws.amazon.com/lambda/latest/dg/python-logging.html"),
                     ("Set up CloudWatch cross-account observability",
                      "Use Observability Access Manager to give a central monitoring account visibility into log groups across accounts.",
@@ -3980,7 +3980,7 @@ class ComprehensiveObservabilityAssessment:
                 1: [  # L1 → L2
                     ("Migrate from X-Ray SDK to OpenTelemetry instrumentation",
                      "X-Ray SDKs are entering maintenance mode — migrate to OpenTelemetry for broader library support and future-proof instrumentation.",
-                     "https://aws.amazon.com/blogs/mt/announcing-aws-x-ray-sdks-daemon-end-of-support-and-opentelemetry-migration/"),
+                     "https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-migration.html"),
                     ("Add custom annotations and metadata to traces",
                      "Enrich traces with business context (customer ID, order ID, environment) to enable targeted debugging and search.",
                      "https://aws-observability.github.io/observability-best-practices/signals/traces/#metadata-annotations-and-labels-are-your-best-friend"),
@@ -5058,7 +5058,7 @@ class ComprehensiveObservabilityAssessment:
                         cluster_addons = addons_result['addons']
                         if 'amazon-cloudwatch-observability' in cluster_addons:
                             observability_clusters.append(cluster_name)
-                except:
+                except Exception:
                     continue  # Skip clusters that fail
             
             return {
@@ -5819,7 +5819,7 @@ class ComprehensiveObservabilityAssessment:
                 
                 try:
                     # Get dashboard body
-                    dashboard_body_result = self.run_aws_command(f"aws cloudwatch get-dashboard --dashboard-name \"{dashboard_name}\" --output json")
+                    dashboard_body_result = self.run_aws_command(f"aws cloudwatch get-dashboard --dashboard-name {self._sanitize(dashboard_name)} --output json")
                     dashboard_body = dashboard_body_result.get('DashboardBody', '') if dashboard_body_result else ''
                     
                     # Check for dashboard variables indicators

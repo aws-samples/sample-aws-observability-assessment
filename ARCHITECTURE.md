@@ -52,7 +52,7 @@ AWS CLI is invoked via `subprocess` rather than boto3 for most checks because:
 - Security mitigation: all commands are hardcoded strings, `shlex.split()` used with `shell=False` by default
 
 ### 3. Local Report Generation
-Reports are generated locally as static HTML files with no external dependencies (no CDN, no JavaScript frameworks). This prevents supply chain attacks and ensures air-gapped environments can view reports.
+Reports are generated locally as static HTML files with no external dependencies (no CDN, no JavaScript frameworks). This prevents supply chain attacks and enables air-gapped environments to view reports.
 
 ### 4. IAM Role Separation
 Two separate IAM roles are used:

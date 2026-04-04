@@ -218,7 +218,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - sts:AssumeRole
-                Resource: !Sub 'arn:${AWS::Partition}:iam::*:role/service-role/ObservabilityAssessmentRole'
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentRole'
 
   # --- CodeBuild Project ---
   ObservabilityAssessmentCodeBuild:
@@ -310,16 +310,21 @@ Resources:
       Role: !Sub '${CodeBuildStartBuildLambdaRole.Arn}'
       Timeout: 120
       Runtime: python3.12
+      ReservedConcurrentExecutions: 1
       Code:
         ZipFile: |
           import boto3
           import cfnresponse
 
           def lambda_handler(event, context):
-              if event['RequestType'] == 'Create':
+              if event.get('RequestType') == 'Create':
                   try:
+                      props = event.get('ResourceProperties', {})
+                      project_name = props.get('ProjectName', '')
+                      if not project_name or not isinstance(project_name, str):
+                          raise ValueError('Missing or invalid ProjectName')
                       cb = boto3.client('codebuild')
-                      response = cb.start_build(projectName=event['ResourceProperties']['ProjectName'])
+                      response = cb.start_build(projectName=project_name)
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, {'buildID': response['build']['id']})
                   except Exception as e:
                       print(e)
