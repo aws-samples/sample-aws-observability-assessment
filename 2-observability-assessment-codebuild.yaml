@@ -1,7 +1,16 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Security controls implemented in this template:
+#   - S3 bucket: SSE-S3 encryption, public access blocked, SSL-only policy, versioning (Priority: HIGH)
+#   - AWS CodeBuild role: scoped to S3 PutObject, CloudWatch Logs, and sts:AssumeRole only (Priority: MEDIUM)
+#   - Build timeout: 60 minutes maximum (Priority: MEDIUM)
+#   - See SECURITY.md for full implementation guidance and verification steps
+#   - See ARCHITECTURE.md for system design and threat model
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Deploys a CodeBuild project that runs the AWS Observability Assessment,
-  an S3 bucket for reports, and a Lambda function to trigger the first build.
+  an Amazon S3 bucket for reports, and an AWS Lambda function to trigger the first build.
 
 Parameters:
   AssessmentRegion:
@@ -21,6 +30,27 @@ Conditions:
 
 Resources:
 
+  # --- S3 Access Logging Bucket ---
+  ReportBucketAccessLogs:
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAccessLogs
+            Status: Enabled
+            ExpirationInDays: 90
+
   # --- S3 Bucket for reports ---
   ReportBucket:
     UpdateReplacePolicy: Retain
@@ -29,6 +59,13 @@ Resources:
     Properties:
       VersioningConfiguration:
         Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LoggingConfiguration:
+        DestinationBucketName: !Ref ReportBucketAccessLogs
+        LogFilePrefix: report-access-logs/
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -181,7 +218,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - sts:AssumeRole
-                Resource: !Sub 'arn:${AWS::Partition}:iam::*:role/service-role/ObservabilityAssessmentRole'
+                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentRole'
 
   # --- CodeBuild Project ---
   ObservabilityAssessmentCodeBuild:
@@ -213,7 +250,7 @@ Resources:
               runtime-versions:
                 python: 3.11
               commands:
-                - echo "Installing DevOps Agent CLI model..."
+                - echo "Installing AWS DevOps Agent CLI model..."
                 - curl -sf -o devopsagent.json https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json
                 - aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
             build:
@@ -273,16 +310,21 @@ Resources:
       Role: !Sub '${CodeBuildStartBuildLambdaRole.Arn}'
       Timeout: 120
       Runtime: python3.12
+      ReservedConcurrentExecutions: 1
       Code:
         ZipFile: |
           import boto3
           import cfnresponse
 
           def lambda_handler(event, context):
-              if event['RequestType'] == 'Create':
+              if event.get('RequestType') == 'Create':
                   try:
+                      props = event.get('ResourceProperties', {})
+                      project_name = props.get('ProjectName', '')
+                      if not project_name or not isinstance(project_name, str):
+                          raise ValueError('Missing or invalid ProjectName')
                       cb = boto3.client('codebuild')
-                      response = cb.start_build(projectName=event['ResourceProperties']['ProjectName'])
+                      response = cb.start_build(projectName=project_name)
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, {'buildID': response['build']['id']})
                   except Exception as e:
                       print(e)

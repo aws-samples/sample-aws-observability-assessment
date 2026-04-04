@@ -2,6 +2,7 @@
     "Version": "2012-10-17",
     "Statement": [
         {
+            "Sid": "ReadOnlyObservabilityAccess",
             "Effect": "Allow",
             "Action": [
                 "sts:GetCallerIdentity",
@@ -49,8 +50,6 @@
                 "synthetics:DescribeCanaries",
                 "rum:ListAppMonitors",
                 "ssm:DescribeInstanceInformation",
-                "ssm:SendCommand",
-                "ssm:GetCommandInvocation",
                 "application-signals:ListServices",
                 "application-signals:ListServiceLevelObjectives",
                 "organizations:DescribeOrganization",
@@ -63,7 +62,26 @@
                 "firehose:DescribeDeliveryStream",
                 "kinesis:ListStreams"
             ],
-            "Resource": "*"
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "${AssessmentRegion}"
+                }
+            }
+        },
+        {
+            "Sid": "SSMAgentDetection",
+            "Effect": "Allow",
+            "Action": [
+                "ssm:SendCommand",
+                "ssm:GetCommandInvocation"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "ssm:DocumentName": "AWS-RunShellScript"
+                }
+            }
         }
     ]
 }

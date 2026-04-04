@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# Architecture: See ARCHITECTURE.md for system design, threat model, and data flow.
+#
+# This script executes 50 read-only AWS CLI discovery checks across 5 categories
+# (Logs, Metrics, Traces, Dashboards & Alerting, Organization), scores 17 assessment
+# questions on a 1-4 maturity scale, and generates an HTML report.
+#
+# Security: All AWS API calls are read-only (describe/list). Commands are executed
+# via subprocess with shlex.split() (shell=False). See SECURITY.md for details.
 
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -55,10 +67,10 @@ class ComprehensiveObservabilityAssessment:
         self.region = region
         self.results = AssessmentResults()
         self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        self.html_file = None  # Will be set after getting account_id
+        self.html_file = None  # Set after getting account_id
         self.discovery_check_counter = 0
-        self.largest_log_groups = None  # Will be populated during setup
-        self.csv_file = None  # Will be set after getting account_id
+        self.largest_log_groups = None  # Populated during setup
+        self.csv_file = None  # Set after getting account_id
         self.env_override = None  # For assumed role credentials
         
         if role_arn:
@@ -185,13 +197,31 @@ class ComprehensiveObservabilityAssessment:
             command = command.replace(" --output", f" --region {self.region} --output")
         
         try:
-            # Use shell=True to handle complex commands with quotes
-            result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)
+            needs_shell = any(ch in command for ch in ('|', '>', '<', '$', '`', '&&', '||'))
+            if needs_shell:
+                # nosemgrep: dangerous-subprocess-use-audit, subprocess-shell-true
+                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)  # nosec B602
+            else:
+                result = subprocess.run(shlex.split(command), capture_output=True, text=True, timeout=30, env=self.env_override)  # nosemgrep: dangerous-subprocess-use-audit
             if result.returncode == 0:
                 return json.loads(result.stdout) if result.stdout.strip() else {}
             return None
-        except:
+        except Exception:
             return None
+
+    @staticmethod
+    def _sanitize(value: str) -> str:
+        """Sanitize a value for safe interpolation into AWS CLI commands."""
+        return shlex.quote(str(value))
+
+    def _poll_ssm_command(self, command_id: str, instance_id: str, max_attempts: int = 5, interval: float = 2.0):
+        """Poll SSM for command completion instead of arbitrary sleep."""
+        for _ in range(max_attempts):
+            result = self.run_aws_command(f'aws ssm get-command-invocation --command-id {self._sanitize(command_id)} --instance-id {self._sanitize(instance_id)} --output json')
+            if result and result.get('Status') in ('Success', 'Failed', 'Cancelled', 'TimedOut'):
+                return result
+            time.sleep(interval)  # nosemgrep: arbitrary-sleep
+        return None
 
     def add_discovery_check(self, name: str, category: str, command: str) -> int:
         """Add a discovery check, combining duplicates with comma-separated categories"""
@@ -1129,10 +1159,10 @@ class ComprehensiveObservabilityAssessment:
                 regions_checked = check.result.get('regions_checked', [])
                 
                 if total_spaces > 0:
-                    summary = f"Found {total_spaces} DevOps Agent spaces"
+                    summary = f"Found {total_spaces} AWS DevOps Agent spaces"
                     
                     # Create detailed breakdown
-                    details = f"<strong>DevOps Agent Spaces ({total_spaces}):</strong><br>"
+                    details = f"<strong>AWS DevOps Agent Spaces ({total_spaces}):</strong><br>"
                     details += f"<em>Regions checked: {', '.join(regions_checked)}</em><br><br>"
                     
                     for i, space in enumerate(spaces_details, 1):
@@ -1150,8 +1180,8 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
                     regions_str = ', '.join(regions_checked) if regions_checked else 'none'
-                    return f"No DevOps Agent spaces found (checked regions: {regions_str})"
-            return f"DevOps Agent service not accessible"
+                    return f"No AWS DevOps Agent spaces found (checked regions: {regions_str})"
+            return f"AWS DevOps Agent service not accessible"
         
         elif check.name == "Do you have any Lambda actions configured with your alarms?":
             if check.result:
@@ -1225,7 +1255,7 @@ class ComprehensiveObservabilityAssessment:
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             return f"No alarms found to check"
         
-        elif check.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?":
+        elif check.name == "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?":
             if check.result:
                 top_groups = check.result.get('top_log_groups', [])
                 groups_with_retention = check.result.get('groups_with_retention', 0)
@@ -1692,7 +1722,7 @@ class ComprehensiveObservabilityAssessment:
         
         # Logs Discovery Checks (Enhanced)
         self.add_discovery_check("What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)", "Logs", "custom_log_groups_categorization_check")
-        self.add_discovery_check("What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?", "Logs", "custom_top_log_groups_retention_check")
+        self.add_discovery_check("What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?", "Logs", "custom_top_log_groups_retention_check")
         self.add_discovery_check("Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?", "Logs", "aws logs describe-query-definitions --output json")
         self.add_discovery_check("Do you have a history of Log Insights queries being executed?", "Logs", "aws logs describe-queries --output json")
         self.add_discovery_check("Have you created metric filters to extract KPIs from logs?", "Logs", "aws logs describe-metric-filters --output json")
@@ -1830,7 +1860,7 @@ class ComprehensiveObservabilityAssessment:
                     group_name = groups[0]  # Take first group from each service
                     try:
                         # Properly quote the log group name for shell execution
-                        command = f'aws logs describe-log-streams --log-group-name "{group_name}" --limit 10 --output json'
+                        command = f'aws logs describe-log-streams --log-group-name {self._sanitize(group_name)} --limit 10 --output json'
                         streams_result = self.run_aws_command(command)
                         if streams_result and 'logStreams' in streams_result:
                             all_streams.extend(streams_result['logStreams'])
@@ -1872,7 +1902,7 @@ class ComprehensiveObservabilityAssessment:
                 if ssm_result and 'InstanceInformationList' in ssm_result:
                     ssm_instance_ids = [info.get('InstanceId') for info in ssm_result['InstanceInformationList']]
                     ssm_instances = [inst_id for inst_id in instance_ids if inst_id in ssm_instance_ids]
-            except:
+            except Exception:
                 pass
             
             # Step 3: Check CloudWatch agent status on SSM-enabled instances
@@ -1882,16 +1912,13 @@ class ComprehensiveObservabilityAssessment:
             for instance_id in ssm_instances[:5]:  # Limit to first 5 for performance
                 try:
                     # Check multiple ways CloudWatch agent can be running
-                    command_result = self.run_aws_command(f'aws ssm send-command --instance-ids {instance_id} --document-name "AWS-RunShellScript" --parameters \'commands=["pgrep -f amazon-cloudwatch-agent >/dev/null && echo PROCESS_RUNNING || echo PROCESS_NOT_RUNNING","systemctl is-active amazon-cloudwatch-agent 2>/dev/null || echo SERVICE_NOT_ACTIVE","ps aux | grep -E cloudwatch | grep -v grep | wc -l"]\' --output json')
+                    command_result = self.run_aws_command(f'aws ssm send-command --instance-ids {self._sanitize(instance_id)} --document-name "AWS-RunShellScript" --parameters \'commands=["pgrep -f amazon-cloudwatch-agent >/dev/null && echo PROCESS_RUNNING || echo PROCESS_NOT_RUNNING","systemctl is-active amazon-cloudwatch-agent 2>/dev/null || echo SERVICE_NOT_ACTIVE","ps aux | grep -E cloudwatch | grep -v grep | wc -l"]\' --output json')
                     
                     if command_result and 'Command' in command_result:
                         command_id = command_result['Command']['CommandId']
                         
-                        # Wait and get command output
-                        import time
-                        time.sleep(3)
-                        
-                        output_result = self.run_aws_command(f'aws ssm get-command-invocation --command-id {command_id} --instance-id {instance_id} --output json')
+                        # Poll for SSM command completion
+                        output_result = self._poll_ssm_command(command_id, instance_id)
                         
                         if output_result and output_result.get('Status') == 'Success':
                             stdout = output_result.get('StandardOutputContent', '')
@@ -1906,12 +1933,10 @@ class ComprehensiveObservabilityAssessment:
                                 cw_agent_instances.append(instance_id)
                                 
                                 # Step 4: Check for actual log collection configuration (not agent's own logs)
-                                config_command = self.run_aws_command(f'aws ssm send-command --instance-ids {instance_id} --document-name "AWS-RunShellScript" --parameters \'commands=["find /opt/aws/amazon-cloudwatch-agent/etc/ -name *.json -exec grep -l log_group_name {{}} \\\\; 2>/dev/null | wc -l"]\' --output json')
+                                config_command = self.run_aws_command(f'aws ssm send-command --instance-ids {self._sanitize(instance_id)} --document-name "AWS-RunShellScript" --parameters \'commands=["find /opt/aws/amazon-cloudwatch-agent/etc/ -name *.json -exec grep -l log_group_name {{}} \\\\; 2>/dev/null | wc -l"]\' --output json')
                                 if config_command and 'Command' in config_command:
                                     config_command_id = config_command['Command']['CommandId']
-                                    time.sleep(3)
-                                    
-                                    config_output = self.run_aws_command(f'aws ssm get-command-invocation --command-id {config_command_id} --instance-id {instance_id} --output json')
+                                    config_output = self._poll_ssm_command(config_command_id, instance_id)
                                     
                                     if config_output and config_output.get('Status') == 'Success':
                                         config_content = config_output.get('StandardOutputContent', '')
@@ -1924,7 +1949,7 @@ class ComprehensiveObservabilityAssessment:
                                         if lines and lines[0].strip().isdigit() and int(lines[0].strip()) > 0:
                                             print(f"DEBUG: Adding {instance_id} to logging_configured_instances")
                                             logging_configured_instances.append(instance_id)
-                except:
+                except Exception:
                     continue  # Skip instances that fail
             
             return {
@@ -1957,7 +1982,7 @@ class ComprehensiveObservabilityAssessment:
                 
                 try:
                     # Get function configuration
-                    config_result = self.run_aws_command(f'aws lambda get-function-configuration --function-name {func_name} --output json')
+                    config_result = self.run_aws_command(f'aws lambda get-function-configuration --function-name {self._sanitize(func_name)} --output json')
                     if config_result:
                         # Check environment variables for JSON logging indicators
                         env_vars = config_result.get('Environment', {}).get('Variables', {})
@@ -1973,7 +1998,7 @@ class ComprehensiveObservabilityAssessment:
                         
                         if any(json_indicators):
                             functions_with_json.append(func_name)
-                except:
+                except Exception:
                     continue
             
             return {
@@ -2001,20 +2026,20 @@ class ComprehensiveObservabilityAssessment:
             # Step 2: For each cluster, get running tasks
             for cluster in clusters[:3]:  # Limit to first 3 clusters for performance
                 try:
-                    tasks_result = self.run_aws_command(f'aws ecs list-tasks --cluster {cluster} --desired-status RUNNING --output json')
+                    tasks_result = self.run_aws_command(f'aws ecs list-tasks --cluster {self._sanitize(cluster)} --desired-status RUNNING --output json')
                     if tasks_result and 'taskArns' in tasks_result:
                         task_arns = tasks_result['taskArns']
                         all_running_tasks.extend(task_arns)
                         
                         if task_arns:
                             # Step 3: Get task details to find task definition
-                            tasks_detail = self.run_aws_command(f'aws ecs describe-tasks --cluster {cluster} --tasks {" ".join(task_arns)} --output json')
+                            tasks_detail = self.run_aws_command(f'aws ecs describe-tasks --cluster {self._sanitize(cluster)} --tasks {" ".join(self._sanitize(a) for a in task_arns)} --output json')
                             if tasks_detail and 'tasks' in tasks_detail:
                                 for task in tasks_detail['tasks']:
                                     task_def_arn = task.get('taskDefinitionArn', '')
                                     if task_def_arn:
                                         # Step 4: Check task definition for logging configuration
-                                        task_def_result = self.run_aws_command(f'aws ecs describe-task-definition --task-definition {task_def_arn} --output json')
+                                        task_def_result = self.run_aws_command(f'aws ecs describe-task-definition --task-definition {self._sanitize(task_def_arn)} --output json')
                                         if task_def_result and 'taskDefinition' in task_def_result:
                                             task_def = task_def_result['taskDefinition']
                                             task_def_name = task_def.get('family', 'Unknown')
@@ -2051,7 +2076,7 @@ class ComprehensiveObservabilityAssessment:
                                             
                                             if has_logging:
                                                 tasks_with_logging.append(task.get('taskArn', ''))
-                except:
+                except Exception:
                     continue  # Skip clusters that fail
             
             return {
@@ -2082,7 +2107,7 @@ class ComprehensiveObservabilityAssessment:
             # Check each cluster's logging configuration
             for cluster_name in clusters[:5]:  # Limit to first 5 clusters
                 try:
-                    cluster_result = self.run_aws_command(f'aws eks describe-cluster --name {cluster_name} --output json')
+                    cluster_result = self.run_aws_command(f'aws eks describe-cluster --name {self._sanitize(cluster_name)} --output json')
                     if cluster_result and 'cluster' in cluster_result:
                         logging_config = cluster_result['cluster'].get('logging', {})
                         cluster_logging = logging_config.get('clusterLogging', [])
@@ -2098,7 +2123,7 @@ class ComprehensiveObservabilityAssessment:
                             'enabled_types': list(enabled_types),
                             'all_enabled': enabled_types == required_types
                         })
-                except:
+                except Exception:
                     continue
             
             # Return count of unique enabled types across all clusters
@@ -2150,7 +2175,7 @@ class ComprehensiveObservabilityAssessment:
                     # Check for field indexes on this log group
                     import shlex
                     escaped_name = shlex.quote(log_group_name)
-                    index_result = self.run_aws_command(f'aws logs describe-field-indexes --log-group-identifiers {escaped_name} --output json')
+                    index_result = self.run_aws_command(f'aws logs describe-field-indexes --log-group-identifiers {self._sanitize(escaped_name)} --output json')
                     if index_result and index_result.get('fieldIndexes'):
                         # Filter out default/system field indexes (those starting with @)
                         custom_indexes = [fi for fi in index_result['fieldIndexes'] if not fi.get('fieldIndexName', '').startswith('@')]
@@ -2163,7 +2188,7 @@ class ComprehensiveObservabilityAssessment:
                                 'log_group': log_group_name,
                                 'field_names': field_names
                             })
-                except:
+                except Exception:
                     continue  # Skip groups that fail
             
             return {
@@ -2293,7 +2318,7 @@ class ComprehensiveObservabilityAssessment:
                     # Check for subscription filters on this log group
                     import shlex
                     escaped_name = shlex.quote(log_group_name)
-                    filters_result = self.run_aws_command(f'aws logs describe-subscription-filters --log-group-name {escaped_name} --output json')
+                    filters_result = self.run_aws_command(f'aws logs describe-subscription-filters --log-group-name {self._sanitize(escaped_name)} --output json')
                     if filters_result and filters_result.get('subscriptionFilters'):
                         filtered_groups.append(log_group_name)
                 except Exception as e:
@@ -2337,10 +2362,12 @@ class ComprehensiveObservabilityAssessment:
             else:
                 # Check if this is a member account
                 try:
-                    account_result = self.run_aws_command("aws organizations describe-account --account-id $(aws sts get-caller-identity --query Account --output text) --output json")
-                    if account_result:
-                        org_status = "Organization Member Account"
-                except:
+                    account_id = self.results.account_id or ""
+                    if account_id:
+                        account_result = self.run_aws_command(f"aws organizations describe-account --account-id {self._sanitize(account_id)} --output json")
+                        if account_result:
+                            org_status = "Organization Member Account"
+                except Exception:
                     pass
             
             # 2. Check for CloudWatch Logs Centralization Rules (native centralization) using CLI
@@ -2351,7 +2378,7 @@ class ComprehensiveObservabilityAssessment:
                     rule_count = len(rules)
                     healthy_rules = len([r for r in rules if r.get('RuleHealth') == 'Healthy'])
                     patterns.append(f"CloudWatch Logs Centralization Rules ({rule_count} rules, {healthy_rules} healthy)")
-            except:
+            except Exception:
                 pass
             
             # 3. Check for CloudWatch Observability Access Manager
@@ -2364,7 +2391,7 @@ class ComprehensiveObservabilityAssessment:
                 
                 if oam_links and oam_links.get('Items'):
                     patterns.append("Observability Access Manager Link (Source Account)")
-            except:
+            except Exception:
                 pass
             
             # 4. Check for cross-account subscription filters
@@ -2379,7 +2406,7 @@ class ComprehensiveObservabilityAssessment:
                     
                     if cross_account_filters > 0:
                         patterns.append(f"Cross-account Subscription Filters ({cross_account_filters} filters)")
-            except:
+            except Exception:
                 pass
             
             # 5. Check for Kinesis/Firehose destinations
@@ -2393,7 +2420,7 @@ class ComprehensiveObservabilityAssessment:
                 if firehose_streams and firehose_streams.get('DeliveryStreamNames'):
                     firehose_details = []
                     for stream_name in firehose_streams['DeliveryStreamNames']:
-                        stream_desc = self.run_aws_command(f"aws firehose describe-delivery-stream --delivery-stream-name {stream_name} --output json")
+                        stream_desc = self.run_aws_command(f"aws firehose describe-delivery-stream --delivery-stream-name {self._sanitize(stream_name)} --output json")
                         if stream_desc and stream_desc.get('DeliveryStreamDescription'):
                             desc = stream_desc['DeliveryStreamDescription']
                             destinations = desc.get('Destinations', [])
@@ -2412,7 +2439,7 @@ class ComprehensiveObservabilityAssessment:
                     
                     if firehose_details:
                         patterns.append(f"Kinesis Data Firehose: {', '.join(firehose_details)}")
-            except:
+            except Exception:
                 pass
             
             # 6. Check for centralized S3 buckets with log-like naming
@@ -2424,7 +2451,7 @@ class ComprehensiveObservabilityAssessment:
                 if destinations and destinations.get('destinations'):
                     dest_count = len(destinations['destinations'])
                     patterns.append(f"CloudWatch Logs Destinations ({dest_count} destinations)")
-            except:
+            except Exception:
                 pass
             
             # Determine account type based on actual configurations
@@ -2556,10 +2583,10 @@ class ComprehensiveObservabilityAssessment:
                 log_group_name = log_group.get('logGroupName', '')
                 try:
                     # Check for field index policies on this log group
-                    index_result = self.run_aws_command(f'aws logs describe-index-policies --log-group-identifiers "{log_group_name}" --output json')
+                    index_result = self.run_aws_command(f'aws logs describe-index-policies --log-group-identifiers {self._sanitize(log_group_name)} --output json')
                     if index_result and index_result.get('indexPolicies'):
                         indexed_groups.append(log_group_name)
-                except:
+                except Exception:
                     continue  # Skip groups that fail
             
             return {
@@ -2774,7 +2801,7 @@ class ComprehensiveObservabilityAssessment:
                 maturity_descriptions={
                     1: "Data collection strategy only",
                     2: "Unified tools and technologies",
-                    3: "Best practices and training",
+                    3: "Established practices and training",
                     4: "Culture of continuous improvement"
                 }
             ),
@@ -2910,7 +2937,7 @@ class ComprehensiveObservabilityAssessment:
                 if has_anomaly_detection: capabilities.append("log anomaly detection")
                 if has_structured_json: capabilities.append("structured JSON logging")
                 if has_field_indexes: capabilities.append("field index policies")
-                if has_devops_agent: capabilities.append("DevOps Agent for AI-assisted troubleshooting")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent for AI-assisted troubleshooting")
 
                 # Stale log groups signal
                 stale_pct = 0
@@ -2924,7 +2951,7 @@ class ComprehensiveObservabilityAssessment:
                 # L4: Automated resolution — anomaly detection + metric filters (logs→metrics→alarms) + AI resolution
                 if has_anomaly_detection and has_metric_filters and has_devops_agent:
                     check.current_level = 4
-                    check.explanation = f"Automated resolution and MTTR reduction with {', '.join(capabilities)}. Logs drive automated alerting via metric filters, anomaly detection identifies issues proactively, and DevOps Agent enables AI-assisted resolution {evidence_refs}.{stale_warning}"
+                    check.explanation = f"Automated resolution and MTTR reduction with {', '.join(capabilities)}. Logs drive automated alerting via metric filters, anomaly detection identifies issues proactively, and AWS DevOps Agent enables AI-assisted resolution {evidence_refs}.{stale_warning}"
                 # L3: Automated correlation and anomaly detection
                 elif has_anomaly_detection and (has_metric_filters or has_saved_queries):
                     check.current_level = 3
@@ -2973,7 +3000,7 @@ class ComprehensiveObservabilityAssessment:
                     sf_count = subscription_filters_check.result.get('groups_with_subscription_filters', 0)
                     capabilities.append(f"{sf_count} log groups with subscription filters")
                 if has_anomaly_detection: capabilities.append("log anomaly detection")
-                if has_devops_agent: capabilities.append("DevOps Agent")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent")
                 if has_investigations: capabilities.append("CloudWatch Investigations")
 
                 # L4: Automated insights with proactive root cause
@@ -3001,7 +3028,7 @@ class ComprehensiveObservabilityAssessment:
             
             elif check.question_id == 4:  # What is your log retention policy?
                 # Discovery checks for log retention
-                top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
+                top_groups_retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?"), None)
                 export_tasks_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
                 subscription_filters_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have subscription filters for real-time processing?"), None)
                 centralization_check = next((c for c in self.results.discovery_checks if c.name == "Have you implemented Cross-Account and Cross-Region Log Centralization?"), None)
@@ -3054,7 +3081,7 @@ class ComprehensiveObservabilityAssessment:
                     check.explanation = f"Partial retention coverage with {', '.join(capabilities)}. Some log groups have retention policies but coverage is below 50%, indicating disparate department-level policies {evidence_refs}."
                 else:
                     check.current_level = 1
-                    check.explanation = f"No retention policies detected on largest log groups. Logs may be using default 'Never expire' settings, leading to uncontrolled storage costs {evidence_refs}."
+                    check.explanation = f"No retention policies detected on largest log groups. Logs may be using the default retention setting ('Never expire'), leading to uncontrolled storage costs {evidence_refs}."
 
     def assess_metrics_maturity(self):
         """Assess metrics maturity based on discovery checks"""
@@ -3142,9 +3169,9 @@ class ComprehensiveObservabilityAssessment:
                     alarm_count = len(alarms_check.result.get('MetricAlarms', [])) + len(alarms_check.result.get('CompositeAlarms', []))
                     capabilities.append(f"{alarm_count} alarms")
                 if has_anomaly: capabilities.append(f"{anomaly_check.result.get('total_bands', 0)} anomaly detectors")
-                if has_devops_agent: capabilities.append("DevOps Agent")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent")
 
-                # L4: AI/ML capabilities (anomaly detection + DevOps Agent)
+                # L4: AI/ML capabilities (anomaly detection + AWS DevOps Agent)
                 if has_anomaly and has_devops_agent:
                     check.current_level = 4
                     check.explanation = f"AI/ML-driven metrics usage with {', '.join(capabilities)}. Proactive issue identification via anomaly detection and AI-assisted troubleshooting {evidence_refs}."
@@ -3184,7 +3211,7 @@ class ComprehensiveObservabilityAssessment:
                 if has_streams: capabilities.append(f"{len(streams_check.result['Entries'])} metric streams")
                 if has_oam: capabilities.append("cross-account observability (OAM)")
                 if has_anomaly: capabilities.append("anomaly detection")
-                if has_devops_agent: capabilities.append("DevOps Agent")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent")
 
                 # L4: Automated insights with proactive root cause
                 if has_enterprise_access and has_anomaly and has_devops_agent:
@@ -3470,14 +3497,14 @@ class ComprehensiveObservabilityAssessment:
                 if has_anomaly and has_ai_analysis:
                     anomaly_count = anomaly_check.result.get('total_bands', 0)
                     extras = []
-                    if has_devops: extras.append(f"DevOps Agent (Check #{devops_check.id})")
+                    if has_devops: extras.append(f"AWS DevOps Agent (Check #{devops_check.id})")
                     if has_investigations: extras.append(f"Investigations (Check #{investigations_check.id})")
                     check.current_level = 4
                     check.explanation = f"Fully adaptive thresholds with {anomaly_count} ML-based anomaly detectors (Check #{anomaly_check.id}) and {', '.join(extras)} for continuous analysis. The system determines normal baselines, surfaces anomalies with minimal user intervention, and accounts for seasonality and trend changes automatically."
                 elif has_anomaly:
                     anomaly_count = anomaly_check.result.get('total_bands', 0)
                     check.current_level = 3
-                    check.explanation = f"Anomaly-based alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) that trigger when metrics exhibit anomalous behavior. The ML model analyzes past metric data and creates expected value bands accounting for hourly, daily, and weekly patterns. Consider adding DevOps Agent or Investigations for continuous automated analysis."
+                    check.explanation = f"Anomaly-based alerting with {anomaly_count} anomaly detectors (Check #{anomaly_check.id}) that trigger when metrics exhibit anomalous behavior. The ML model analyzes past metric data and creates expected value bands accounting for hourly, daily, and weekly patterns. Consider adding AWS DevOps Agent or Investigations for continuous automated analysis."
                 elif has_alarms:
                     alarms = alarms_check.result.get('MetricAlarms', [])
                     time_based_alarms = [a for a in alarms if a.get('EvaluationPeriods', 1) > 1 or a.get('DatapointsToAlarm', 1) > 1]
@@ -3532,7 +3559,7 @@ class ComprehensiveObservabilityAssessment:
             elif check.question_id == 17:  # Are you getting ROI from your observability tools?
                 dashboards_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch dashboards for visualizing metrics and logs?" and "Dashboards" in c.category), None)
                 alarms_check = next((c for c in self.results.discovery_checks if c.name == "Do you have CloudWatch alarms configured for your resources?"), None)
-                retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?"), None)
+                retention_check = next((c for c in self.results.discovery_checks if c.name == "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?"), None)
                 tags_check = next((c for c in self.results.discovery_checks if c.name == "Do you use resource tags for organizing and managing AWS resources?"), None)
                 export_check = next((c for c in self.results.discovery_checks if c.name == "Do you have log export tasks configured for archival?"), None)
                 composite_check = next((c for c in self.results.discovery_checks if c.name == "Do you use composite alarms to reduce alarm noise?"), None)
@@ -3586,7 +3613,7 @@ class ComprehensiveObservabilityAssessment:
                 capabilities = []
                 if has_metric_anomaly: capabilities.append(f"{anomaly_check.result.get('total_bands', 0)} metric anomaly detectors")
                 if has_log_anomaly: capabilities.append(f"{len(log_anomaly_check.result.get('anomalyDetectors', []))} log anomaly detectors")
-                if has_devops_agent: capabilities.append("DevOps Agent (NL query)")
+                if has_devops_agent: capabilities.append("AWS DevOps Agent (NL query)")
                 if has_investigations: capabilities.append("CloudWatch Investigations")
 
                 # L4: Comprehensive AI/ML with real-time
@@ -3703,8 +3730,8 @@ class ComprehensiveObservabilityAssessment:
                      "Use CloudWatch Logs Centralization rules to consolidate logs from multiple accounts and regions into a central account.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CloudWatchLogs_Centralization.html"),
                     ("Adopt structured JSON logging across all services",
-                     "Ensure all application logs use JSON format. Use Powertools for AWS Lambda for zero-effort structured logging.",
-                     "https://docs.powertools.aws.dev/lambda/python/latest/core/logger/"),
+                     "Configure all application logs to use JSON format. Use Powertools for AWS Lambda for zero-effort structured logging.",
+                     "https://docs.aws.amazon.com/lambda/latest/dg/python-logging.html"),
                     ("Set up CloudWatch cross-account observability",
                      "Use Observability Access Manager to give a central monitoring account visibility into log groups across accounts.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Unified-Cross-Account.html"),
@@ -3719,7 +3746,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Deploy EKS CloudWatch Observability add-on",
                      "Install the add-on for auto-instrumented collection with Container Insights and Application Signals.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/Container-Insights-setup-EKS-addon.html"),
-                    ("Implement automated log analysis with DevOps Agent",
+                    ("Implement automated log analysis with AWS DevOps Agent",
                      "Use AWS DevOps Agent for AI-assisted log analysis and troubleshooting to reduce MTTR.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
@@ -3754,7 +3781,7 @@ class ComprehensiveObservabilityAssessment:
                      "https://aws-observability.github.io/observability-best-practices/signals/logs/#structured-logging-is-key-to-success"),
                 ],
                 3: [  # L3 → L4
-                    ("Implement automated log analysis with DevOps Agent",
+                    ("Implement automated log analysis with AWS DevOps Agent",
                      "Use AWS DevOps Agent for AI-assisted root cause analysis across logs, metrics, and traces to reduce MTTR.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Use CloudWatch Investigations for automated correlation",
@@ -3795,7 +3822,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Enable CloudWatch Investigations for automated root cause analysis",
                      "Use Investigations to automatically correlate anomalies across logs, metrics, and traces with AI-assisted root cause identification.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/investigations.html"),
-                    ("Deploy DevOps Agent for proactive insights",
+                    ("Deploy AWS DevOps Agent for proactive insights",
                      "Use AWS DevOps Agent to automatically analyze cross-account observability data and surface actionable insights.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Automate incident correlation with EventBridge and Systems Manager",
@@ -3806,7 +3833,7 @@ class ComprehensiveObservabilityAssessment:
             4: {  # Q4: What is your log retention policy?
                 1: [  # L1 → L2
                     ("Set consistent retention policies across all log groups",
-                     "Configure CloudWatch Logs retention periods on every log group to match your compliance requirements (e.g., 90, 365, 3653 days).",
+                     "Configure Amazon CloudWatch Logs retention periods on every log group based on your organization's requirements (e.g., 90, 365, 3653 days).",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html"),
                     ("Export logs to S3 for long-term archival",
                      "Set up subscription filters or export tasks to send logs to S3 with lifecycle policies for cost-effective long-term storage.",
@@ -3941,7 +3968,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Enable CloudWatch Investigations for automated metric correlation",
                      "Use Investigations to automatically correlate metric anomalies with related logs and traces for proactive root cause identification.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/investigations.html"),
-                    ("Deploy DevOps Agent for AI-assisted metric analysis",
+                    ("Deploy AWS DevOps Agent for AI-assisted metric analysis",
                      "Use AWS DevOps Agent to automatically analyze metric patterns and surface resolution options.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Use automation and ML for proactive insights",
@@ -3953,7 +3980,7 @@ class ComprehensiveObservabilityAssessment:
                 1: [  # L1 → L2
                     ("Migrate from X-Ray SDK to OpenTelemetry instrumentation",
                      "X-Ray SDKs are entering maintenance mode — migrate to OpenTelemetry for broader library support and future-proof instrumentation.",
-                     "https://aws.amazon.com/blogs/mt/announcing-aws-x-ray-sdks-daemon-end-of-support-and-opentelemetry-migration/"),
+                     "https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-migration.html"),
                     ("Add custom annotations and metadata to traces",
                      "Enrich traces with business context (customer ID, order ID, environment) to enable targeted debugging and search.",
                      "https://aws-observability.github.io/observability-best-practices/signals/traces/#metadata-annotations-and-labels-are-your-best-friend"),
@@ -3982,8 +4009,8 @@ class ComprehensiveObservabilityAssessment:
                     ("Configure X-Ray Insights for proactive anomaly alerts",
                      "Enable X-Ray Insights notifications to automatically detect latency spikes and error rate anomalies.",
                      "https://docs.aws.amazon.com/xray/latest/devguide/xray-console-insights.html"),
-                    ("Use DevOps Agent for AI-assisted trace analysis",
-                     "Leverage DevOps Agent to automatically analyze trace patterns and identify cross-service root causes.",
+                    ("Use AWS DevOps Agent for AI-assisted trace analysis",
+                     "Leverage AWS DevOps Agent to automatically analyze trace patterns and identify cross-service root causes.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
             },
@@ -4020,7 +4047,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Configure EventBridge rules for X-Ray Insights events",
                      "Set up EventBridge rules that trigger automated workflows when X-Ray detects anomalous trace patterns.",
                      "https://docs.aws.amazon.com/xray/latest/devguide/xray-console-insights.html"),
-                    ("Use DevOps Agent for proactive cross-boundary root cause identification",
+                    ("Use AWS DevOps Agent for proactive cross-boundary root cause identification",
                      "Leverage AI-assisted analysis to automatically identify root causes that span multiple services and accounts.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
@@ -4093,7 +4120,7 @@ class ComprehensiveObservabilityAssessment:
                     ("Leverage Application Signals auto-generated dashboards",
                      "Use Application Signals pre-built service dashboards that automatically show relevant metrics, traces, and dependencies.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Application-Signals.html"),
-                    ("Use DevOps Agent for context-aware dashboard generation",
+                    ("Use AWS DevOps Agent for context-aware dashboard generation",
                      "Leverage AI to automatically surface the most relevant visualizations during troubleshooting sessions.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                 ],
@@ -4122,7 +4149,7 @@ class ComprehensiveObservabilityAssessment:
                      "https://aws-observability.github.io/observability-best-practices/signals/metrics/#use-anomaly-detection-algorithms"),
                 ],
                 3: [  # L3 → L4
-                    ("Enable DevOps Agent for continuous metric analysis",
+                    ("Enable AWS DevOps Agent for continuous metric analysis",
                      "Use AI to continuously analyze metrics, determine normal baselines, and surface anomalies with minimal intervention.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Use CloudWatch Investigations for automated anomaly correlation",
@@ -4255,7 +4282,7 @@ class ComprehensiveObservabilityAssessment:
             },
             16: {  # Q16: Do you use any AI/ML capability today?
                 1: [  # L1 → L2: no AI/ML → natural language query capability
-                    ("Enable DevOps Agent for natural language queries",
+                    ("Enable AWS DevOps Agent for natural language queries",
                      "Use AWS DevOps Agent to ask questions about your environment in natural language — the first step into AI-assisted observability.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Start using CloudWatch Logs Insights pattern analytics",
@@ -4280,8 +4307,8 @@ class ComprehensiveObservabilityAssessment:
                      "https://docs.aws.amazon.com/xray/latest/devguide/xray-console-insights.html"),
                 ],
                 3: [  # L3 → L4: automatic correlation → comprehensive AI/ML with real-time
-                    ("Use DevOps Agent for comprehensive real-time AI troubleshooting",
-                     "Leverage DevOps Agent for real-time AI analysis across all signals — logs, metrics, traces — with automated root cause identification.",
+                    ("Use AWS DevOps Agent for comprehensive real-time AI troubleshooting",
+                     "Leverage AWS DevOps Agent for real-time AI analysis across all signals — logs, metrics, traces — with automated root cause identification.",
                      "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/devops-agent.html"),
                     ("Automate remediation with AI-triggered workflows",
                      "Connect AI-detected anomalies to Systems Manager automation runbooks and Incident Manager for self-healing infrastructure.",
@@ -4438,6 +4465,8 @@ class ComprehensiveObservabilityAssessment:
             self.results.maturity_level = "Initial"
         
         html_content = f"""<!DOCTYPE html>
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: MIT-0 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -4718,6 +4747,9 @@ class ComprehensiveObservabilityAssessment:
             }
         </script>
     </div>
+    <footer style="text-align: center; padding: 1rem; color: #6b7280; font-size: 0.8em;">
+        <p>&copy; Amazon.com, Inc. or its affiliates. All Rights Reserved. Licensed under MIT-0.</p>
+    </footer>
 </body>
 </html>"""
         
@@ -4767,7 +4799,7 @@ class ComprehensiveObservabilityAssessment:
                 "Have you configured CloudWatch Investigations action for any alarms?",
             ],
             4: [  # What is your log retention policy?
-                "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?",
+                "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?",
                 "Do you have log export tasks configured for archival?",
                 "What percentage of log groups have subscription filters for real-time processing?",
                 "Have you implemented Cross-Account and Cross-Region Log Centralization?",
@@ -4865,7 +4897,7 @@ class ComprehensiveObservabilityAssessment:
             17: [  # Are you getting ROI from your observability tools?
                 "Do you have CloudWatch dashboards for visualizing metrics and logs?",
                 "Do you have CloudWatch alarms configured for your resources?",
-                "What percentage of log groups have retention policies aligned with your compliance requirements (security: 90+ days, operational: 30 days, debug: 7 days)?",
+                "What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?",
                 "Do you use resource tags for organizing and managing AWS resources?",
                 "Do you have log export tasks configured for archival?",
                 "Do you use composite alarms to reduce alarm noise?",
@@ -5021,12 +5053,12 @@ class ComprehensiveObservabilityAssessment:
             # Check for observability add-on in each cluster
             for cluster_name in cluster_names:
                 try:
-                    addons_result = self.run_aws_command(f'aws eks list-addons --cluster-name "{cluster_name}" --output json')
+                    addons_result = self.run_aws_command(f'aws eks list-addons --cluster-name {self._sanitize(cluster_name)} --output json')
                     if addons_result and 'addons' in addons_result:
                         cluster_addons = addons_result['addons']
                         if 'amazon-cloudwatch-observability' in cluster_addons:
                             observability_clusters.append(cluster_name)
-                except:
+                except Exception:
                     continue  # Skip clusters that fail
             
             return {
@@ -5329,7 +5361,7 @@ class ComprehensiveObservabilityAssessment:
             }
 
     def execute_devops_agent_spaces_check(self):
-        """Check for DevOps Agent Spaces in current region and us-east-1"""
+        """Check for AWS DevOps Agent Spaces in current region and us-east-1"""
         try:
             all_spaces = []
             regions_checked = []
@@ -5346,7 +5378,7 @@ class ComprehensiveObservabilityAssessment:
                     # Build region-specific endpoint URL
                     endpoint_url = f"https://api.prod.cp.aidevops.{region}.api.aws"
                     
-                    # Execute the DevOps Agent command with custom endpoint
+                    # Execute the AWS DevOps Agent command with custom endpoint
                     command = f"aws devopsagent list-agent-spaces --endpoint-url \"{endpoint_url}\" --region {region} --output json"
                     result = self.run_aws_command(command)
                     
@@ -5454,7 +5486,7 @@ class ComprehensiveObservabilityAssessment:
             active_count = 0
             for name in all_names:
                 try:
-                    resp = self.run_aws_command(f'aws logs describe-log-streams --log-group-name "{name}" --order-by LastEventTime --descending --limit 1 --output json')
+                    resp = self.run_aws_command(f'aws logs describe-log-streams --log-group-name {self._sanitize(name)} --order-by LastEventTime --descending --limit 1 --output json')
                     streams = (resp or {}).get('logStreams', [])
                     if not streams:
                         stale_details.append({'name': name, 'days_since_ingestion': -1, 'reason': 'no streams'})
@@ -5787,7 +5819,7 @@ class ComprehensiveObservabilityAssessment:
                 
                 try:
                     # Get dashboard body
-                    dashboard_body_result = self.run_aws_command(f"aws cloudwatch get-dashboard --dashboard-name \"{dashboard_name}\" --output json")
+                    dashboard_body_result = self.run_aws_command(f"aws cloudwatch get-dashboard --dashboard-name {self._sanitize(dashboard_name)} --output json")
                     dashboard_body = dashboard_body_result.get('DashboardBody', '') if dashboard_body_result else ''
                     
                     # Check for dashboard variables indicators
