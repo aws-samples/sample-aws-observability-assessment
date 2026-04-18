@@ -8,13 +8,13 @@ This document provides actionable security implementation guidance for deploying
 
 ### 1. IAM Least-Privilege Access (Priority: HIGH)
 
-**Control**: The assessment uses a dedicated read-only IAM role (`ObservabilityAssessmentRole`) scoped to 58 specific API actions required for discovery checks. No write permissions are granted except `ssm:SendCommand` (used to check Amazon CloudWatch Agent status on Amazon EC2 instances).
+**Control**: The assessment uses a dedicated read-only IAM role (`ObservabilityAssessmentRole`) scoped to 54 specific API actions required for discovery checks. No write permissions are granted except `ssm:SendCommand` (used to check Amazon CloudWatch Agent status on Amazon EC2 instances).
 
 **Implementation Steps**:
 1. Deploy `1-observability-assessment-role.yaml` in each target account
 2. Set `AssessmentAccountID` to restrict the trust policy to only the account running AWS CodeBuild
 3. Verify the role has no write permissions beyond `ssm:SendCommand` and `ssm:GetCommandInvocation`
-4. Review `observability-assessment-role.json` for the complete list of permitted actions
+4. Review `1-observability-assessment-role.yaml` for the complete list of permitted actions
 
 **Code Example — Deploy the role**:
 ```bash
@@ -33,7 +33,7 @@ aws iam get-role-policy --role-name ObservabilityAssessmentRole \
 ```
 
 **Measurable Metrics**:
-- Number of IAM actions granted: 58 (all read-only except SSM command execution)
+- Number of IAM actions granted: 54 (all read-only except SSM command execution)
 - Trust policy scope: single account (not wildcard)
 - Resource scope: verify no overly broad resource ARNs beyond `*` (required for read-only describe/list calls)
 - **Improvement target**: Reduce to <50 actions by removing unused checks quarterly
@@ -182,7 +182,7 @@ Before deploying to a new account:
 ## IAM Access Review Procedures
 
 ### Quarterly Review
-1. Review `observability-assessment-role.json` for any actions that are no longer needed by the assessment
+1. Review `1-observability-assessment-role.yaml` for any actions that are no longer needed by the assessment
 2. Verify the trust policy in `1-observability-assessment-role.yaml` still references the correct assessment account
 3. Confirm no additional inline or managed policies have been attached to the assessment role
 4. Review AWS CloudTrail logs for any unexpected API calls made by the assessment role

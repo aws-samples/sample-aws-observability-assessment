@@ -26,11 +26,11 @@
 
 **Residual Risk**: Minimal. An attacker would need to modify the Python source code itself to inject commands, at which point they already have arbitrary code execution.
 
-### MEDIUM: Arbitrary time.sleep() (2 instances)
+### MEDIUM: Arbitrary time.sleep() (1 instance)
 
-**Finding**: `time.sleep(3)` calls used to wait for SSM command completion.
+**Finding**: `time.sleep()` call used to wait for SSM command completion.
 
-**Mitigation Applied**: Replaced with `_poll_ssm_command()` method that polls SSM for command completion status with configurable retry intervals, eliminating arbitrary sleep durations.
+**Mitigation Applied**: Replaced arbitrary sleep with `_poll_ssm_command()` method that polls SSM for command completion status with configurable retry intervals. The remaining `time.sleep(interval)` in the polling loop is properly annotated with `# nosemgrep: arbitrary-sleep` and uses a configurable interval parameter rather than a hardcoded value.
 
 ### LOW: Missing encoding parameter on open() (3 instances)
 

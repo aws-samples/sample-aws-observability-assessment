@@ -13,3 +13,6 @@ __pycache__/
 
 # Kiro IDE configuration
 .kiro/
+
+DESIGN_SYSTEM_TEMPLATE.MD
+CLAUDE.md
