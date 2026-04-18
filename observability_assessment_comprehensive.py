@@ -11,6 +11,7 @@
 # Security: All AWS API calls are read-only (describe/list). Commands are executed
 # via subprocess with shlex.split() (shell=False). See SECURITY.md for details.
 
+import html as html_mod
 import json
 import shlex
 import subprocess
@@ -188,26 +189,30 @@ class ComprehensiveObservabilityAssessment:
                 )
                 self.export_check_to_csv(check_name, 1 if has_result else 0, 1)
         
-    def run_aws_command(self, command):
-        """Execute AWS CLI command and return result"""
+    def run_aws_command(self, command, max_retries=3):
+        """Execute AWS CLI command and return result, with retry on throttling."""
         if self.profile:
             command = command.replace("aws ", f"aws --profile {self.profile} ")
         
         if "--region" not in command:
             command = command.replace(" --output", f" --region {self.region} --output")
         
-        try:
-            needs_shell = any(ch in command for ch in ('|', '>', '<', '$', '`', '&&', '||'))
-            if needs_shell:
-                # nosemgrep: dangerous-subprocess-use-audit, subprocess-shell-true
-                result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)  # nosec B602
-            else:
-                result = subprocess.run(shlex.split(command), capture_output=True, text=True, timeout=30, env=self.env_override)  # nosemgrep: dangerous-subprocess-use-audit
-            if result.returncode == 0:
-                return json.loads(result.stdout) if result.stdout.strip() else {}
-            return None
-        except Exception:
-            return None
+        for attempt in range(max_retries + 1):
+            try:
+                needs_shell = any(ch in command for ch in ('|', '>', '<', '$', '`', '&&', '||'))
+                if needs_shell:
+                    # nosemgrep: dangerous-subprocess-use-audit, subprocess-shell-true
+                    result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30, env=self.env_override)  # nosec B602
+                else:
+                    result = subprocess.run(shlex.split(command), capture_output=True, text=True, timeout=30, env=self.env_override)  # nosemgrep: dangerous-subprocess-use-audit
+                if result.returncode == 0:
+                    return json.loads(result.stdout) if result.stdout.strip() else {}
+                if attempt < max_retries and result.stderr and any(t in result.stderr for t in ('Throttling', 'Rate exceeded', 'RequestLimitExceeded', 'TooManyRequestsException')):
+                    time.sleep(2 ** attempt)  # nosemgrep: arbitrary-sleep
+                    continue
+                return None
+            except Exception:
+                return None
 
     @staticmethod
     def _sanitize(value: str) -> str:
@@ -4367,8 +4372,8 @@ class ComprehensiveObservabilityAssessment:
         items = ""
         for title, desc, url in recs:
             items += f"""<li style="margin-bottom: 0.75rem;">
-                <strong><a href="{url}" target="_blank" style="color: #667eea; text-decoration: none;">{title}</a></strong><br>
-                <span style="color: #6b7280; font-size: 0.9em;">{desc}</span>
+                <strong><a href="{url}" target="_blank" style="color: #667eea; text-decoration: none;">{html_mod.escape(str(title))}</a></strong><br>
+                <span style="color: #6b7280; font-size: 0.9em;">{html_mod.escape(str(desc))}</span>
             </li>"""
         return f"""
                     <details style="margin-top: 1rem; border: 1px solid #e0e7ff; border-radius: 6px; padding: 0.75rem; background: #f5f3ff;">
@@ -4550,9 +4555,9 @@ class ComprehensiveObservabilityAssessment:
             html_content += f"""
                         <tr>
                             <td>{check.id}</td>
-                            <td>{check.name}</td>
+                            <td>{html_mod.escape(str(check.name))}</td>
                             <td>{check.category}</td>
-                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">{check.command}</td>
+                            <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">{html_mod.escape(str(check.command))}</td>
                             <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">{check.evidence}</td>
                         </tr>"""
         html_content += """
