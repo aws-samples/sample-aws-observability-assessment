@@ -1,6 +1,6 @@
 # AWS Comprehensive Observability Assessment Tool
 
-Automated evaluation of observability maturity across AWS environments. Runs 50 discovery checks across 5 categories (Logs, Metrics, Traces, Dashboards & Alerting, Organization) and generates an HTML report with maturity scoring, evidence, and actionable recommendations.
+Automated evaluation of observability maturity across AWS environments. Runs 54 discovery checks across 5 categories (Logs, Metrics, Traces, Dashboards & Alerting, Organization) and generates an HTML report with maturity scoring, evidence, and actionable recommendations.
 
 ## Quick Start
 
@@ -83,7 +83,7 @@ Reports (HTML + CSV) are uploaded to the S3 bucket automatically.
 
 ## Assessment Coverage
 
-50 discovery checks across 17 questions in 5 categories:
+54 discovery checks across 17 questions in 5 categories:
 
 | Category | Questions | What's Assessed |
 |----------|-----------|-----------------|
@@ -101,4 +101,4 @@ Reports (HTML + CSV) are uploaded to the S3 bucket automatically.
 
 ## IAM Permissions
 
-The assessment requires read-only access to Amazon CloudWatch, AWS X-Ray, AWS Lambda, Amazon ECS, Amazon EKS, Amazon SNS, AWS Systems Manager, Amazon CloudWatch Application Signals, AWS Organizations, and related services. See `observability-assessment-role.json` for the complete list of 58 IAM actions.
+The assessment requires read-only access to Amazon CloudWatch, AWS X-Ray, AWS Lambda, Amazon ECS, Amazon EKS, Amazon SNS, AWS Systems Manager, Amazon CloudWatch Application Signals, AWS Organizations, and related services. See `1-observability-assessment-role.yaml` for the complete list of 54 IAM actions.

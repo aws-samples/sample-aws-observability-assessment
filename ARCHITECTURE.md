@@ -31,7 +31,7 @@
 │                                                                 │
 │  main() ──> setup_discovery_checks() ──> execute_checks()       │
 │                                              │                  │
-│              50 AWS CLI read-only calls ◄─────                  │
+│              54 AWS CLI read-only calls ◄─────                  │
 │                       │                                         │
 │                       ▼                                         │
 │              score_maturity_levels() ──> generate_html_report()  │

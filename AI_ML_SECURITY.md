@@ -39,12 +39,6 @@ The assessment tool itself does **not** use AI/ML. It performs deterministic che
 
 No inference, prediction, or generative AI is performed by the assessment tool.
 
-## Bias and Fairness Considerations
-
-- The maturity scoring algorithm is deterministic and rule-based (not ML-driven)
-- Scoring criteria are documented in `assessment_mapping.md` and applied uniformly
-- No demographic or personal data is collected or used in scoring
-
 ## Compliance Notes
 
 - All referenced AI/ML services are AWS-managed and covered under the [AWS Shared Responsibility Model](https://aws.amazon.com/compliance/shared-responsibility-model/)
@@ -61,7 +55,7 @@ No inference, prediction, or generative AI is performed by the assessment tool.
 ## Bias and Fairness Considerations
 
 - The maturity scoring algorithm is deterministic and rule-based (not ML-driven)
-- Scoring criteria are documented in `assessment_mapping.md` and applied uniformly across all assessed accounts
+- Scoring criteria are embedded in the assessment script (`observability_assessment_comprehensive.py`) and applied uniformly across all assessed accounts
 - No demographic or personal data is collected or used in scoring
 - AI/ML service recommendations are based solely on whether the service is configured, not on the quality or nature of the data being analyzed
 - Customers should review the [AWS AI Service Cards](https://aws.amazon.com/machine-learning/responsible-machine-learning/) for bias and fairness information specific to each AWS AI/ML service they enable
