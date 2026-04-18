@@ -258,7 +258,7 @@ Resources:
                 - set -e
                 - |
                   echo "Downloading assessment script..."
-                  SCRIPT_URL="https://raw.githubusercontent.com/resco/resco-observability/main/observability_assessment_comprehensive.py"
+                  SCRIPT_URL="https://raw.githubusercontent.com/aws-samples/sample-aws-observability-assessment/main/observability_assessment_comprehensive.py"
                   if ! curl -sfL -o observability_assessment_comprehensive.py "$SCRIPT_URL"; then
                     echo "GitHub repo not available, downloading from S3..."
                     aws s3 cp s3://$BUCKET_REPORT/observability_assessment_comprehensive.py .
