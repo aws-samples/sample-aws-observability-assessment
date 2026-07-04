@@ -1,0 +1,4 @@
+# Python dependencies for the AWS Observability Assessment tool.
+# The tool also requires the AWS CLI v2 to be installed and on PATH
+# (it shells out to `aws ...`), which is not a pip package.
+boto3>=1.34.0
