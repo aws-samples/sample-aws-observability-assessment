@@ -160,7 +160,6 @@ Resources:
                   - synthetics:DescribeCanaries
                   - rum:ListAppMonitors
                   - ssm:DescribeInstanceInformation
-                  - ssm:SendCommand
                   - ssm:GetCommandInvocation
                   - application-signals:ListServices
                   - application-signals:ListServiceLevelObjectives
@@ -174,6 +173,16 @@ Resources:
                   - firehose:DescribeDeliveryStream
                   - kinesis:ListStreams
                 Resource: '*'
+              # Sole write action in this policy. The EC2 CloudWatch-agent check
+              # runs the AWS-owned AWS-RunShellScript document on instances, which
+              # requires ssm:SendCommand. Scope it to that one document and this
+              # account's instances so the write access is constrained (CKV_AWS_111).
+              - Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:ssm:*::document/AWS-RunShellScript'
+                  - !Sub 'arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:instance/*'
 
   # --- CodeBuild IAM Role ---
   ObservabilityAssessmentCodeBuildRole:

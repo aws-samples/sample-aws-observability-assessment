@@ -16,8 +16,14 @@ __pycache__/
 # Ruff cache
 .ruff_cache/
 
-# Kiro IDE configuration
+# ASH: only track the config file, ignore scan output and everything else
+.ash/*
+!.ash/.ash.yaml
+
+# IDE configurations
 .kiro/
+.vscode/
+
+
 
 DESIGN_SYSTEM_TEMPLATE.MD
-CLAUDE.md

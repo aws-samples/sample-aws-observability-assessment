@@ -1,0 +1,37 @@
+# ASH (Automated Security Helper) configuration
+# https://awslabs.github.io/automated-security-helper/
+#
+# Suppressions for reviewed-and-accepted Checkov findings. These are marked as
+# suppressed in reports but still scanned, so they remain visible.
+# Note: CKV_AWS_111 (IAM write access without constraints) is intentionally
+# NOT suppressed and must be reviewed on its own merits.
+global_settings:
+  suppressions:
+    # The access-logs bucket cannot itself have access logging enabled without
+    # creating a recursive logging target; it is the logging destination bucket.
+    - rule_id: 'CKV_AWS_18'
+      path: '2-observability-assessment-codebuild.yaml'
+      reason: 'S3 access-log destination bucket; enabling access logging on the log bucket itself would create recursive/self-referential logging.'
+
+    # Versioning is unnecessary for a short-lived, regenerable access-log bucket.
+    - rule_id: 'CKV_AWS_21'
+      path: '2-observability-assessment-codebuild.yaml'
+      reason: 'Access-log destination bucket holds only regenerable server access logs; versioning adds cost/complexity without security benefit.'
+
+    # The Lambda log group is auto-created for a helper Lambda and holds no
+    # sensitive data; SSE-KMS encryption is not required for this use case.
+    - rule_id: 'CKV_AWS_158'
+      path: '2-observability-assessment-codebuild.yaml'
+      reason: 'Log group for a short-lived build-trigger Lambda contains no sensitive data; default CloudWatch Logs encryption is sufficient.'
+
+    # This is a short-lived custom-resource Lambda that only calls StartBuild via
+    # the AWS API; it needs no VPC resources and adding a VPC adds no security value.
+    - rule_id: 'CKV_AWS_117'
+      path: '2-observability-assessment-codebuild.yaml'
+      reason: 'Custom-resource Lambda only invokes the CodeBuild StartBuild API; it accesses no VPC resources, so VPC configuration is unnecessary.'
+
+    # A one-shot custom-resource Lambda triggered once on stack creation does not
+    # benefit from a Dead Letter Queue.
+    - rule_id: 'CKV_AWS_116'
+      path: '2-observability-assessment-codebuild.yaml'
+      reason: 'One-shot custom-resource Lambda invoked once at stack creation; a DLQ provides no operational value for this synchronous trigger.'
