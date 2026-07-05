@@ -25,7 +25,7 @@ python3 observability_assessment_comprehensive.py --role-arn arn:aws:iam::ACCT:r
 python3 observability_assessment_comprehensive.py --profile YOUR_PROFILE --debug
 ```
 
-There is no build step, test suite, or linter configured. Runtime dependencies are pinned in `requirements.txt` (`boto3`); the AWS CLI v2 must also be on PATH (the tool shells out to `aws`) and is not a pip package. Output is written to `assessment-result/` (gitignored). Use `--single-check` / `--single-question` to validate changes rather than running the full ~50-check pass, which is slow and hits many AWS APIs. Pass `--debug` for verbose per-instance and failed-command logging.
+There is no build step, test suite, or linter configured. Requires Python 3.12+ (the CodeBuild buildspec pins python 3.12 on the `amazonlinux-x86_64-standard:6.0` image). Runtime dependencies are pinned in `requirements.txt` (`boto3`); the AWS CLI v2 must also be on PATH (the tool shells out to `aws`) and is not a pip package. Output is written to `assessment-result/` (gitignored). Use `--single-check` / `--single-question` to validate changes rather than running the full ~50-check pass, which is slow and hits many AWS APIs. Pass `--debug` for verbose per-instance and failed-command logging.
 
 ## Architecture
 

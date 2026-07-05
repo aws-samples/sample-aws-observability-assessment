@@ -6,7 +6,7 @@ Automated evaluation of observability maturity across AWS environments. Runs 50 
 
 ### Option 1: Run Locally
 
-**Prerequisites:** Python 3.9+, the [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) installed and on your `PATH` (the tool shells out to `aws`), and configured AWS credentials.
+**Prerequisites:** Python 3.12+, the [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) installed and on your `PATH` (the tool shells out to `aws`), and configured AWS credentials.
 
 ```bash
 # Install Python dependencies
