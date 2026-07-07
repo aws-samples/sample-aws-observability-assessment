@@ -7599,43 +7599,53 @@ class ComprehensiveObservabilityAssessment:
             pts = " ".join(
                 f"{polar(level, i)[0]:.1f},{polar(level, i)[1]:.1f}" for i in range(n)
             )
-            opacity = "0.3" if level < 4 else "0.5"
-            grid_svg += f'<polygon points="{pts}" fill="none" stroke="#cbd5e1" stroke-width="1" opacity="{opacity}"/>\n'
+            opacity = "0.6" if level < 4 else "0.85"
+            grid_svg += f'<polygon points="{pts}" fill="none" stroke="#94a3b8" stroke-width="1" opacity="{opacity}"/>\n'
 
         # Axis lines and labels
         axes_svg = ""
         for i, (label, score) in enumerate(scores):
             ex, ey = polar(4, i)
-            axes_svg += f'<line x1="{cx}" y1="{cy}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#cbd5e1" stroke-width="1"/>\n'
-            # Label position (pushed out a bit further)
+            axes_svg += f'<line x1="{cx}" y1="{cy}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#94a3b8" stroke-width="1" opacity="0.7"/>\n'
+            # Label position (pushed out a bit further). Anchor labels toward the
+            # chart's centre horizontally so side labels stay within the canvas.
             lx, ly = polar(4.7, i)
+            if lx < cx - 1:
+                anchor = "end"
+            elif lx > cx + 1:
+                anchor = "start"
+            else:
+                anchor = "middle"
             lines = label.split("\n")
             for j, line in enumerate(lines):
-                axes_svg += f'<text x="{lx:.1f}" y="{ly + j * 16:.1f}" text-anchor="middle" font-size="13" font-weight="600" fill="#374151">{line}</text>\n'
+                axes_svg += f'<text x="{lx:.1f}" y="{ly + j * 16:.1f}" text-anchor="{anchor}" font-size="13" font-weight="600" fill="#1f2937">{line}</text>\n'
             # Score value
-            axes_svg += f'<text x="{lx:.1f}" y="{ly + len(lines) * 16:.1f}" text-anchor="middle" font-size="12" fill="#667eea" font-weight="700">{score:.1f}</text>\n'
+            axes_svg += f'<text x="{lx:.1f}" y="{ly + len(lines) * 16:.1f}" text-anchor="{anchor}" font-size="12" fill="#4338ca" font-weight="700">{score:.1f}</text>\n'
 
         # Level labels along first axis
         level_labels_svg = ""
         for level in [1, 2, 3, 4]:
             lx, ly = polar(level, 0)
-            level_labels_svg += f'<text x="{lx + 8:.1f}" y="{ly - 4:.1f}" font-size="10" fill="#9ca3af">{level}</text>\n'
+            level_labels_svg += f'<text x="{lx + 8:.1f}" y="{ly - 4:.1f}" font-size="10" font-weight="600" fill="#64748b">{level}</text>\n'
 
         # Score polygon
         pts = " ".join(
             f"{polar(s, i)[0]:.1f},{polar(s, i)[1]:.1f}"
             for i, (_, s) in enumerate(scores)
         )
-        score_svg = f'<polygon points="{pts}" fill="rgba(102,126,234,0.25)" stroke="#667eea" stroke-width="2.5"/>\n'
+        score_svg = f'<polygon points="{pts}" fill="rgba(67,56,202,0.30)" stroke="#4338ca" stroke-width="2.5"/>\n'
         # Score dots
         for i, (_, s) in enumerate(scores):
             dx, dy = polar(s, i)
-            score_svg += f'<circle cx="{dx:.1f}" cy="{dy:.1f}" r="4" fill="#667eea"/>\n'
+            score_svg += f'<circle cx="{dx:.1f}" cy="{dy:.1f}" r="4" fill="#4338ca"/>\n'
 
+        # viewBox padded so side/top/bottom axis labels are not clipped
+        # (e.g. the leftmost "Organization" label overflowed the old 0 0 400 400
+        # box, cutting off its leading "O").
         return f"""
         <div style="background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem; text-align: center;">
             <h2 style="margin-bottom: 1rem; color: #374151;">Observability Maturity Radar</h2>
-            <svg viewBox="0 0 400 400" width="450" height="450" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="-90 -20 580 450" width="500" height="388" xmlns="http://www.w3.org/2000/svg">
                 {grid_svg}
                 {axes_svg}
                 {level_labels_svg}
