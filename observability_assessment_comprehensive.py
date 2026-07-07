@@ -18,7 +18,6 @@ import json
 import logging
 import shlex
 import subprocess
-import sys
 import time
 import csv
 from datetime import datetime
@@ -537,7 +536,7 @@ class ComprehensiveObservabilityAssessment:
         base_info = f"Account: {self.results.account_id}, Region: {self.region}"
 
         if not check.result:
-            return f"No resources found"
+            return "No resources found"
 
         # Handle specific checks first to avoid generic handler conflicts
         if (
@@ -564,7 +563,7 @@ class ComprehensiveObservabilityAssessment:
                     details += f"   Created: {creation_date}<br><br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No metric streams found"
+            return "No metric streams found"
 
         elif check.name == "Do you use composite alarms to reduce alarm noise?":
             composite_alarms = check.result.get("CompositeAlarms", [])
@@ -600,7 +599,7 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No composite alarms found"
+            return "No composite alarms found"
 
         elif (
             check.name
@@ -627,7 +626,7 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
 
                 return summary
-            return f"No Lambda functions found"
+            return "No Lambda functions found"
 
         elif (
             check.name
@@ -662,7 +661,7 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
 
                 return f"Found {len(custom_namespaces)} custom namespaces with {total_custom_metrics} metrics"
-            return f"No custom metrics found"
+            return "No custom metrics found"
 
         elif check.name == "Have you created metric filters to extract KPIs from logs?":
             command_info = f"Command: {check.command}"
@@ -689,7 +688,7 @@ class ComprehensiveObservabilityAssessment:
                             metric_value = mt.get("metricValue", "Unknown")
                             details += f"   Metric {j + 1}: {metric_namespace}/{metric_name} = {metric_value}<br>"
                     else:
-                        details += f"   No metric transformations<br>"
+                        details += "   No metric transformations<br>"
                     details += "<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
@@ -730,7 +729,7 @@ class ComprehensiveObservabilityAssessment:
 
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 return f"Checked {total_groups} log groups - {groups_with_filters}/{total_groups} have subscription filters"
-            return f"No log groups checked for subscription filters"
+            return "No log groups checked for subscription filters"
 
         elif (
             check.name
@@ -800,7 +799,7 @@ class ComprehensiveObservabilityAssessment:
                     details += f"... and {len(logging_configured_instances) - 10} more instances<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No EC2 instances found"
+            return "No EC2 instances found"
 
         elif (
             check.name
@@ -870,8 +869,8 @@ class ComprehensiveObservabilityAssessment:
                             details += "<br>"
 
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-                return f"No running ECS tasks found"
-            return f"No ECS task log configuration data available"
+                return "No running ECS tasks found"
+            return "No ECS task log configuration data available"
 
         elif (
             check.name
@@ -909,7 +908,7 @@ class ComprehensiveObservabilityAssessment:
 
                 details_html = "<br>".join(details)
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details_html}</div></details>"
-            return f"No log anomaly detectors found"
+            return "No log anomaly detectors found"
 
         elif check.name == "Do you have log export tasks configured for archival?":
             if check.result:
@@ -954,7 +953,7 @@ class ComprehensiveObservabilityAssessment:
 
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 return f"Checked {total_groups} log groups - {exported_groups}/{total_groups} have export history"
-            return f"No log groups checked for export tasks"
+            return "No log groups checked for export tasks"
 
         elif (
             check.name
@@ -971,7 +970,7 @@ class ComprehensiveObservabilityAssessment:
                     summary += f" | Found {len(patterns)} centralization patterns"
 
                     # Create detailed breakdown
-                    details = f"<strong>Account Information:</strong><br>"
+                    details = "<strong>Account Information:</strong><br>"
                     details += f"Account Type: {account_type}<br>"
                     details += f"Organization Status: {org_status}<br><br>"
 
@@ -984,7 +983,7 @@ class ComprehensiveObservabilityAssessment:
                     summary += " | No centralization patterns detected"
 
                 return summary
-            return f"No centralization analysis data available"
+            return "No centralization analysis data available"
 
         elif check.name == "Are you using CloudWatch cross-account observability?":
             if check.result:
@@ -1000,7 +999,7 @@ class ComprehensiveObservabilityAssessment:
                         details_text = "<br>".join(config_details)
                         return f"{summary}<details><summary>Show Configuration Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details_text}</div></details>"
                 return summary
-            return f"OAM configuration check failed"
+            return "OAM configuration check failed"
 
         elif (
             check.name
@@ -1033,7 +1032,7 @@ class ComprehensiveObservabilityAssessment:
 
                     return f"Found {indexed_groups}/{total_groups} log groups with field indexes (top 20 largest by size) | {sample_info}"
                 return f"Checked {total_groups} log groups (top 20 largest by size) - {indexed_groups}/{total_groups} have field indexes"
-            return f"No log groups checked for field indexes"
+            return "No log groups checked for field indexes"
 
         elif (
             check.name
@@ -1066,8 +1065,8 @@ class ComprehensiveObservabilityAssessment:
 
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
-                    return f"No EC2 instances have detailed monitoring enabled - all instances using basic (5-minute) monitoring"
-            return f"EC2 detailed monitoring check completed"
+                    return "No EC2 instances have detailed monitoring enabled - all instances using basic (5-minute) monitoring"
+            return "EC2 detailed monitoring check completed"
 
         elif check.name == "What percentage of ECS Clusters have monitoring enabled?":
             cluster_arns = check.result.get("clusterArns", [])
@@ -1078,7 +1077,7 @@ class ComprehensiveObservabilityAssessment:
                 if len(cluster_names) > 10:
                     details += f"<br>... and {len(cluster_names) - 10} more clusters"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No ECS clusters found"
+            return "No ECS clusters found"
 
         elif check.name == "Do you have ECS clusters with Container Insights enabled?":
             clusters = check.result.get("clusters", [])
@@ -1131,7 +1130,7 @@ class ComprehensiveObservabilityAssessment:
                         details += f"   ARN: {cluster['arn']}<br><br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No ECS clusters found"
+            return "No ECS clusters found"
 
         elif (
             check.name
@@ -1166,7 +1165,7 @@ class ComprehensiveObservabilityAssessment:
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
 
                 return f"Checked {total_clusters} EKS clusters - {observability_clusters}/{total_clusters} have CloudWatch Observability add-on"
-            return f"No EKS clusters checked for add-ons"
+            return "No EKS clusters checked for add-ons"
 
         # Handle different AWS service responses with expandable details
         if (
@@ -1190,7 +1189,7 @@ class ComprehensiveObservabilityAssessment:
                 if len(query_definitions) > 10:
                     details += f"... and {len(query_definitions) - 10} more queries"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No saved query definitions found - users haven't saved any custom CloudWatch Logs Insights queries for reuse"
+            return "No saved query definitions found - users haven't saved any custom CloudWatch Logs Insights queries for reuse"
 
         elif (
             check.name == "Do you have CloudWatch alarms configured for your resources?"
@@ -1218,7 +1217,7 @@ class ComprehensiveObservabilityAssessment:
                         )
                     )
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No alarms found"
+            return "No alarms found"
 
         elif (
             check.name
@@ -1233,7 +1232,7 @@ class ComprehensiveObservabilityAssessment:
                 if len(dashboards) > 15:
                     details += f"<br>... and {len(dashboards) - 15} more dashboards"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No dashboards found"
+            return "No dashboards found"
 
         elif check.name == "Do your alarms send notifications to SNS topics?":
             if check.result:
@@ -1272,7 +1271,7 @@ class ComprehensiveObservabilityAssessment:
                         details += f"... and {len(alarms_without_sns_details) - 10} more alarms without SNS<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No alarms found to check"
+            return "No alarms found to check"
 
         elif check.name == "Do you use anomaly detection models for adaptive alarming?":
             if check.result:
@@ -1302,8 +1301,8 @@ class ComprehensiveObservabilityAssessment:
 
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
-                    return f"No anomaly detection bands configured"
-            return f"No anomaly detection bands found"
+                    return "No anomaly detection bands configured"
+            return "No anomaly detection bands found"
 
         elif (
             check.name
@@ -1319,7 +1318,7 @@ class ComprehensiveObservabilityAssessment:
                 if len(tagged) > 15:
                     details += f"... and {len(tagged) - 15} more tagged log groups"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No tagged log groups found"
+            return "No tagged log groups found"
 
         elif (
             check.name
@@ -1374,7 +1373,7 @@ class ComprehensiveObservabilityAssessment:
                 if len(resources) > 15:
                     details += f"... and {len(resources) - 15} more tagged resources"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No tagged resources found"
+            return "No tagged resources found"
 
         elif (
             check.name
@@ -1390,7 +1389,7 @@ class ComprehensiveObservabilityAssessment:
                     runtime_version = canary.get("RuntimeVersion", "Unknown")
                     details += f"{i}. <strong>{name}</strong><br>   Status: {status}<br>   Runtime: {runtime_version}<br><br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No synthetic canaries found"
+            return "No synthetic canaries found"
 
         elif (
             check.name == "Do you use CloudWatch RUM to monitor real user experiences?"
@@ -1405,7 +1404,7 @@ class ComprehensiveObservabilityAssessment:
                     state = app.get("State", "Unknown")
                     details += f"{i}. <strong>{name}</strong><br>   Domain: {domain}<br>   State: {state}<br><br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No RUM applications found"
+            return "No RUM applications found"
 
         elif (
             check.name
@@ -1444,7 +1443,7 @@ class ComprehensiveObservabilityAssessment:
                         details += f"... and {len(alarms_without_opsitem_details) - 10} more alarms without OpsItem actions<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No alarms found to check"
+            return "No alarms found to check"
 
         elif (
             check.name
@@ -1469,7 +1468,7 @@ class ComprehensiveObservabilityAssessment:
                 if len(services) > 10:
                     details += f"... and {len(services) - 10} more services"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No Application Signals services found"
+            return "No Application Signals services found"
 
         elif (
             check.name
@@ -1484,7 +1483,7 @@ class ComprehensiveObservabilityAssessment:
                     service_name = slo.get("ServiceName", "Unknown")
                     details += f"{i}. <strong>{name}</strong><br>   Service: {service_name}<br><br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No Application Signals SLOs found"
+            return "No Application Signals SLOs found"
 
         elif check.name == "Anomaly Detectors":
             anomaly_detectors = (
@@ -1511,7 +1510,7 @@ class ComprehensiveObservabilityAssessment:
                         details += f"   Dimensions: {dim_str}<br>"
                     details += "<br>"
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No anomaly detectors found"
+            return "No anomaly detectors found"
 
         elif (
             check.name == "Do you use AWS DevOps Agent for AI-assisted troubleshooting?"
@@ -1546,7 +1545,7 @@ class ComprehensiveObservabilityAssessment:
                         ", ".join(regions_checked) if regions_checked else "none"
                     )
                     return f"No AWS DevOps Agent spaces found (checked regions: {regions_str})"
-            return f"AWS DevOps Agent service not accessible"
+            return "AWS DevOps Agent service not accessible"
 
         elif (
             check.name == "Do you have any Lambda actions configured with your alarms?"
@@ -1554,13 +1553,11 @@ class ComprehensiveObservabilityAssessment:
             if check.result:
                 total_checked = check.result.get("total_alarms_checked", 0)
                 alarms_with_lambda = check.result.get("alarms_with_lambda", 0)
-                alarms_without_lambda = check.result.get("alarms_without_lambda", 0)
+                check.result.get("alarms_without_lambda", 0)
                 alarms_with_lambda_details = check.result.get(
                     "alarms_with_lambda_details", []
                 )
-                alarms_without_lambda_details = check.result.get(
-                    "alarms_without_lambda_details", []
-                )
+                check.result.get("alarms_without_lambda_details", [])
 
                 summary = f"Lambda actions configured for {alarms_with_lambda} of {total_checked} alarms checked"
 
@@ -1580,7 +1577,7 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No alarms found to check"
+            return "No alarms found to check"
 
         elif (
             check.name
@@ -1591,15 +1588,11 @@ class ComprehensiveObservabilityAssessment:
                 alarms_with_investigations = check.result.get(
                     "alarms_with_investigations", 0
                 )
-                alarms_without_investigations = check.result.get(
-                    "alarms_without_investigations", 0
-                )
+                check.result.get("alarms_without_investigations", 0)
                 alarms_with_investigations_details = check.result.get(
                     "alarms_with_investigations_details", []
                 )
-                alarms_without_investigations_details = check.result.get(
-                    "alarms_without_investigations_details", []
-                )
+                check.result.get("alarms_without_investigations_details", [])
 
                 summary = f"CloudWatch Investigations actions configured for {alarms_with_investigations} of {total_checked} alarms checked"
 
@@ -1615,7 +1608,7 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No alarms found to check"
+            return "No alarms found to check"
 
         elif check.name == "Do you have any EC2 actions configured with your alarms?":
             if check.result:
@@ -1643,7 +1636,7 @@ class ComprehensiveObservabilityAssessment:
                     details += "<br>"
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No alarms found to check"
+            return "No alarms found to check"
 
         elif (
             check.name
@@ -1697,7 +1690,7 @@ class ComprehensiveObservabilityAssessment:
 
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
             else:
-                return f"No custom X-Ray groups configured (only Default group exists)"
+                return "No custom X-Ray groups configured (only Default group exists)"
 
         elif check.name == "Do you have custom X-Ray sampling rules configured?":
             sampling_rules = (
@@ -1808,8 +1801,8 @@ class ComprehensiveObservabilityAssessment:
                         ]
                     )
                     return f"Found {len(clusters)} EKS cluster(s) with {enabled_types}/5 log types enabled across all clusters (e.g., {cluster_summary})"
-                return f"No EKS clusters found"
-            return f"No EKS control plane log configuration found"
+                return "No EKS clusters found"
+            return "No EKS control plane log configuration found"
 
         elif check.name == "Do you have dashboards configured with variables?":
             if check.result:
@@ -1894,9 +1887,9 @@ class ComprehensiveObservabilityAssessment:
                         details += f"... and {len(items) - 15} more items"
                     return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
                 else:
-                    return f"No items found"
+                    return "No items found"
             else:
-                return f"Command executed successfully"
+                return "Command executed successfully"
 
         if check.name == "Saved Log Insights Queries":
             query_definitions = check.result.get("queryDefinitions", [])
@@ -1979,7 +1972,7 @@ class ComprehensiveObservabilityAssessment:
                         )
                     )
                 return f"{summary}<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>{details}</div></details>"
-            return f"No alarms found"
+            return "No alarms found"
 
         elif (
             check.name
@@ -1991,7 +1984,7 @@ class ComprehensiveObservabilityAssessment:
                     dash.get("DashboardName", "Unknown") for dash in dashboards[:3]
                 ]
                 return f"Found {len(dashboards)} dashboards (e.g., {', '.join(sample_names)})"
-            return f"No dashboards found"
+            return "No dashboards found"
 
         elif check.name == "SNS Topics":
             topics = check.result.get("Topics", [])
@@ -2003,21 +1996,21 @@ class ComprehensiveObservabilityAssessment:
                 return (
                     f"Found {len(topics)} SNS topics (e.g., {', '.join(sample_arns)})"
                 )
-            return f"No SNS topics found"
+            return "No SNS topics found"
 
         elif check.name == "VPC Flow Logs":
             flow_logs = check.result.get("FlowLogs", [])
             if flow_logs:
                 sample_ids = [fl.get("FlowLogId", "Unknown") for fl in flow_logs[:3]]
                 return f"Found {len(flow_logs)} VPC flow logs (e.g., {', '.join(sample_ids)})"
-            return f"No VPC flow logs found"
+            return "No VPC flow logs found"
 
         elif check.name == "CloudTrail Trails":
             trails = check.result.get("trailList", [])
             if trails:
                 sample_names = [trail.get("Name", "Unknown") for trail in trails[:3]]
                 return f"Found {len(trails)} CloudTrail trails (e.g., {', '.join(sample_names)})"
-            return f"No CloudTrail trails found"
+            return "No CloudTrail trails found"
 
         elif (
             check.name
@@ -2074,14 +2067,14 @@ class ComprehensiveObservabilityAssessment:
             elif clusters:
                 return f"Command: Multi-step ECS task logging analysis | No running tasks found | Clusters checked: {len(clusters)}"
             else:
-                return f"Command: Multi-step ECS task logging analysis | No ECS clusters found"
+                return "Command: Multi-step ECS task logging analysis | No ECS clusters found"
 
         elif check.name == "EC2 CloudWatch Agent IAM":
             policies = check.result.get("AttachedPolicies", [])
             if policies:
                 policy_names = [p.get("PolicyName", "Unknown") for p in policies[:3]]
                 return f"Found {len(policies)} IAM policies for CloudWatch Agent (e.g., {', '.join(policy_names)})"
-            return f"No CloudWatch Agent IAM policies found"
+            return "No CloudWatch Agent IAM policies found"
 
         elif check.name == "Have you enabled anomaly detection?":
             anomaly_detectors = check.result.get("anomalyDetectors", [])
@@ -2123,7 +2116,7 @@ class ComprehensiveObservabilityAssessment:
                     )
                     return f"Found {exported_groups}/{total_groups} log groups with export task history | {sample_info}"
                 return f"Checked {total_groups} log groups - {exported_groups}/{total_groups} have export task history"
-            return f"No log groups checked for export tasks"
+            return "No log groups checked for export tasks"
 
         elif (
             check.name
@@ -2138,7 +2131,7 @@ class ComprehensiveObservabilityAssessment:
                     pattern_summary = ", ".join(patterns)
                     return f"Account type: {account_type} | Organization: {org_status} | Centralization patterns: {pattern_summary}"
                 return f"Account type: {account_type} | Organization: {org_status} | No centralization patterns detected"
-            return f"No centralization analysis performed"
+            return "No centralization analysis performed"
 
         elif (
             check.name
@@ -2157,7 +2150,7 @@ class ComprehensiveObservabilityAssessment:
                     )
                     return f"Analyzed {total_checked} largest log groups | {json_groups}/{total_checked} have JSON structured logs | {sample_info}"
                 return f"Analyzed {total_checked} largest log groups | {json_groups}/{total_checked} have JSON structured logs"
-            return f"No JSON structured log analysis performed"
+            return "No JSON structured log analysis performed"
 
         elif (
             check.name
@@ -2176,7 +2169,7 @@ class ComprehensiveObservabilityAssessment:
                     )
                     return f"Checked {total_groups} largest log groups by size - {indexed_groups}/{total_groups} have field index policies | {sample_info}"
                 return f"Checked {total_groups} largest log groups by size - {indexed_groups}/{total_groups} have field index policies"
-            return f"No largest log groups checked for field indexes"
+            return "No largest log groups checked for field indexes"
 
         elif (
             check.name
@@ -2619,7 +2612,7 @@ class ComprehensiveObservabilityAssessment:
 
             return largest_groups
 
-        except Exception as e:
+        except Exception:
             return {"EC2": [], "ECS": [], "Lambda": [], "EKS": []}
 
             # Step 2: Categorize log groups by service
@@ -2656,13 +2649,13 @@ class ComprehensiveObservabilityAssessment:
                         if streams_result and "logStreams" in streams_result:
                             all_streams.extend(streams_result["logStreams"])
                             checked_groups.append(group_name)
-                    except Exception as e:
+                    except Exception:
                         # If individual group fails, continue with others
                         continue
 
             return {"logStreams": all_streams, "checkedGroups": checked_groups}
 
-        except Exception as e:
+        except Exception:
             return {"logStreams": []}
 
     def execute_ec2_cloudwatch_agent_check(self):
@@ -2896,7 +2889,7 @@ class ComprehensiveObservabilityAssessment:
                 "functions_with_json": functions_with_json,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_functions": 0,
                 "json_logging_count": 0,
@@ -3021,7 +3014,7 @@ class ComprehensiveObservabilityAssessment:
                 "json_logging_count": len(tasks_with_logging),
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "clusters": [],
                 "running_tasks": [],
@@ -3086,7 +3079,7 @@ class ComprehensiveObservabilityAssessment:
                 "all_types_enabled": all_enabled_types == required_types,
             }
 
-        except Exception as e:
+        except Exception:
             return {"clusters": [], "enabled_types": 0, "total_types": 5}
 
     def execute_field_indexes_per_log_group_check(self):
@@ -3180,7 +3173,7 @@ class ComprehensiveObservabilityAssessment:
                 "field_index_details": field_index_details,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_log_groups": 0,
                 "indexed_log_groups": 0,
@@ -3238,7 +3231,7 @@ class ComprehensiveObservabilityAssessment:
                 "sample_exported_groups": exported_groups,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_log_groups": 0,
                 "exported_log_groups": 0,
@@ -3310,7 +3303,7 @@ class ComprehensiveObservabilityAssessment:
                 "total_size_gb": total_size_gb,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "top_log_groups": [],
                 "groups_with_retention": 0,
@@ -3348,7 +3341,7 @@ class ComprehensiveObservabilityAssessment:
                     )
                     if filters_result and filters_result.get("subscriptionFilters"):
                         filtered_groups.append(log_group_name)
-                except Exception as e:
+                except Exception:
                     continue  # Skip groups that fail
 
             return {
@@ -3357,7 +3350,7 @@ class ComprehensiveObservabilityAssessment:
                 "sample_filtered_groups": filtered_groups,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_log_groups": 0,
                 "groups_with_subscription_filters": 0,
@@ -3551,7 +3544,7 @@ class ComprehensiveObservabilityAssessment:
                 "organization_status": org_status,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "centralization_patterns": [],
                 "account_type": "Unknown",
@@ -3675,7 +3668,7 @@ class ComprehensiveObservabilityAssessment:
                 "sample_groups": json_groups[:5],  # Show first 5 as examples
             }
 
-        except Exception as e:
+        except Exception:
             return {"total_groups_checked": 0, "json_groups": 0, "sample_groups": []}
         """Custom check for field index policies across log groups"""
         try:
@@ -3713,7 +3706,7 @@ class ComprehensiveObservabilityAssessment:
                 "sample_indexed_groups": indexed_groups,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_log_groups": 0,
                 "indexed_log_groups": 0,
@@ -5508,7 +5501,7 @@ class ComprehensiveObservabilityAssessment:
                     and dashboards_check.result
                     and dashboards_check.result.get("DashboardEntries")
                 )
-                has_alarms = (
+                (
                     alarms_check
                     and isinstance(alarms_check.result, dict)
                     and alarms_check.result.get("MetricAlarms")
@@ -7591,7 +7584,6 @@ class ComprehensiveObservabilityAssessment:
 
         # Axis lines and labels
         axes_svg = ""
-        level_names = {1: "Initial", 2: "Developing", 3: "Defined", 4: "Optimized"}
         for i, (label, score) in enumerate(scores):
             ex, ey = polar(4, i)
             axes_svg += f'<line x1="{cx}" y1="{cy}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#cbd5e1" stroke-width="1"/>\n'
@@ -8270,7 +8262,7 @@ class ComprehensiveObservabilityAssessment:
         self.results.account_id = identity.get("Account", "Unknown")
         self.results.user_arn = identity.get("Arn", "Unknown")
 
-        print(f"📋 Check Details:")
+        print("📋 Check Details:")
         print(f"   ID: {target_check.id}")
         print(f"   Name: {target_check.name}")
         print(f"   Category: {target_check.category}")
@@ -8278,11 +8270,11 @@ class ComprehensiveObservabilityAssessment:
         print()
 
         # Execute the specific check
-        print(f"🚀 Executing check...")
+        print("🚀 Executing check...")
         self.execute_discovery_check(check_id)
 
         # Display results
-        print(f"📊 Results:")
+        print("📊 Results:")
         print(
             f"   Status: {'✅ SUCCESS' if target_check.status == 'success' else ('⚠️  ERROR' if target_check.status == 'error' else '❌ NO RESOURCES')}"
         )
@@ -8361,7 +8353,7 @@ class ComprehensiveObservabilityAssessment:
                 "clusters_with_observability": observability_clusters,
             }
 
-        except Exception as e:
+        except Exception:
             return {"total_clusters": 0, "observability_clusters": 0}
 
     def execute_lambda_insights_check(self):
@@ -8395,7 +8387,7 @@ class ComprehensiveObservabilityAssessment:
                 "functions_with_insights": insights_functions,
             }
 
-        except Exception as e:
+        except Exception:
             return {"total_functions": 0, "insights_functions": 0}
 
     def execute_custom_metrics_namespaces_check(self):
@@ -8522,7 +8514,7 @@ class ComprehensiveObservabilityAssessment:
                 "sample_metrics": custom_metrics[:5],  # First 5 for examples
             }
 
-        except Exception as e:
+        except Exception:
             return {"custom_namespaces": [], "total_custom_metrics": 0}
 
     def execute_cloudwatch_alarms_check(self):
@@ -8549,7 +8541,7 @@ class ComprehensiveObservabilityAssessment:
 
             return {"MetricAlarms": metric_alarms, "CompositeAlarms": composite_alarms}
 
-        except Exception as e:
+        except Exception:
             return {"MetricAlarms": [], "CompositeAlarms": []}
 
     def execute_alarm_sns_configuration_check(self):
@@ -8619,7 +8611,7 @@ class ComprehensiveObservabilityAssessment:
                 "alarms_without_sns_details": alarms_without_sns,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_alarms_checked": 0,
                 "alarms_with_sns": 0,
@@ -8672,7 +8664,7 @@ class ComprehensiveObservabilityAssessment:
                 "bands_details": bands_configured,
             }
 
-        except Exception as e:
+        except Exception:
             return {"total_bands": 0, "bands_details": []}
 
     def execute_alarm_opsitem_actions_check(self):
@@ -8744,7 +8736,7 @@ class ComprehensiveObservabilityAssessment:
                 "alarms_without_opsitem_details": alarms_without_opsitem,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_alarms_checked": 0,
                 "alarms_with_opsitem": 0,
@@ -8789,7 +8781,7 @@ class ComprehensiveObservabilityAssessment:
 
                     regions_checked.append(region)
 
-                except Exception as e:
+                except Exception:
                     # Continue checking other regions if one fails
                     continue
 
@@ -8799,7 +8791,7 @@ class ComprehensiveObservabilityAssessment:
                 "regions_checked": regions_checked,
             }
 
-        except Exception as e:
+        except Exception:
             return {"total_spaces": 0, "spaces_details": [], "regions_checked": []}
 
     def execute_xray_service_graph_check(self):
@@ -8815,7 +8807,7 @@ class ComprehensiveObservabilityAssessment:
             )
             return result
 
-        except Exception as e:
+        except Exception:
             return None
 
     def execute_xray_sampling_rules_check(self):
@@ -8838,7 +8830,7 @@ class ComprehensiveObservabilityAssessment:
                     return None
             return None
 
-        except Exception as e:
+        except Exception:
             return None
 
     def execute_log_group_tags_check(self):
@@ -9099,7 +9091,7 @@ class ComprehensiveObservabilityAssessment:
 
             return result_data
 
-        except Exception as e:
+        except Exception:
             return None
 
     def execute_alarm_lambda_actions_check(self):
@@ -9171,7 +9163,7 @@ class ComprehensiveObservabilityAssessment:
                 "alarms_without_lambda_details": alarms_without_lambda,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_alarms_checked": 0,
                 "alarms_with_lambda": 0,
@@ -9249,7 +9241,7 @@ class ComprehensiveObservabilityAssessment:
                 "alarms_without_investigations_details": alarms_without_investigations,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_alarms_checked": 0,
                 "alarms_with_investigations": 0,
@@ -9325,7 +9317,7 @@ class ComprehensiveObservabilityAssessment:
                 "alarms_without_ec2_details": alarms_without_ec2,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_alarms_checked": 0,
                 "alarms_with_ec2": 0,
@@ -9401,7 +9393,7 @@ class ComprehensiveObservabilityAssessment:
                             }
                         )
 
-                except Exception as e:
+                except Exception:
                     # If we can't get dashboard body, assume no variables
                     dashboards_without_variables.append(
                         {
@@ -9418,7 +9410,7 @@ class ComprehensiveObservabilityAssessment:
                 "dashboards_without_variables_details": dashboards_without_variables,
             }
 
-        except Exception as e:
+        except Exception:
             return {
                 "total_dashboards": 0,
                 "dashboards_with_variables": 0,
