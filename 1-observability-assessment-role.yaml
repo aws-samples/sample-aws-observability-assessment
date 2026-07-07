@@ -5,14 +5,13 @@
 #   - IAM role scoped to read-only observability actions (Priority: HIGH)
 #   - Trust policy restricted to a single assessment account (Priority: HIGH)
 #   - SSM write actions separated with document-name condition (Priority: HIGH)
-#   - See SECURITY.md for full implementation guidance and verification steps
-#   - See ARCHITECTURE.md for system design and threat model
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
-  Deploys the read-only IAM role needed for the Observability Assessment
-  to run in this account. Deploy this template in each account you want to assess.
-  This role is assumed by the AWS CodeBuild project in the assessment account.
-  See ARCHITECTURE.md for the full deployment architecture.
+  Deploys the IAM role (almost entirely read-only, with a single
+  ssm:SendCommand grant scoped to the AWS-RunShellScript document for the
+  EC2 CloudWatch agent check) that the Observability Assessment uses to scan
+  this account. Deploy this template in each account you want to assess; the
+  role is assumed by the AWS CodeBuild project running in the assessment account.
 
 Parameters:
   AssessmentAccountID:
@@ -103,6 +102,7 @@ Resources:
                   - firehose:ListDeliveryStreams
                   - firehose:DescribeDeliveryStream
                   - kinesis:ListStreams
+                  - aidevops:ListAgentSpaces
                 Resource: '*'
               # Sole write action in this policy. The EC2 CloudWatch-agent check
               # runs the AWS-owned AWS-RunShellScript document on instances, which
