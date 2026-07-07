@@ -434,6 +434,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_field_indexes_per_log_group_check()
             elif check.command == "custom_eks_addons_check":
                 check.result = self.execute_eks_addons_check()
+            elif check.command == "custom_ecs_container_insights_check":
+                check.result = self.execute_ecs_container_insights_check()
             elif check.command == "custom_lambda_insights_check":
                 check.result = self.execute_lambda_insights_check()
             elif check.command == "custom_metrics_namespaces_check":
@@ -2369,7 +2371,7 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check(
             "Do you have ECS clusters with Container Insights enabled?",
             "Metrics",
-            "aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json",
+            "custom_ecs_container_insights_check",
         )
         self.add_discovery_check(
             "Do you have EKS clusters with CloudWatch Observability add-on enabled?",
@@ -2750,14 +2752,20 @@ class ComprehensiveObservabilityAssessment:
                                 repr(stdout[:100]),
                             )
 
-                            # Check if agent is running (process, service, or container)
+                            # Check if agent is running (process, service, or
+                            # container). Match tokens exactly per line: the
+                            # probe emits SERVICE_NOT_ACTIVE / "inactive" when the
+                            # agent is stopped, so a substring test for "active"
+                            # would count stopped agents as running. `systemctl
+                            # is-active` prints exactly "active" on its own line.
+                            probe_lines = [line.strip() for line in stdout.split("\n")]
                             if (
-                                "PROCESS_RUNNING" in stdout
-                                or "active" in stdout.lower()
+                                "PROCESS_RUNNING" in probe_lines
+                                or "active" in [line.lower() for line in probe_lines]
                                 or any(
-                                    int(line.strip()) > 0
-                                    for line in stdout.split("\n")
-                                    if line.strip().isdigit()
+                                    int(line) > 0
+                                    for line in probe_lines
+                                    if line.isdigit()
                                 )
                             ):
                                 logger.debug(
@@ -3138,7 +3146,7 @@ class ComprehensiveObservabilityAssessment:
 
                     escaped_name = shlex.quote(log_group_name)
                     index_result = self.run_aws_command(
-                        f"aws logs describe-field-indexes --log-group-identifiers {self._sanitize(escaped_name)} --output json"
+                        f"aws logs describe-field-indexes --log-group-identifiers {escaped_name} --output json"
                     )
                     if index_result and index_result.get("fieldIndexes"):
                         # Filter out default/system field indexes (those starting with @)
@@ -3337,7 +3345,7 @@ class ComprehensiveObservabilityAssessment:
 
                     escaped_name = shlex.quote(log_group_name)
                     filters_result = self.run_aws_command(
-                        f"aws logs describe-subscription-filters --log-group-name {self._sanitize(escaped_name)} --output json"
+                        f"aws logs describe-subscription-filters --log-group-name {escaped_name} --output json"
                     )
                     if filters_result and filters_result.get("subscriptionFilters"):
                         filtered_groups.append(log_group_name)
@@ -4137,7 +4145,9 @@ class ComprehensiveObservabilityAssessment:
                     )
                 )
                 has_centralization = (
-                    centralization_check and centralization_check.status == "success"
+                    centralization_check
+                    and isinstance(centralization_check.result, dict)
+                    and centralization_check.result.get("centralization_patterns")
                 ) or (
                     oam_check
                     and isinstance(oam_check.result, dict)
@@ -4153,12 +4163,14 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_anomaly_detection = (
                     anomaly_detection_check
-                    and anomaly_detection_check.status == "success"
+                    and isinstance(anomaly_detection_check.result, dict)
+                    and len(anomaly_detection_check.result.get("anomalyDetectors", []))
+                    > 0
                 )
                 has_log_groups = (
                     log_groups_check
-                    and log_groups_check.result
-                    and log_groups_check.result.get("logGroups")
+                    and isinstance(log_groups_check.result, dict)
+                    and log_groups_check.result.get("total_log_groups", 0) > 0
                 )
 
                 evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
@@ -4317,7 +4329,9 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_anomaly_detection = (
                     anomaly_detection_check
-                    and anomaly_detection_check.status == "success"
+                    and isinstance(anomaly_detection_check.result, dict)
+                    and len(anomaly_detection_check.result.get("anomalyDetectors", []))
+                    > 0
                 )
                 has_structured_json = (
                     (
@@ -4497,8 +4511,8 @@ class ComprehensiveObservabilityAssessment:
 
                 has_log_groups = (
                     log_groups_check
-                    and log_groups_check.result
-                    and log_groups_check.result.get("logGroups")
+                    and isinstance(log_groups_check.result, dict)
+                    and log_groups_check.result.get("total_log_groups", 0) > 0
                 )
                 has_dashboards = (
                     dashboards_check
@@ -4514,7 +4528,9 @@ class ComprehensiveObservabilityAssessment:
                     > 0
                 )
                 has_centralization = (
-                    centralization_check and centralization_check.status == "success"
+                    centralization_check
+                    and isinstance(centralization_check.result, dict)
+                    and centralization_check.result.get("centralization_patterns")
                 )
                 has_oam = (
                     oam_check
@@ -4526,7 +4542,9 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_anomaly_detection = (
                     anomaly_detection_check
-                    and anomaly_detection_check.status == "success"
+                    and isinstance(anomaly_detection_check.result, dict)
+                    and len(anomaly_detection_check.result.get("anomalyDetectors", []))
+                    > 0
                 )
                 has_devops_agent = (
                     devops_agent_check
@@ -4682,7 +4700,9 @@ class ComprehensiveObservabilityAssessment:
                     > 0
                 )
                 has_centralization = (
-                    centralization_check and centralization_check.status == "success"
+                    centralization_check
+                    and isinstance(centralization_check.result, dict)
+                    and centralization_check.result.get("centralization_patterns")
                 )
                 has_archival = (
                     has_export_tasks or has_subscription_archival or has_centralization
@@ -5961,8 +5981,8 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_devops = (
                     devops_check
-                    and devops_check.result
-                    and devops_check.result.get("spaces")
+                    and isinstance(devops_check.result, dict)
+                    and devops_check.result.get("total_spaces", 0) > 0
                 )
                 has_investigations = (
                     investigations_check
@@ -6062,8 +6082,8 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_app_signals = (
                     app_signals_check
-                    and app_signals_check.result
-                    and app_signals_check.result.get("ServiceSummaries")
+                    and isinstance(app_signals_check.result, dict)
+                    and app_signals_check.result.get("Services")
                 )
                 has_alarms = (
                     alarms_check
@@ -6328,11 +6348,11 @@ class ComprehensiveObservabilityAssessment:
                 elif has_anomaly and (has_devops_agent or has_investigations):
                     check.current_level = 3
                     check.explanation = f"Automatic correlation and patterns with {', '.join(capabilities)} {evidence_refs}."
-                # L2: Natural language query capability
-                elif has_devops_agent:
+                # L2: Natural language query or automated investigation capability
+                elif has_devops_agent or has_investigations:
                     check.current_level = 2
-                    check.explanation = f"Natural language query capability via {', '.join(capabilities)} {evidence_refs}."
-                # L1: No AI/ML features
+                    check.explanation = f"AI-assisted troubleshooting via {', '.join(capabilities)}, but without anomaly detection for automatic correlation {evidence_refs}."
+                # L2: Basic anomaly detection without AI-assisted investigation
                 elif has_anomaly:
                     check.current_level = 2
                     check.explanation = f"Basic AI/ML with {', '.join(capabilities)} but no natural language or automated investigation capabilities {evidence_refs}."
@@ -7678,7 +7698,7 @@ class ComprehensiveObservabilityAssessment:
     <div class="container">
         <div class="header">
             <h1>🔍 AWS Observability Assessment</h1>
-            <p>Account: {self.results.account_id} | Generated: {datetime.now().strftime("%B %d, %Y at %I:%M %p")}</p>
+            <p>Account: {self.results.account_id} | Generated: {datetime.now().astimezone().strftime("%B %d, %Y at %I:%M %p %Z")}</p>
         </div>
         
         <div class="summary-grid">
@@ -8320,6 +8340,39 @@ class ComprehensiveObservabilityAssessment:
             f"✅ Assessment complete! Overall Score: {self.results.overall_score:.1f}/4.0"
         )
         print(f"📊 Maturity Level: {self.results.maturity_level}")
+
+    def execute_ecs_container_insights_check(self):
+        """Custom check for Container Insights across all ECS clusters.
+
+        Enumerates clusters via list-clusters (rather than a hardcoded name),
+        then describes them with SETTINGS. Returns the raw describe-clusters
+        shape ({"clusters": [...]}) so the evidence and scoring consumers can
+        read each cluster's ``settings`` list unchanged.
+        """
+        try:
+            clusters_result = self.run_aws_command(
+                "aws ecs list-clusters --output json"
+            )
+            if not clusters_result or not clusters_result.get("clusterArns"):
+                return {"clusters": []}
+
+            cluster_arns = clusters_result["clusterArns"]
+            all_clusters = []
+
+            # describe-clusters accepts up to 100 cluster identifiers per call.
+            for i in range(0, len(cluster_arns), 100):
+                batch = cluster_arns[i : i + 100]
+                quoted = " ".join(self._sanitize(arn) for arn in batch)
+                described = self.run_aws_command(
+                    f"aws ecs describe-clusters --clusters {quoted} --include SETTINGS --output json"
+                )
+                if described and described.get("clusters"):
+                    all_clusters.extend(described["clusters"])
+
+            return {"clusters": all_clusters}
+
+        except Exception:
+            return {"clusters": []}
 
     def execute_eks_addons_check(self):
         """Custom check for EKS observability add-ons across all EKS clusters"""
