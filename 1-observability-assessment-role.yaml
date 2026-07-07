@@ -103,6 +103,7 @@ Resources:
                   - firehose:ListDeliveryStreams
                   - firehose:DescribeDeliveryStream
                   - kinesis:ListStreams
+                  - aidevops:ListAgentSpaces
                 Resource: '*'
               # Sole write action in this policy. The EC2 CloudWatch-agent check
               # runs the AWS-owned AWS-RunShellScript document on instances, which

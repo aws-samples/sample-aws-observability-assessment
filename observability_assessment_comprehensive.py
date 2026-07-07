@@ -8768,11 +8768,10 @@ class ComprehensiveObservabilityAssessment:
 
             for region in regions_to_check:
                 try:
-                    # Build region-specific endpoint URL
-                    endpoint_url = f"https://api.prod.cp.aidevops.{region}.api.aws"
-
-                    # Execute the AWS DevOps Agent command with custom endpoint
-                    command = f'aws devopsagent list-agent-spaces --endpoint-url "{endpoint_url}" --region {region} --output json'
+                    # Execute the AWS DevOps Agent command. The devops-agent
+                    # service commands ship natively in AWS CLI v2 (>= 2.34.21),
+                    # so no custom endpoint or service model is required.
+                    command = f"aws devops-agent list-agent-spaces --region {region} --output json"
                     result = self.run_aws_command(command)
 
                     agent_spaces = result.get("agentSpaces", []) if result else []

@@ -171,6 +171,7 @@ Resources:
                   - firehose:ListDeliveryStreams
                   - firehose:DescribeDeliveryStream
                   - kinesis:ListStreams
+                  - aidevops:ListAgentSpaces
                 Resource: "*"
               # Sole write action in this policy. The EC2 CloudWatch-agent check
               # runs the AWS-owned AWS-RunShellScript document on instances, which
@@ -263,22 +264,16 @@ Resources:
                 # below sets its own `set -euo pipefail` to fail fast.
                 - |
                   set -euo pipefail
-                  echo "Installing AWS DevOps Agent CLI model..."
-                  MODEL_URL="https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json"
-                  # Retry the model download so a transient CloudFront blip does
-                  # not fail the whole build in the install phase.
-                  for attempt in 1 2 3; do
-                    if curl -sf --retry 2 --max-time 30 -o devopsagent.json "$MODEL_URL"; then
-                      break
-                    fi
-                    echo "Model download attempt ${attempt} failed."
-                    if [ "$attempt" -eq 3 ]; then
-                      echo "ERROR: could not download the DevOps Agent CLI model after 3 attempts." >&2
-                      exit 1
-                    fi
-                    sleep 5
-                  done
-                  aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
+                  # The AWS DevOps Agent check calls `aws devops-agent`, which ships
+                  # natively in AWS CLI v2 (>= 2.34.21). The standard image usually
+                  # already satisfies this, but update to the latest v2 to guarantee
+                  # the devops-agent commands are present regardless of image age.
+                  echo "AWS CLI version before update:"; aws --version
+                  curl -sSfL --retry 3 --max-time 120 "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+                  unzip -q awscliv2.zip
+                  ./aws/install --update
+                  hash -r
+                  echo "AWS CLI version after update:"; aws --version
             build:
               commands:
                 - |
