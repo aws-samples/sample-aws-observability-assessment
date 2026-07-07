@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # Keep GitHub Actions pinned to commit SHAs current. Dependabot reads the
+  # trailing "# vX.Y.Z" comment on each `uses:` and opens a PR (with changelog)
+  # whenever a newer release is available, so the SHA pins never go stale.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Wait 7 days before proposing a newly published version. A brand-new
+    # release can be malicious or unstable; the cooldown gives it time to be
+    # vetted (and yanked if compromised) before it reaches this repo.
+    cooldown:
+      default-days: 7

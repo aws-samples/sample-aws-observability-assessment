@@ -22,14 +22,13 @@ Parameters:
       Set to 'yes' for single-account mode (creates the assessment role in this account).
       Set to 'no' if you already deployed 1-observability-assessment-role.yaml separately.
     Type: String
-    Default: 'yes'
-    AllowedValues: ['yes', 'no']
+    Default: "yes"
+    AllowedValues: ["yes", "no"]
 
 Conditions:
-  CreateAssessmentRole: !Equals [!Ref CreateAssessmentRole, 'yes']
+  CreateAssessmentRole: !Equals [!Ref CreateAssessmentRole, "yes"]
 
 Resources:
-
   # --- S3 Access Logging Bucket ---
   ReportBucketAccessLogs:
     UpdateReplacePolicy: Retain
@@ -77,15 +76,15 @@ Resources:
     Properties:
       Bucket: !Ref ReportBucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Sid: AllowSSLRequestsOnly
-            Principal: '*'
-            Action: 's3:*'
+            Principal: "*"
+            Action: "s3:*"
             Effect: Deny
             Resource:
-              - !Sub '${ReportBucket.Arn}'
-              - !Sub '${ReportBucket.Arn}/*'
+              - !Sub "${ReportBucket.Arn}"
+              - !Sub "${ReportBucket.Arn}/*"
             Condition:
               Bool:
                 aws:SecureTransport: false
@@ -93,25 +92,25 @@ Resources:
   # --- Assessment role (single-account mode) ---
   ObservabilityAssessmentRole:
     Condition: CreateAssessmentRole
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties:
       RoleName: ObservabilityAssessmentRole
-      Path: '/service-role/'
+      Path: "/service-role/"
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
-              AWS: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:root'
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
             Action:
-              - 'sts:AssumeRole'
+              - "sts:AssumeRole"
             Condition:
               ArnEquals:
-                aws:PrincipalArn: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentCodeBuildRole'
+                aws:PrincipalArn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentCodeBuildRole"
       Policies:
         - PolicyName: ObservabilityAssessmentPolicy
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
@@ -160,7 +159,6 @@ Resources:
                   - synthetics:DescribeCanaries
                   - rum:ListAppMonitors
                   - ssm:DescribeInstanceInformation
-                  - ssm:SendCommand
                   - ssm:GetCommandInvocation
                   - application-signals:ListServices
                   - application-signals:ListServiceLevelObjectives
@@ -173,52 +171,62 @@ Resources:
                   - firehose:ListDeliveryStreams
                   - firehose:DescribeDeliveryStream
                   - kinesis:ListStreams
-                Resource: '*'
+                Resource: "*"
+              # Sole write action in this policy. The EC2 CloudWatch-agent check
+              # runs the AWS-owned AWS-RunShellScript document on instances, which
+              # requires ssm:SendCommand. Scope it to that one document and this
+              # account's instances so the write access is constrained (CKV_AWS_111).
+              - Effect: Allow
+                Action:
+                  - ssm:SendCommand
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:*::document/AWS-RunShellScript"
+                  - !Sub "arn:${AWS::Partition}:ec2:*:${AWS::AccountId}:instance/*"
 
   # --- CodeBuild IAM Role ---
   ObservabilityAssessmentCodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: ObservabilityAssessmentCodeBuildRole
-      Path: '/service-role/'
+      Path: "/service-role/"
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: codebuild.amazonaws.com
-            Action: 'sts:AssumeRole'
+            Action: "sts:AssumeRole"
             Condition:
               StringEquals:
-                aws:SourceArn: !Sub 'arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/ObservabilityAssessmentCodeBuild'
+                aws:SourceArn: !Sub "arn:${AWS::Partition}:codebuild:${AWS::Region}:${AWS::AccountId}:project/ObservabilityAssessmentCodeBuild"
       Policies:
         - PolicyName: LogGroup
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
         - PolicyName: S3Access
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
-                Resource: !Sub '${ReportBucket.Arn}/*'
+                Resource: !Sub "${ReportBucket.Arn}/*"
         - PolicyName: AssumeAssessmentRole
           PolicyDocument:
-            Version: '2012-10-17'
+            Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - sts:AssumeRole
-                Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentRole'
+                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentRole"
 
   # --- CodeBuild Project ---
   ObservabilityAssessmentCodeBuild:
@@ -230,7 +238,7 @@ Resources:
       TimeoutInMinutes: 60
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: 'aws/codebuild/amazonlinux2-x86_64-standard:5.0'
+        Image: "aws/codebuild/amazonlinux-x86_64-standard:6.0"
         Type: LINUX_CONTAINER
         EnvironmentVariables:
           - Name: BUCKET_REPORT
@@ -248,44 +256,88 @@ Resources:
           phases:
             install:
               runtime-versions:
-                python: 3.11
+                python: 3.12
               commands:
-                - echo "Installing AWS DevOps Agent CLI model..."
-                - curl -sf -o devopsagent.json https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json
-                - aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
+                # NOTE: CodeBuild runs each list item in a separate shell, so
+                # `set` flags do not persist across items. Each multi-line block
+                # below sets its own `set -euo pipefail` to fail fast.
+                - |
+                  set -euo pipefail
+                  echo "Installing AWS DevOps Agent CLI model..."
+                  MODEL_URL="https://d1co8nkiwcta1g.cloudfront.net/devopsagent.json"
+                  # Retry the model download so a transient CloudFront blip does
+                  # not fail the whole build in the install phase.
+                  for attempt in 1 2 3; do
+                    if curl -sf --retry 2 --max-time 30 -o devopsagent.json "$MODEL_URL"; then
+                      break
+                    fi
+                    echo "Model download attempt ${attempt} failed."
+                    if [ "$attempt" -eq 3 ]; then
+                      echo "ERROR: could not download the DevOps Agent CLI model after 3 attempts." >&2
+                      exit 1
+                    fi
+                    sleep 5
+                  done
+                  aws configure add-model --service-model "file://${PWD}/devopsagent.json" --service-name devopsagent
             build:
               commands:
-                - set -e
                 - |
+                  set -euo pipefail
                   echo "Downloading assessment script..."
                   SCRIPT_URL="https://raw.githubusercontent.com/aws-samples/sample-aws-observability-assessment/main/observability_assessment_comprehensive.py"
-                  if ! curl -sfL -o observability_assessment_comprehensive.py "$SCRIPT_URL"; then
+                  if ! curl -sfL --retry 2 --max-time 60 -o observability_assessment_comprehensive.py "$SCRIPT_URL"; then
                     echo "GitHub repo not available, downloading from S3..."
-                    aws s3 cp s3://$BUCKET_REPORT/observability_assessment_comprehensive.py .
+                    aws s3 cp "s3://$BUCKET_REPORT/observability_assessment_comprehensive.py" .
+                  fi
+                  # Verify the script actually landed before trying to run it.
+                  if [ ! -s observability_assessment_comprehensive.py ]; then
+                    echo "ERROR: assessment script is missing or empty after download." >&2
+                    exit 1
                   fi
                 - |
+                  set -euo pipefail
+                  # Resolve caller identity once and validate before building an ARN,
+                  # so an empty account/partition can't produce a malformed --role-arn.
+                  CALLER_ARN=$(aws sts get-caller-identity --query Arn --output text)
                   ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-                  python3 observability_assessment_comprehensive.py --region $ASSESSMENT_REGION --role-arn arn:aws:iam::${ACCOUNT_ID}:role/service-role/ObservabilityAssessmentRole
-                - aws s3 cp assessment-result/ s3://$BUCKET_REPORT/ --recursive --exclude "*" --include "*.html" --include "*.csv"
-                - echo "Assessment complete. Reports uploaded to s3://$BUCKET_REPORT/"
+                  PARTITION=$(echo "$CALLER_ARN" | cut -d: -f2)
+                  if [ -z "$ACCOUNT_ID" ] || [ "$ACCOUNT_ID" = "None" ]; then
+                    echo "ERROR: could not resolve AWS account ID from sts:GetCallerIdentity." >&2
+                    exit 1
+                  fi
+                  if [ -z "$PARTITION" ]; then
+                    echo "ERROR: could not resolve AWS partition from caller ARN '${CALLER_ARN}'." >&2
+                    exit 1
+                  fi
+                  ROLE_ARN="arn:${PARTITION}:iam::${ACCOUNT_ID}:role/service-role/ObservabilityAssessmentRole"
+                  echo "Assuming assessment role: ${ROLE_ARN}"
+                  python3 observability_assessment_comprehensive.py --region "$ASSESSMENT_REGION" --role-arn "$ROLE_ARN"
+                - |
+                  set -euo pipefail
+                  if [ ! -d assessment-result ]; then
+                    echo "ERROR: assessment produced no 'assessment-result' directory; nothing to upload." >&2
+                    exit 1
+                  fi
+                  aws s3 cp assessment-result/ "s3://$BUCKET_REPORT/" --recursive --exclude "*" --include "*.html" --include "*.csv"
+                  echo "Assessment complete. Reports uploaded to s3://$BUCKET_REPORT/"
 
   # --- Lambda to trigger first build ---
   CodeBuildStartBuildLambdaRole:
-    Type: 'AWS::IAM::Role'
+    Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
               Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
+            Action: "sts:AssumeRole"
             Condition:
               StringEquals:
-                aws:SourceAccount: !Sub '${AWS::AccountId}'
+                aws:SourceAccount: !Sub "${AWS::AccountId}"
       Path: /
       ManagedPolicyArns:
-        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
       Policies:
         - PolicyName: StartBuildInline
           PolicyDocument:
@@ -300,14 +352,14 @@ Resources:
     DeletionPolicy: Delete
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${CodeBuildStartBuildLambda}'
+      LogGroupName: !Sub "/aws/lambda/${CodeBuildStartBuildLambda}"
       RetentionInDays: 7
 
   CodeBuildStartBuildLambda:
     Type: AWS::Lambda::Function
     Properties:
       Handler: index.lambda_handler
-      Role: !Sub '${CodeBuildStartBuildLambdaRole.Arn}'
+      Role: !Sub "${CodeBuildStartBuildLambdaRole.Arn}"
       Timeout: 120
       Runtime: python3.12
       ReservedConcurrentExecutions: 1
@@ -348,4 +400,4 @@ Outputs:
   ManualUploadCommand:
     Description: >-
       If the GitHub repo is not public yet, upload the script manually after stack creation
-    Value: !Sub 'aws s3 cp observability_assessment_comprehensive.py s3://${ReportBucket}/'
+    Value: !Sub "aws s3 cp observability_assessment_comprehensive.py s3://${ReportBucket}/"

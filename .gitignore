@@ -10,9 +10,20 @@ assessment-result/
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.mypy_cache/
 
-# Kiro IDE configuration
+# Ruff cache
+.ruff_cache/
+
+# ASH: only track the config file, ignore scan output and everything else
+.ash/*
+!.ash/.ash.yaml
+
+# IDE configurations
 .kiro/
+.vscode/
+
+
 
 DESIGN_SYSTEM_TEMPLATE.MD
-CLAUDE.md

@@ -1,0 +1,40 @@
+script:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'observability_assessment_comprehensive.py'
+      - '**/*.py'
+
+cloudformation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '1-observability-assessment-role.yaml'
+      - '2-observability-assessment-codebuild.yaml'
+
+deployment:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '2-observability-assessment-codebuild.yaml'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/workflows/**'
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'requirements.txt'
+      - '.github/dependabot.yml'
+
+security:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.ash/**'
+      - '1-observability-assessment-role.yaml'
+      - '.github/ISSUE_TEMPLATE/security-vulnerability.yml'
+
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.md'
+      - 'sample-result/**'
