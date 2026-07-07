@@ -5,12 +5,13 @@
 #   - S3 bucket: SSE-S3 encryption, public access blocked, SSL-only policy, versioning (Priority: HIGH)
 #   - AWS CodeBuild role: scoped to S3 PutObject, CloudWatch Logs, and sts:AssumeRole only (Priority: MEDIUM)
 #   - Build timeout: 60 minutes maximum (Priority: MEDIUM)
-#   - See SECURITY.md for full implementation guidance and verification steps
-#   - See ARCHITECTURE.md for system design and threat model
 AWSTemplateFormatVersion: 2010-09-09
 Description: >-
   Deploys a CodeBuild project that runs the AWS Observability Assessment,
-  an Amazon S3 bucket for reports, and an AWS Lambda function to trigger the first build.
+  two Amazon S3 buckets (a reports bucket and its access-log destination
+  bucket), and an AWS Lambda function to trigger the first build. In
+  single-account mode (CreateAssessmentRole=yes) it also creates the
+  read-only assessment role inline.
 
 Parameters:
   AssessmentRegion:
