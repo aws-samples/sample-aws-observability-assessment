@@ -434,6 +434,8 @@ class ComprehensiveObservabilityAssessment:
                 check.result = self.execute_field_indexes_per_log_group_check()
             elif check.command == "custom_eks_addons_check":
                 check.result = self.execute_eks_addons_check()
+            elif check.command == "custom_ecs_container_insights_check":
+                check.result = self.execute_ecs_container_insights_check()
             elif check.command == "custom_lambda_insights_check":
                 check.result = self.execute_lambda_insights_check()
             elif check.command == "custom_metrics_namespaces_check":
@@ -2369,7 +2371,7 @@ class ComprehensiveObservabilityAssessment:
         self.add_discovery_check(
             "Do you have ECS clusters with Container Insights enabled?",
             "Metrics",
-            "aws ecs describe-clusters --clusters PetsiteECS-cluster --include SETTINGS --output json",
+            "custom_ecs_container_insights_check",
         )
         self.add_discovery_check(
             "Do you have EKS clusters with CloudWatch Observability add-on enabled?",
@@ -2750,14 +2752,20 @@ class ComprehensiveObservabilityAssessment:
                                 repr(stdout[:100]),
                             )
 
-                            # Check if agent is running (process, service, or container)
+                            # Check if agent is running (process, service, or
+                            # container). Match tokens exactly per line: the
+                            # probe emits SERVICE_NOT_ACTIVE / "inactive" when the
+                            # agent is stopped, so a substring test for "active"
+                            # would count stopped agents as running. `systemctl
+                            # is-active` prints exactly "active" on its own line.
+                            probe_lines = [line.strip() for line in stdout.split("\n")]
                             if (
-                                "PROCESS_RUNNING" in stdout
-                                or "active" in stdout.lower()
+                                "PROCESS_RUNNING" in probe_lines
+                                or "active" in [line.lower() for line in probe_lines]
                                 or any(
-                                    int(line.strip()) > 0
-                                    for line in stdout.split("\n")
-                                    if line.strip().isdigit()
+                                    int(line) > 0
+                                    for line in probe_lines
+                                    if line.isdigit()
                                 )
                             ):
                                 logger.debug(
@@ -3138,7 +3146,7 @@ class ComprehensiveObservabilityAssessment:
 
                     escaped_name = shlex.quote(log_group_name)
                     index_result = self.run_aws_command(
-                        f"aws logs describe-field-indexes --log-group-identifiers {self._sanitize(escaped_name)} --output json"
+                        f"aws logs describe-field-indexes --log-group-identifiers {escaped_name} --output json"
                     )
                     if index_result and index_result.get("fieldIndexes"):
                         # Filter out default/system field indexes (those starting with @)
@@ -3337,7 +3345,7 @@ class ComprehensiveObservabilityAssessment:
 
                     escaped_name = shlex.quote(log_group_name)
                     filters_result = self.run_aws_command(
-                        f"aws logs describe-subscription-filters --log-group-name {self._sanitize(escaped_name)} --output json"
+                        f"aws logs describe-subscription-filters --log-group-name {escaped_name} --output json"
                     )
                     if filters_result and filters_result.get("subscriptionFilters"):
                         filtered_groups.append(log_group_name)
@@ -4137,7 +4145,9 @@ class ComprehensiveObservabilityAssessment:
                     )
                 )
                 has_centralization = (
-                    centralization_check and centralization_check.status == "success"
+                    centralization_check
+                    and isinstance(centralization_check.result, dict)
+                    and centralization_check.result.get("centralization_patterns")
                 ) or (
                     oam_check
                     and isinstance(oam_check.result, dict)
@@ -4153,12 +4163,14 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_anomaly_detection = (
                     anomaly_detection_check
-                    and anomaly_detection_check.status == "success"
+                    and isinstance(anomaly_detection_check.result, dict)
+                    and len(anomaly_detection_check.result.get("anomalyDetectors", []))
+                    > 0
                 )
                 has_log_groups = (
                     log_groups_check
-                    and log_groups_check.result
-                    and log_groups_check.result.get("logGroups")
+                    and isinstance(log_groups_check.result, dict)
+                    and log_groups_check.result.get("total_log_groups", 0) > 0
                 )
 
                 evidence_refs = f"(Checks #{', #'.join(str(id) for id in check.evidence_check_ids)})"
@@ -4317,7 +4329,9 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_anomaly_detection = (
                     anomaly_detection_check
-                    and anomaly_detection_check.status == "success"
+                    and isinstance(anomaly_detection_check.result, dict)
+                    and len(anomaly_detection_check.result.get("anomalyDetectors", []))
+                    > 0
                 )
                 has_structured_json = (
                     (
@@ -4497,8 +4511,8 @@ class ComprehensiveObservabilityAssessment:
 
                 has_log_groups = (
                     log_groups_check
-                    and log_groups_check.result
-                    and log_groups_check.result.get("logGroups")
+                    and isinstance(log_groups_check.result, dict)
+                    and log_groups_check.result.get("total_log_groups", 0) > 0
                 )
                 has_dashboards = (
                     dashboards_check
@@ -4514,7 +4528,9 @@ class ComprehensiveObservabilityAssessment:
                     > 0
                 )
                 has_centralization = (
-                    centralization_check and centralization_check.status == "success"
+                    centralization_check
+                    and isinstance(centralization_check.result, dict)
+                    and centralization_check.result.get("centralization_patterns")
                 )
                 has_oam = (
                     oam_check
@@ -4526,7 +4542,9 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_anomaly_detection = (
                     anomaly_detection_check
-                    and anomaly_detection_check.status == "success"
+                    and isinstance(anomaly_detection_check.result, dict)
+                    and len(anomaly_detection_check.result.get("anomalyDetectors", []))
+                    > 0
                 )
                 has_devops_agent = (
                     devops_agent_check
@@ -4682,7 +4700,9 @@ class ComprehensiveObservabilityAssessment:
                     > 0
                 )
                 has_centralization = (
-                    centralization_check and centralization_check.status == "success"
+                    centralization_check
+                    and isinstance(centralization_check.result, dict)
+                    and centralization_check.result.get("centralization_patterns")
                 )
                 has_archival = (
                     has_export_tasks or has_subscription_archival or has_centralization
@@ -5961,8 +5981,8 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_devops = (
                     devops_check
-                    and devops_check.result
-                    and devops_check.result.get("spaces")
+                    and isinstance(devops_check.result, dict)
+                    and devops_check.result.get("total_spaces", 0) > 0
                 )
                 has_investigations = (
                     investigations_check
@@ -6062,8 +6082,8 @@ class ComprehensiveObservabilityAssessment:
                 )
                 has_app_signals = (
                     app_signals_check
-                    and app_signals_check.result
-                    and app_signals_check.result.get("ServiceSummaries")
+                    and isinstance(app_signals_check.result, dict)
+                    and app_signals_check.result.get("Services")
                 )
                 has_alarms = (
                     alarms_check
@@ -6328,11 +6348,11 @@ class ComprehensiveObservabilityAssessment:
                 elif has_anomaly and (has_devops_agent or has_investigations):
                     check.current_level = 3
                     check.explanation = f"Automatic correlation and patterns with {', '.join(capabilities)} {evidence_refs}."
-                # L2: Natural language query capability
-                elif has_devops_agent:
+                # L2: Natural language query or automated investigation capability
+                elif has_devops_agent or has_investigations:
                     check.current_level = 2
-                    check.explanation = f"Natural language query capability via {', '.join(capabilities)} {evidence_refs}."
-                # L1: No AI/ML features
+                    check.explanation = f"AI-assisted troubleshooting via {', '.join(capabilities)}, but without anomaly detection for automatic correlation {evidence_refs}."
+                # L2: Basic anomaly detection without AI-assisted investigation
                 elif has_anomaly:
                     check.current_level = 2
                     check.explanation = f"Basic AI/ML with {', '.join(capabilities)} but no natural language or automated investigation capabilities {evidence_refs}."
@@ -7579,43 +7599,53 @@ class ComprehensiveObservabilityAssessment:
             pts = " ".join(
                 f"{polar(level, i)[0]:.1f},{polar(level, i)[1]:.1f}" for i in range(n)
             )
-            opacity = "0.3" if level < 4 else "0.5"
-            grid_svg += f'<polygon points="{pts}" fill="none" stroke="#cbd5e1" stroke-width="1" opacity="{opacity}"/>\n'
+            opacity = "0.6" if level < 4 else "0.85"
+            grid_svg += f'<polygon points="{pts}" fill="none" stroke="#94a3b8" stroke-width="1" opacity="{opacity}"/>\n'
 
         # Axis lines and labels
         axes_svg = ""
         for i, (label, score) in enumerate(scores):
             ex, ey = polar(4, i)
-            axes_svg += f'<line x1="{cx}" y1="{cy}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#cbd5e1" stroke-width="1"/>\n'
-            # Label position (pushed out a bit further)
+            axes_svg += f'<line x1="{cx}" y1="{cy}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#94a3b8" stroke-width="1" opacity="0.7"/>\n'
+            # Label position (pushed out a bit further). Anchor labels toward the
+            # chart's centre horizontally so side labels stay within the canvas.
             lx, ly = polar(4.7, i)
+            if lx < cx - 1:
+                anchor = "end"
+            elif lx > cx + 1:
+                anchor = "start"
+            else:
+                anchor = "middle"
             lines = label.split("\n")
             for j, line in enumerate(lines):
-                axes_svg += f'<text x="{lx:.1f}" y="{ly + j * 16:.1f}" text-anchor="middle" font-size="13" font-weight="600" fill="#374151">{line}</text>\n'
+                axes_svg += f'<text x="{lx:.1f}" y="{ly + j * 16:.1f}" text-anchor="{anchor}" font-size="13" font-weight="600" fill="#1f2937">{line}</text>\n'
             # Score value
-            axes_svg += f'<text x="{lx:.1f}" y="{ly + len(lines) * 16:.1f}" text-anchor="middle" font-size="12" fill="#667eea" font-weight="700">{score:.1f}</text>\n'
+            axes_svg += f'<text x="{lx:.1f}" y="{ly + len(lines) * 16:.1f}" text-anchor="{anchor}" font-size="12" fill="#4338ca" font-weight="700">{score:.1f}</text>\n'
 
         # Level labels along first axis
         level_labels_svg = ""
         for level in [1, 2, 3, 4]:
             lx, ly = polar(level, 0)
-            level_labels_svg += f'<text x="{lx + 8:.1f}" y="{ly - 4:.1f}" font-size="10" fill="#9ca3af">{level}</text>\n'
+            level_labels_svg += f'<text x="{lx + 8:.1f}" y="{ly - 4:.1f}" font-size="10" font-weight="600" fill="#64748b">{level}</text>\n'
 
         # Score polygon
         pts = " ".join(
             f"{polar(s, i)[0]:.1f},{polar(s, i)[1]:.1f}"
             for i, (_, s) in enumerate(scores)
         )
-        score_svg = f'<polygon points="{pts}" fill="rgba(102,126,234,0.25)" stroke="#667eea" stroke-width="2.5"/>\n'
+        score_svg = f'<polygon points="{pts}" fill="rgba(67,56,202,0.30)" stroke="#4338ca" stroke-width="2.5"/>\n'
         # Score dots
         for i, (_, s) in enumerate(scores):
             dx, dy = polar(s, i)
-            score_svg += f'<circle cx="{dx:.1f}" cy="{dy:.1f}" r="4" fill="#667eea"/>\n'
+            score_svg += f'<circle cx="{dx:.1f}" cy="{dy:.1f}" r="4" fill="#4338ca"/>\n'
 
+        # viewBox padded so side/top/bottom axis labels are not clipped
+        # (e.g. the leftmost "Organization" label overflowed the old 0 0 400 400
+        # box, cutting off its leading "O").
         return f"""
         <div style="background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem; text-align: center;">
             <h2 style="margin-bottom: 1rem; color: #374151;">Observability Maturity Radar</h2>
-            <svg viewBox="0 0 400 400" width="450" height="450" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="-90 -20 580 450" width="500" height="388" xmlns="http://www.w3.org/2000/svg">
                 {grid_svg}
                 {axes_svg}
                 {level_labels_svg}
@@ -7678,7 +7708,7 @@ class ComprehensiveObservabilityAssessment:
     <div class="container">
         <div class="header">
             <h1>🔍 AWS Observability Assessment</h1>
-            <p>Account: {self.results.account_id} | Generated: {datetime.now().strftime("%B %d, %Y at %I:%M %p")}</p>
+            <p>Account: {self.results.account_id} | Generated: {datetime.now().astimezone().strftime("%B %d, %Y at %I:%M %p %Z")}</p>
         </div>
         
         <div class="summary-grid">
@@ -8320,6 +8350,39 @@ class ComprehensiveObservabilityAssessment:
             f"✅ Assessment complete! Overall Score: {self.results.overall_score:.1f}/4.0"
         )
         print(f"📊 Maturity Level: {self.results.maturity_level}")
+
+    def execute_ecs_container_insights_check(self):
+        """Custom check for Container Insights across all ECS clusters.
+
+        Enumerates clusters via list-clusters (rather than a hardcoded name),
+        then describes them with SETTINGS. Returns the raw describe-clusters
+        shape ({"clusters": [...]}) so the evidence and scoring consumers can
+        read each cluster's ``settings`` list unchanged.
+        """
+        try:
+            clusters_result = self.run_aws_command(
+                "aws ecs list-clusters --output json"
+            )
+            if not clusters_result or not clusters_result.get("clusterArns"):
+                return {"clusters": []}
+
+            cluster_arns = clusters_result["clusterArns"]
+            all_clusters = []
+
+            # describe-clusters accepts up to 100 cluster identifiers per call.
+            for i in range(0, len(cluster_arns), 100):
+                batch = cluster_arns[i : i + 100]
+                quoted = " ".join(self._sanitize(arn) for arn in batch)
+                described = self.run_aws_command(
+                    f"aws ecs describe-clusters --clusters {quoted} --include SETTINGS --output json"
+                )
+                if described and described.get("clusters"):
+                    all_clusters.extend(described["clusters"])
+
+            return {"clusters": all_clusters}
+
+        except Exception:
+            return {"clusters": []}
 
     def execute_eks_addons_check(self):
         """Custom check for EKS observability add-ons across all EKS clusters"""
