@@ -1,0 +1,8 @@
+{
+    "_comment": "Map real resource names to scrubbed Example* equivalents. Longest matches are applied first.",
+    "one-observability-demo-codebuild": "ExampleWorkshop",
+    "One Observability Workshop": "One Observability Workshop",
+    "petlistadoption": "exampleservice",
+    "payforadoption": "exampleservicecleanupprocessornode",
+    "PetFoodAgent": "ExampleAgent"
+}
