@@ -141,7 +141,10 @@ class ComprehensiveObservabilityAssessment:
     def export_check_to_csv(self, check_name, found_count, total_count, details=None):
         """Export check results to CSV file"""
         if not self.csv_file:
-            self.csv_file = f"assessment-result/discovery_checks_{self.timestamp}.csv"
+            # Include the account ID (like the HTML report) so concurrent
+            # multi-account workers that start within the same second do not
+            # append to — and corrupt — one another's CSV export.
+            self.csv_file = f"assessment-result/discovery_checks_{self.timestamp}_{self.results.account_id}.csv"
             os.makedirs("assessment-result", exist_ok=True)
             # Create CSV with headers
             with open(self.csv_file, "w", newline="") as f:
@@ -9593,8 +9596,6 @@ class MultiAccountAssessment:
             if not valid:
                 print("❌ No valid account IDs provided")
                 sys.exit(1)
-            if self.management_account_id not in valid:
-                valid.insert(0, self.management_account_id)
             self.discovered_accounts = list(dict.fromkeys(valid))
             self._resolve_account_names(self.discovered_accounts)
             return
@@ -9637,8 +9638,6 @@ class MultiAccountAssessment:
             for acct in accounts:
                 self.account_names[acct["Id"]] = acct.get("Name")
             ids = [a["Id"] for a in accounts]
-            if self.management_account_id not in ids:
-                ids.insert(0, self.management_account_id)
             self.discovered_accounts = list(dict.fromkeys(ids))
 
         except ClientError as e:
@@ -9702,18 +9701,32 @@ class MultiAccountAssessment:
 
     def assess_account(self, account_id):
         """Assess a single account. Returns (account_id, AssessmentResults|None, error|None)."""
+        role_arn = f"arn:aws:iam::{account_id}:role/service-role/{self.role_name}"
         try:
-            role_arn = None
-            if account_id != self.management_account_id:
-                role_arn = (
-                    f"arn:aws:iam::{account_id}:role/service-role/{self.role_name}"
+            try:
+                assessment = ComprehensiveObservabilityAssessment(
+                    profile=self.profile,
+                    region=self.region,
+                    role_arn=role_arn,
+                    summary_report_filename=self.summary_report_filename,
                 )
-            assessment = ComprehensiveObservabilityAssessment(
-                profile=self.profile,
-                region=self.region,
-                role_arn=role_arn,
-                summary_report_filename=self.summary_report_filename,
-            )
+            except Exception:
+                # Every account — including the caller/management account — must run
+                # under the assessment role, which carries the discovery permissions
+                # the running identity may lack (e.g. the limited CodeBuild role that
+                # only has Logs/S3/STS/Organizations access). If assuming the role is
+                # denied for the caller account — typically a local run whose profile
+                # already has the permissions but is not trusted by the role — fall
+                # back to the caller's own credentials. Non-caller accounts have no
+                # usable fallback, so surface the error for them.
+                if account_id != self.management_account_id:
+                    raise
+                assessment = ComprehensiveObservabilityAssessment(
+                    profile=self.profile,
+                    region=self.region,
+                    role_arn=None,
+                    summary_report_filename=self.summary_report_filename,
+                )
             assessment.run_full_assessment()
             return (account_id, assessment.results, None)
         except Exception as e:
