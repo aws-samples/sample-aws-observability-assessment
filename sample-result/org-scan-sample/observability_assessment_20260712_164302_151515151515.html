@@ -28,11 +28,11 @@
     </style>
 </head>
 <body>
-    <div style="background:#667eea;padding:0.5rem 1rem;text-align:left;"><a href="organization_summary_20260712_034037.html" style="color:white;text-decoration:none;font-weight:500;">← Back to Organization Summary</a></div>
+    <div style="background:#667eea;padding:0.5rem 1rem;text-align:left;"><a href="organization_summary_20260712_164003.html" style="color:white;text-decoration:none;font-weight:500;">← Back to Organization Summary</a></div>
     <div class="container">
         <div class="header">
             <h1>🔍 AWS Observability Assessment</h1>
-            <p>Account: 111122223333 | Generated: July 12, 2026 at 03:43 AM UTC</p>
+            <p>Account: 111122223333 | Generated: July 12, 2026 at 04:45 PM UTC</p>
         </div>
         
         <div class="summary-grid">
@@ -43,7 +43,7 @@
             </div>
             <div class="summary-card">
                 <h3>Discovery Checks</h3>
-                <div class="number complete">29</div>
+                <div class="number complete">49</div>
                 <p>of 50 successful</p>
             </div>
             <div class="summary-card">
@@ -123,35 +123,35 @@
                             <td>What percentage of your log groups are categorized by source type (AWS Service Vended Logs, Custom Logs)</td>
                             <td>Logs</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_log_groups_categorization_check</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Total: 0 log groups | Vended: 0 | Custom: 0<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'></div></details></td>
                         </tr>
                         <tr>
                             <td>2</td>
                             <td>What percentage of log groups have retention policies configured (example thresholds: security: 90+ days, operational: 30 days, debug: 7 days — actual requirements vary by organization)?</td>
                             <td>Logs</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_top_log_groups_retention_check</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: 111122223333, Region: us-east-1 | No large log groups found for retention analysis</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: 111122223333, Region: us-west-2 | No large log groups found for retention analysis</td>
                         </tr>
                         <tr>
                             <td>3</td>
                             <td>Do you have standardized Log Insights queries for common troubleshooting scenarios (errors, latency, security events)?</td>
                             <td>Logs</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-query-definitions --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No saved query definitions found - users haven't saved any custom CloudWatch Logs Insights queries for reuse</td>
                         </tr>
                         <tr>
                             <td>4</td>
                             <td>Do you have a history of Log Insights queries being executed?</td>
                             <td>Logs</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-queries --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
                         </tr>
                         <tr>
                             <td>5</td>
                             <td>Have you created metric filters to extract KPIs from logs?</td>
                             <td>Logs</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-metric-filters --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Command: aws logs describe-metric-filters --output json | No metric filters found - no log groups are configured to extract metrics from log events</td>
                         </tr>
                         <tr>
                             <td>6</td>
@@ -165,7 +165,7 @@
                             <td>What percentage of EC2 instances have CloudWatch Agent installed with both system metrics AND application logs configured?</td>
                             <td>Logs</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_ec2_cloudwatch_agent_check</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No EC2 instances found</td>
                         </tr>
                         <tr>
                             <td>8</td>
@@ -200,7 +200,7 @@
                             <td>Have you enabled anomaly detection?</td>
                             <td>Logs</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs list-log-anomaly-detectors --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No log anomaly detectors found</td>
                         </tr>
                         <tr>
                             <td>13</td>
@@ -242,14 +242,14 @@
                             <td>What percentage of production EC2 instances have detailed monitoring (1-minute metrics) enabled?</td>
                             <td>Metrics</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ec2 describe-instances --query &#x27;Reservations[].Instances[?Monitoring.State==`enabled`]&#x27; --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No resources found</td>
                         </tr>
                         <tr>
                             <td>19</td>
                             <td>What percentage of ECS Clusters have monitoring enabled?</td>
                             <td>Metrics</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws ecs list-clusters --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No ECS clusters found</td>
                         </tr>
                         <tr>
                             <td>20</td>
@@ -284,21 +284,21 @@
                             <td>Are CloudWatch Agents configured to collect system-level metrics?</td>
                             <td>Metrics</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-metrics --namespace CWAgent --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
                         </tr>
                         <tr>
                             <td>25</td>
                             <td>Have you configured metric streams for real-time export to third-party tools or data lakes?</td>
                             <td>Metrics</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-metric-streams --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No metric streams found</td>
                         </tr>
                         <tr>
                             <td>26</td>
                             <td>Do you use X-Ray service maps to visualize application architecture?</td>
                             <td>Traces</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_xray_service_graph_check</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
                         </tr>
                         <tr>
                             <td>27</td>
@@ -312,21 +312,21 @@
                             <td>Do you have X-Ray groups configured for focused trace analysis?</td>
                             <td>Traces</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws xray get-groups --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No custom X-Ray groups configured (only Default group exists)</td>
                         </tr>
                         <tr>
                             <td>29</td>
                             <td>Do you have transaction search enabled?</td>
                             <td>Traces</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws logs describe-log-groups --log-group-name-prefix aws/spans --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No items found</td>
                         </tr>
                         <tr>
                             <td>30</td>
                             <td>Do your Lambda functions have X-Ray tracing enabled?</td>
                             <td>Traces</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws lambda list-functions --query &#x27;Functions[?TracingConfig.Mode==`Active`]&#x27; --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No resources found</td>
                         </tr>
                         <tr>
                             <td>31</td>
@@ -347,7 +347,7 @@
                             <td>Do you have CloudWatch dashboards for visualizing metrics and logs?</td>
                             <td>Dashboards, Logs, Metrics</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch list-dashboards --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No dashboards found</td>
                         </tr>
                         <tr>
                             <td>34</td>
@@ -361,7 +361,7 @@
                             <td>Do you use composite alarms to reduce alarm noise?</td>
                             <td>Alarms</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws cloudwatch describe-alarms --alarm-types CompositeAlarm --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No composite alarms found</td>
                         </tr>
                         <tr>
                             <td>36</td>
@@ -382,21 +382,21 @@
                             <td>Do you use resource tags for organizing and managing AWS resources?</td>
                             <td>Organization</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws resourcegroupstaggingapi get-resources --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Found 4 tagged resources<details><summary>Show Details</summary><div style='white-space: pre-wrap; word-wrap: break-word; max-width: 100%;'>1. <strong>events</strong>: DO-NOT-DELETE-GatedGarden-Audit-CodeArtifact-111122223333<br>   Tags: 0<br><br>2. <strong>events</strong>: DO-NOT-DELETE-Profiler-ManagedRule-111122223333<br>   Tags: 0<br><br>3. <strong>resource-explorer-2</strong>: a1b2c3d4-0001-0001-0001-abcdef000001<br>   Tags: 1<br><br>4. <strong>cloudformation</strong>: a1b2c3d4-0002-0002-0002-abcdef000002<br>   Tags: 0<br><br></div></details></td>
                         </tr>
                         <tr>
                             <td>39</td>
                             <td>Do you use CloudWatch Synthetics to monitor application endpoints?</td>
                             <td>Organization</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws synthetics describe-canaries --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No synthetic canaries found</td>
                         </tr>
                         <tr>
                             <td>40</td>
                             <td>Do you use CloudWatch RUM to monitor real user experiences?</td>
                             <td>Organization</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws rum list-app-monitors --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No RUM applications found</td>
                         </tr>
                         <tr>
                             <td>41</td>
@@ -410,7 +410,7 @@
                             <td>Do you use AWS DevOps Agent for AI-assisted troubleshooting?</td>
                             <td>Organization</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_devops_agent_spaces_check</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No AWS DevOps Agent spaces found (checked regions: us-east-1)</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No AWS DevOps Agent spaces found (checked regions: us-east-1, us-west-2)</td>
                         </tr>
                         <tr>
                             <td>43</td>
@@ -438,7 +438,7 @@
                             <td>Do you have dashboards configured with variables?</td>
                             <td>Dashboards</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">custom_dashboard_variables_check</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: 111122223333, Region: us-east-1 | 0/0 dashboards have dynamic variables</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Account: 111122223333, Region: us-west-2 | 0/0 dashboards have dynamic variables</td>
                         </tr>
                         <tr>
                             <td>47</td>
@@ -452,7 +452,7 @@
                             <td>Have you defined Service Level Objectives (SLOs) for critical application services?</td>
                             <td>Metrics, Organization</td>
                             <td style="font-family: monospace; font-size: 0.8em; max-width: 300px; word-wrap: break-word;">aws application-signals list-service-level-objectives --output json</td>
-                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">Check could not be evaluated (AWS command returned no result -- likely a permissions, throttling, or CLI error). Re-run with --debug for details.</td>
+                            <td style="font-size: 0.85em; max-width: 600px; word-wrap: break-word;">No Application Signals SLOs found</td>
                         </tr>
                         <tr>
                             <td>49</td>
@@ -927,7 +927,7 @@
                     </div>
                     <div style="background: #f8fafc; padding: 1rem; border-radius: 4px; margin: 1rem 0;">
                         <strong>Selected Answer:</strong> Level 1<br>
-                        <strong>Evidence:</strong> No evidence of enterprise observability strategy detected (Checks #38, #15, #33, #16, #47, #48). To assess Level 3, ask: (1) Do you have documented observability standards and naming conventions? (2) Do teams receive training on observability best practices? (3) Are there runbooks or playbooks tied to your alerts? (4) Do you conduct regular operational reviews (e.g., weekly ops meetings, post-incident reviews)?<br>
+                        <strong>Evidence:</strong> Basic data collection strategy with resource tagging (Checks #38, #15, #33, #16, #47, #48). Limited evidence of enterprise-wide standardization. To assess Level 3, ask: (1) Do you have documented observability standards and naming conventions? (2) Do teams receive training on observability best practices? (3) Are there runbooks or playbooks tied to your alerts? (4) Do you conduct regular operational reviews (e.g., weekly ops meetings, post-incident reviews)?<br>
                         <strong>Discovery Checks:</strong> #38, #15, #33, #16, #47, #48
                     </div>
                     <details style="margin-top: 1rem; border: 1px solid #e0e7ff; border-radius: 6px; padding: 0.75rem; background: #f5f3ff;">
