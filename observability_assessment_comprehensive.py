@@ -18,6 +18,7 @@ import json
 import logging
 import shlex
 import subprocess
+import sys
 import time
 import csv
 from datetime import datetime
@@ -73,8 +74,35 @@ class AssessmentResults:
     timestamp: str = ""
 
 
+@dataclass
+class OrganizationAssessmentResults:
+    """Aggregated results across all assessed accounts"""
+
+    organization_id: str = ""
+    management_account_id: str = ""
+    account_results: Dict[str, AssessmentResults] = field(default_factory=dict)
+    account_names: Dict[str, Optional[str]] = field(default_factory=dict)
+    failed_accounts: Dict[str, str] = field(default_factory=dict)
+    category_scores_avg: Dict[str, float] = field(default_factory=dict)
+    category_scores_min: Dict[str, float] = field(default_factory=dict)
+    category_scores_max: Dict[str, float] = field(default_factory=dict)
+    overall_score_avg: float = 0.0
+    overall_score_min: float = 0.0
+    overall_score_max: float = 0.0
+    maturity_level: str = ""
+    best_maturity_level: str = ""
+    summary_report_filename: str = ""
+    timestamp: str = ""
+
+
 class ComprehensiveObservabilityAssessment:
-    def __init__(self, profile=None, region="us-west-2", role_arn=None):
+    def __init__(
+        self,
+        profile=None,
+        region="us-west-2",
+        role_arn=None,
+        summary_report_filename=None,
+    ):
         self.profile = profile
         self.region = region
         self.results = AssessmentResults()
@@ -84,13 +112,20 @@ class ComprehensiveObservabilityAssessment:
         self.largest_log_groups = None  # Populated during setup
         self.csv_file = None  # Set after getting account_id
         self.env_override = None  # For assumed role credentials
+        self.summary_report_filename = (
+            summary_report_filename  # For multi-account back-link
+        )
 
         if role_arn:
             self._assume_role(role_arn)
 
     def _assume_role(self, role_arn):
         """Assume IAM role and set env vars for all subprocess AWS CLI calls"""
-        sts = boto3.client("sts", region_name=self.region)
+        session_kwargs = {"region_name": self.region}
+        if self.profile:
+            session_kwargs["profile_name"] = self.profile
+        session = boto3.Session(**session_kwargs)
+        sts = session.client("sts")
         creds = sts.assume_role(
             RoleArn=role_arn, RoleSessionName="ObservabilityAssessment"
         )["Credentials"]
@@ -3975,6 +4010,21 @@ class ComprehensiveObservabilityAssessment:
         self.assess_dashboards_alarms_maturity()
         self.assess_organization_maturity()
 
+        # Store per-category average maturity so multi-account aggregation and
+        # the org summary have data to roll up (mirrors the radar-chart formula).
+        for cat in [
+            "Logs",
+            "Metrics",
+            "Traces",
+            "Dashboards & Alerting",
+            "Organization",
+        ]:
+            checks = [c for c in self.results.assessment_checks if c.category == cat]
+            if checks:
+                self.results.category_scores[cat] = sum(
+                    c.current_level for c in checks
+                ) / len(checks)
+
     def assess_logs_maturity(self):
         """Assess logs maturity based on discovery checks"""
         log_checks = [c for c in self.results.assessment_checks if c.category == "Logs"]
@@ -7665,6 +7715,8 @@ class ComprehensiveObservabilityAssessment:
             (total_score / max_score) * 4 if max_score > 0 else 0
         )
 
+        self.results.timestamp = self.timestamp
+
         # Determine maturity level
         if self.results.overall_score >= 3.5:
             self.results.maturity_level = "Optimized"
@@ -7705,6 +7757,7 @@ class ComprehensiveObservabilityAssessment:
     </style>
 </head>
 <body>
+    {'<div style="background:#667eea;padding:0.5rem 1rem;text-align:left;"><a href="' + self.summary_report_filename + '" style="color:white;text-decoration:none;font-weight:500;">← Back to Organization Summary</a></div>' if self.summary_report_filename else ""}
     <div class="container">
         <div class="header">
             <h1>🔍 AWS Observability Assessment</h1>
@@ -9483,6 +9536,452 @@ class ComprehensiveObservabilityAssessment:
             }
 
 
+class MultiAccountAssessment:
+    """Orchestrates observability assessment across multiple AWS accounts"""
+
+    SUMMARY_FILENAME = "organization_summary.html"
+
+    def __init__(
+        self,
+        profile=None,
+        region="us-west-2",
+        accounts=None,
+        ou_ids=None,
+        role_name="ObservabilityAssessmentRole",
+        max_workers=5,
+    ):
+        self.profile = profile
+        self.region = region
+        self.explicit_accounts = accounts
+        self.ou_ids = ou_ids
+        self.role_name = role_name
+        self.max_workers = max(1, max_workers)
+        self.management_account_id = None
+        self.discovered_accounts = []
+        self.account_names = {}
+        run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # Timestamp the org summary filename so repeated scans (multi-region or
+        # re-runs) don't overwrite each other. Derived once from the single
+        # per-run timestamp and reused for the file itself and for the
+        # "Back to Organization Summary" back-link embedded in every per-account
+        # report, so cross-report navigation stays consistent.
+        base, ext = os.path.splitext(self.SUMMARY_FILENAME)
+        self.summary_report_filename = f"{base}_{run_timestamp}{ext}"
+        self.org_results = OrganizationAssessmentResults(
+            summary_report_filename=self.summary_report_filename,
+            timestamp=run_timestamp,
+        )
+        # Resolve management account
+        session_kwargs = {"region_name": region}
+        if profile:
+            session_kwargs["profile_name"] = profile
+        session = boto3.Session(**session_kwargs)
+        sts = session.client("sts")
+        self.management_account_id = sts.get_caller_identity()["Account"]
+        self.org_results.management_account_id = self.management_account_id
+
+    def discover_accounts(self):
+        """Discover accounts to assess. Populates discovered_accounts and account_names."""
+        if self.explicit_accounts:
+            valid = []
+            for acct in self.explicit_accounts:
+                acct = acct.strip()
+                if len(acct) == 12 and acct.isdigit():
+                    valid.append(acct)
+                else:
+                    print(f"⚠️  Skipping invalid account ID: {acct}")
+            if not valid:
+                print("❌ No valid account IDs provided")
+                sys.exit(1)
+            if self.management_account_id not in valid:
+                valid.insert(0, self.management_account_id)
+            self.discovered_accounts = list(dict.fromkeys(valid))
+            self._resolve_account_names(self.discovered_accounts)
+            return
+
+        session_kwargs = {"region_name": self.region}
+        if self.profile:
+            session_kwargs["profile_name"] = self.profile
+        session = boto3.Session(**session_kwargs)
+
+        try:
+            org_client = session.client("organizations")
+            if self.ou_ids:
+                accounts = []
+                for ou_id in self.ou_ids:
+                    accounts.extend(
+                        self._list_accounts_recursive(org_client, ou_id.strip())
+                    )
+            else:
+                accounts = []
+                paginator = org_client.get_paginator("list_accounts")
+                for page in paginator.paginate():
+                    for acct in page["Accounts"]:
+                        if acct["Status"] == "ACTIVE":
+                            accounts.append(acct)
+                try:
+                    org_info = org_client.describe_organization()["Organization"]
+                    self.org_results.organization_id = org_info.get("Id", "")
+                except Exception:
+                    pass
+
+            # Deduplicate by account ID
+            seen = set()
+            unique = []
+            for acct in accounts:
+                if acct["Id"] not in seen:
+                    seen.add(acct["Id"])
+                    unique.append(acct)
+            accounts = unique
+
+            for acct in accounts:
+                self.account_names[acct["Id"]] = acct.get("Name")
+            ids = [a["Id"] for a in accounts]
+            if self.management_account_id not in ids:
+                ids.insert(0, self.management_account_id)
+            self.discovered_accounts = list(dict.fromkeys(ids))
+
+        except ClientError as e:
+            code = e.response["Error"]["Code"]
+            if code in ("AccessDeniedException", "AWSOrganizationsNotInUseException"):
+                print(
+                    f"❌ Cannot discover accounts via Organizations ({code}). Provide --accounts explicitly."
+                )
+                sys.exit(1)
+            raise
+
+        if not self.discovered_accounts:
+            print("❌ No accounts found to assess.")
+            sys.exit(1)
+
+    @staticmethod
+    def _list_accounts_recursive(org_client, parent_id):
+        """Recursively list all active accounts under an OU (including nested OUs)."""
+        accounts = []
+        # Direct child accounts
+        try:
+            paginator = org_client.get_paginator("list_accounts_for_parent")
+            for page in paginator.paginate(ParentId=parent_id):
+                for acct in page["Accounts"]:
+                    if acct["Status"] == "ACTIVE":
+                        accounts.append(acct)
+        except Exception as e:
+            print(f"⚠️  Failed to list accounts for {parent_id}: {e}")
+        # Child OUs — recurse
+        try:
+            paginator = org_client.get_paginator("list_organizational_units_for_parent")
+            for page in paginator.paginate(ParentId=parent_id):
+                for ou in page["OrganizationalUnits"]:
+                    accounts.extend(
+                        MultiAccountAssessment._list_accounts_recursive(
+                            org_client, ou["Id"]
+                        )
+                    )
+        except Exception:
+            pass
+        return accounts
+
+    def _resolve_account_names(self, account_ids):
+        """Best-effort resolution of account names via Organizations API."""
+        session_kwargs = {"region_name": self.region}
+        if self.profile:
+            session_kwargs["profile_name"] = self.profile
+        session = boto3.Session(**session_kwargs)
+        try:
+            org_client = session.client("organizations")
+            for aid in account_ids:
+                if aid not in self.account_names:
+                    try:
+                        info = org_client.describe_account(AccountId=aid)["Account"]
+                        self.account_names[aid] = info.get("Name")
+                    except Exception:
+                        self.account_names[aid] = None
+        except Exception:
+            for aid in account_ids:
+                self.account_names.setdefault(aid, None)
+
+    def assess_account(self, account_id):
+        """Assess a single account. Returns (account_id, AssessmentResults|None, error|None)."""
+        try:
+            role_arn = None
+            if account_id != self.management_account_id:
+                role_arn = (
+                    f"arn:aws:iam::{account_id}:role/service-role/{self.role_name}"
+                )
+            assessment = ComprehensiveObservabilityAssessment(
+                profile=self.profile,
+                region=self.region,
+                role_arn=role_arn,
+                summary_report_filename=self.summary_report_filename,
+            )
+            assessment.run_full_assessment()
+            return (account_id, assessment.results, None)
+        except Exception as e:
+            return (account_id, None, str(e))
+
+    @staticmethod
+    def _maturity_label(score):
+        if score >= 3.5:
+            return "Optimized"
+        elif score >= 2.5:
+            return "Defined"
+        elif score >= 1.5:
+            return "Developing"
+        return "Initial"
+
+    def calculate_aggregated_scores(self):
+        """Compute avg/min/max scores across successful accounts."""
+        results = self.org_results
+        if not results.account_results:
+            return
+        all_cats = set()
+        for ar in results.account_results.values():
+            all_cats.update(ar.category_scores.keys())
+
+        for cat in all_cats:
+            cat_scores = [
+                ar.category_scores[cat]
+                for ar in results.account_results.values()
+                if cat in ar.category_scores
+            ]
+            if cat_scores:
+                results.category_scores_avg[cat] = sum(cat_scores) / len(cat_scores)
+                results.category_scores_min[cat] = min(cat_scores)
+                results.category_scores_max[cat] = max(cat_scores)
+
+        overall = [ar.overall_score for ar in results.account_results.values()]
+        if overall:
+            results.overall_score_avg = sum(overall) / len(overall)
+            results.overall_score_min = min(overall)
+            results.overall_score_max = max(overall)
+
+        results.maturity_level = self._maturity_label(results.overall_score_avg)
+        results.best_maturity_level = self._maturity_label(results.overall_score_max)
+
+    def generate_summary_report(self):
+        """Generate organization-level HTML summary report."""
+        import math
+
+        results = self.org_results
+        total = len(results.account_results) + len(results.failed_accounts)
+        success = len(results.account_results)
+
+        # Radar chart
+        cat_map = [
+            ("Logs", "Logs"),
+            ("Metrics", "Metrics"),
+            ("Traces", "Traces"),
+            ("Dashboards\n& Alerting", "Dashboards & Alerting"),
+            ("Organization", "Organization"),
+        ]
+        radar_scores = [
+            (lbl, results.category_scores_avg.get(cat, 0)) for lbl, cat in cat_map
+        ]
+        n = len(radar_scores)
+        cx, cy, r = 200, 200, 150
+        angle_offset = -math.pi / 2
+
+        def polar(value, idx):
+            angle = angle_offset + (2 * math.pi * idx / n)
+            dist = (value / 4.0) * r
+            return cx + dist * math.cos(angle), cy + dist * math.sin(angle)
+
+        grid_svg = ""
+        for level in [1, 2, 3, 4]:
+            pts = " ".join(
+                f"{polar(level, i)[0]:.1f},{polar(level, i)[1]:.1f}" for i in range(n)
+            )
+            grid_svg += f'<polygon points="{pts}" fill="none" stroke="#cbd5e1" stroke-width="1" opacity="0.3"/>\n'
+
+        axes_svg = ""
+        for i, (label, sc) in enumerate(radar_scores):
+            ex, ey = polar(4, i)
+            axes_svg += f'<line x1="{cx}" y1="{cy}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#cbd5e1" stroke-width="1"/>\n'
+            lx, ly = polar(4.7, i)
+            for j, ln in enumerate(label.split("\n")):
+                axes_svg += f'<text x="{lx:.1f}" y="{ly + j * 16:.1f}" text-anchor="middle" font-size="13" font-weight="600" fill="#374151">{ln}</text>\n'
+            axes_svg += f'<text x="{lx:.1f}" y="{ly + len(label.split(chr(10))) * 16:.1f}" text-anchor="middle" font-size="12" fill="#667eea" font-weight="700">{sc:.1f}</text>\n'
+
+        pts = " ".join(
+            f"{polar(s, i)[0]:.1f},{polar(s, i)[1]:.1f}"
+            for i, (_, s) in enumerate(radar_scores)
+        )
+        score_svg = f'<polygon points="{pts}" fill="rgba(102,126,234,0.25)" stroke="#667eea" stroke-width="2.5"/>\n'
+        for i, (_, s) in enumerate(radar_scores):
+            dx, dy = polar(s, i)
+            score_svg += f'<circle cx="{dx:.1f}" cy="{dy:.1f}" r="4" fill="#667eea"/>\n'
+
+        radar_html = f"""<div style="background:white;border-radius:10px;box-shadow:0 4px 6px rgba(0,0,0,0.1);padding:2rem;margin-bottom:2rem;text-align:center;">
+            <h2 style="margin-bottom:1rem;color:#374151;">Organization Maturity Radar (Average)</h2>
+            <svg viewBox="0 0 400 400" width="450" height="450" xmlns="http://www.w3.org/2000/svg">
+                {grid_svg}{axes_svg}{score_svg}
+            </svg>
+        </div>"""
+
+        cat_rows = ""
+        for _, cat in cat_map:
+            avg = results.category_scores_avg.get(cat, 0)
+            mn = results.category_scores_min.get(cat, 0)
+            mx = results.category_scores_max.get(cat, 0)
+            cat_rows += f"<tr><td>{cat}</td><td>{avg:.1f}</td><td>{mn:.1f}</td><td>{mx:.1f}</td></tr>\n"
+
+        account_rows = ""
+        for aid, ar in sorted(results.account_results.items()):
+            name = results.account_names.get(aid) or ""
+            display = f"{aid} - {name}" if name else aid
+            link = f"observability_assessment_{ar.timestamp}_{aid}.html"
+            account_rows += f'<tr><td><a href="{link}" style="color:#667eea;">{display}</a></td><td>{ar.overall_score:.1f}</td><td>{ar.maturity_level}</td><td style="color:#10b981;">✅ Success</td></tr>\n'
+        for aid, err in sorted(results.failed_accounts.items()):
+            name = results.account_names.get(aid) or ""
+            display = f"{aid} - {name}" if name else aid
+            account_rows += f'<tr><td>{display}</td><td>—</td><td>—</td><td style="color:#ef4444;">❌ {err[:80]}</td></tr>\n'
+
+        options = '<option value="">Navigate to account report...</option>\n'
+        for aid, ar in sorted(results.account_results.items()):
+            name = results.account_names.get(aid) or ""
+            display = f"{aid} - {name}" if name else aid
+            link = f"observability_assessment_{ar.timestamp}_{aid}.html"
+            options += f'<option value="{link}">{display}</option>\n'
+
+        maturity_display = f"{results.maturity_level} ({results.overall_score_avg:.1f})"
+        best_display = (
+            f"{results.best_maturity_level} ({results.overall_score_max:.1f})"
+        )
+
+        html = f"""<!DOCTYPE html>
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: MIT-0 -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Observability Assessment Summary</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }}
+        .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; border-radius: 10px; margin-bottom: 2rem; text-align: center; }}
+        .header h1 {{ font-size: 2.5rem; margin-bottom: 0.5rem; }}
+        .summary-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }}
+        .summary-card {{ background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 1rem; }}
+        th, td {{ padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }}
+        th {{ background-color: #f8fafc; font-weight: 600; }}
+        .section {{ background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 2rem; margin-bottom: 2rem; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Organization Observability Assessment</h1>
+            <p>Organization Maturity: {maturity_display} &mdash; Best Account: {best_display}</p>
+            <p style="margin-top:0.5rem;font-size:0.9rem;">Accounts Assessed: {success}/{total} | Generated: {datetime.now().strftime("%B %d, %Y at %I:%M %p")}</p>
+        </div>
+
+        <div style="margin-bottom:1.5rem;">
+            <select onchange="if(this.value) window.location.href=this.value" style="padding:0.5rem 1rem;font-size:1rem;border-radius:6px;border:1px solid #e5e7eb;width:100%;max-width:500px;">
+                {options}
+            </select>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>Average Score</h3>
+                <div style="font-size:2.5rem;font-weight:700;color:#667eea;">{results.overall_score_avg:.1f}/4.0</div>
+                <p>{results.maturity_level}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Best Account</h3>
+                <div style="font-size:2.5rem;font-weight:700;color:#10b981;">{results.overall_score_max:.1f}/4.0</div>
+                <p>{results.best_maturity_level}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Accounts Assessed</h3>
+                <div style="font-size:2.5rem;font-weight:700;color:#667eea;">{success}</div>
+                <p>{len(results.failed_accounts)} failed</p>
+            </div>
+        </div>
+
+        {radar_html}
+
+        <div class="section">
+            <h2 style="margin-bottom:1rem;">Category Scores</h2>
+            <table>
+                <tr><th>Category</th><th>Average</th><th>Minimum</th><th>Maximum</th></tr>
+                {cat_rows}
+            </table>
+        </div>
+
+        <div class="section">
+            <h2 style="margin-bottom:1rem;">Account Details</h2>
+            <table>
+                <tr><th>Account</th><th>Score</th><th>Maturity</th><th>Status</th></tr>
+                {account_rows}
+            </table>
+        </div>
+    </div>
+</body>
+</html>"""
+        os.makedirs("assessment-result", exist_ok=True)
+        filepath = f"assessment-result/{self.summary_report_filename}"
+        with open(filepath, "w") as f:
+            f.write(html)
+        print(f"📄 Organization summary report: {filepath}")
+
+    def run(self):
+        """Run multi-account assessment end-to-end."""
+        import concurrent.futures
+
+        print("🏢 Starting Multi-Account Observability Assessment")
+        print("=" * 80)
+
+        self.discover_accounts()
+        total = len(self.discovered_accounts)
+        print(f"📋 Accounts to assess: {total}")
+        for aid in self.discovered_accounts:
+            name = self.account_names.get(aid) or ""
+            tag = " (management)" if aid == self.management_account_id else ""
+            display = f"  • {aid} - {name}{tag}" if name else f"  • {aid}{tag}"
+            print(display)
+        print("=" * 80)
+
+        completed = 0
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.max_workers
+        ) as executor:
+            futures = {
+                executor.submit(self.assess_account, aid): aid
+                for aid in self.discovered_accounts
+            }
+            for future in concurrent.futures.as_completed(futures):
+                completed += 1
+                aid, result, error = future.result()
+                name = self.account_names.get(aid) or ""
+                display = f"{aid} - {name}" if name else aid
+                if result:
+                    self.org_results.account_results[aid] = result
+                    print(
+                        f"  [{completed}/{total}] ✅ {display} — {result.maturity_level} ({result.overall_score:.1f})"
+                    )
+                else:
+                    self.org_results.failed_accounts[aid] = error or "Unknown error"
+                    print(f"  [{completed}/{total}] ❌ {display} — {error}")
+
+        self.org_results.account_names = self.account_names
+        self.calculate_aggregated_scores()
+        self.generate_summary_report()
+
+        print("=" * 80)
+        r = self.org_results
+        print("✅ Organization assessment complete!")
+        print(
+            f"📊 Organization Maturity: {r.maturity_level} ({r.overall_score_avg:.1f}) — Best Account: {r.best_maturity_level} ({r.overall_score_max:.1f})"
+        )
+        print(
+            f"📋 Accounts: {len(r.account_results)} succeeded, {len(r.failed_accounts)} failed"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AWS Comprehensive Observability Assessment"
@@ -9505,6 +10004,21 @@ def main():
     parser.add_argument(
         "--debug", action="store_true", help="Enable verbose debug logging"
     )
+    parser.add_argument(
+        "--accounts", help="Comma-separated account IDs for multi-account assessment"
+    )
+    parser.add_argument("--ou", help="Comma-separated OU IDs to scope assessment")
+    parser.add_argument(
+        "--cross-account-role",
+        default="ObservabilityAssessmentRole",
+        help="Role name to assume in target accounts (default: ObservabilityAssessmentRole)",
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=5,
+        help="Max parallel account assessments (default: 5)",
+    )
 
     args = parser.parse_args()
 
@@ -9514,16 +10028,43 @@ def main():
         datefmt="%H:%M:%S",
     )
 
-    assessment = ComprehensiveObservabilityAssessment(
-        profile=args.profile, region=args.region, role_arn=args.role_arn
-    )
+    multi_account = args.accounts or args.ou
 
-    if args.single_check:
-        assessment.run_single_check(args.single_check)
-    elif args.single_question:
-        assessment.run_single_question(args.single_question)
+    if multi_account and (args.single_check or args.single_question):
+        print(
+            "❌ --single-check and --single-question are not supported in multi-account mode."
+        )
+        sys.exit(1)
+    if multi_account and args.role_arn:
+        print(
+            "❌ Use --cross-account-role instead of --role-arn for multi-account mode."
+        )
+        sys.exit(1)
+
+    if multi_account:
+        accounts_list = (
+            [a.strip() for a in args.accounts.split(",")] if args.accounts else None
+        )
+        ou_list = [o.strip() for o in args.ou.split(",")] if args.ou else None
+        ma = MultiAccountAssessment(
+            profile=args.profile,
+            region=args.region,
+            accounts=accounts_list,
+            ou_ids=ou_list,
+            role_name=args.cross_account_role,
+            max_workers=args.max_workers,
+        )
+        ma.run()
     else:
-        assessment.run_assessment()
+        assessment = ComprehensiveObservabilityAssessment(
+            profile=args.profile, region=args.region, role_arn=args.role_arn
+        )
+        if args.single_check:
+            assessment.run_single_check(args.single_check)
+        elif args.single_question:
+            assessment.run_single_question(args.single_question)
+        else:
+            assessment.run_assessment()
 
 
 if __name__ == "__main__":
