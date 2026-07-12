@@ -168,7 +168,146 @@ The CodeBuild project downloads the assessment script from the public GitHub rep
 | `--role-arn` | IAM role ARN to assume before running checks (used by CodeBuild) |
 | `--single-check N` | Run only a specific discovery check by ID |
 | `--single-question N` | Run discovery checks for a specific question (1-17) and score it |
+| `--accounts` | Comma-separated account IDs for multi-account assessment |
+| `--ou` | Comma-separated OU IDs to scope assessment to specific OUs |
+| `--cross-account-role` | Role name to assume in target accounts (default: `ObservabilityAssessmentRole`) |
+| `--max-workers` | Max parallel account assessments (default: `5`) |
 | `--debug` | Enable verbose debug logging (per-instance diagnostics, failed-command details) |
+
+## Multi-Account Assessment
+
+Assess observability maturity across multiple AWS accounts in your organization and get an aggregated summary report.
+
+### Prerequisites: Deploy the Assessment Role to All Accounts
+
+Deploy `1-observability-assessment-role.yaml` as a CloudFormation StackSet to all member accounts:
+
+```bash
+# Create StackSet
+aws cloudformation create-stack-set \
+  --stack-set-name ObservabilityAssessmentRole \
+  --template-body file://1-observability-assessment-role.yaml \
+  --parameters ParameterKey=AssessmentAccountID,ParameterValue=YOUR_ASSESSMENT_ACCOUNT_ID \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --permission-model SERVICE_MANAGED \
+  --auto-deployment Enabled=true,RetainStacksOnAccountRemoval=false
+
+# Deploy to entire organization
+aws cloudformation create-stack-instances \
+  --stack-set-name ObservabilityAssessmentRole \
+  --deployment-targets OrganizationalUnitIds=YOUR_ROOT_OU_ID \
+  --regions us-east-1
+```
+
+Replace `YOUR_ASSESSMENT_ACCOUNT_ID` with the account ID where the CodeBuild project runs (management account or delegated account), and `YOUR_ROOT_OU_ID` with your organization root OU (e.g., `r-xxxx`).
+
+> **Note:** StackSets don't deploy to the management account. To assess the management account, deploy `1-observability-assessment-role.yaml` as a standalone CloudFormation Stack:
+>
+> ```bash
+> aws cloudformation create-stack \
+>   --stack-name ObservabilityAssessmentRole \
+>   --template-body file://1-observability-assessment-role.yaml \
+>   --parameters ParameterKey=AssessmentAccountID,ParameterValue=YOUR_ASSESSMENT_ACCOUNT_ID \
+>   --capabilities CAPABILITY_NAMED_IAM \
+>   --region us-east-1
+> ```
+
+### Running from a Delegated Account
+
+You can run the assessment from a security tooling or audit account instead of the management account. The delegated account needs Organizations API access to discover accounts. Choose one of the following options:
+
+**Option A: Organizations resource policy (recommended, least privilege)**
+
+Run this from the **management account**:
+
+```bash
+aws organizations put-resource-policy --content \
+  '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "AllowObservabilityAssessmentAccountDiscovery",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::YOUR_ASSESSMENT_ACCOUNT_ID:root"
+        },
+        "Action": [
+          "organizations:ListAccounts",
+          "organizations:ListAccountsForParent",
+          "organizations:ListOrganizationalUnitsForParent",
+          "organizations:DescribeAccount",
+          "organizations:DescribeOrganization"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }'
+```
+
+**Option B: Delegated administrator**
+
+```bash
+aws organizations register-delegated-administrator \
+  --account-id YOUR_ASSESSMENT_ACCOUNT_ID \
+  --service-principal organizations.amazonaws.com
+```
+
+**Option C: Explicit account list**
+
+If you cannot grant Organizations API access, use the `--accounts` flag or `AssessmentAccounts` parameter to pass an explicit list of account IDs.
+
+### Running Multi-Account Assessment
+
+```bash
+# Assess all accounts in the organization
+python3 observability_assessment_comprehensive.py --profile YOUR_PROFILE --region us-west-2 --ou r-xxxx
+
+# Assess specific accounts
+python3 observability_assessment_comprehensive.py --profile YOUR_PROFILE --region us-west-2 \
+  --accounts 111111111111,222222222222,333333333333
+
+# Assess accounts in specific OUs
+python3 observability_assessment_comprehensive.py --profile YOUR_PROFILE --region us-west-2 \
+  --ou ou-xxxx-aaaaaaaa,ou-xxxx-bbbbbbbb
+```
+
+### Output
+
+Multi-account mode produces:
+- **`organization_summary.html`** — Aggregated summary with radar chart, category scores, and account table
+- **`observability_assessment_<account_id>.html`** — Per-account detail report (same format as single-account)
+- Cross-report navigation: drop-down in summary, back-link in per-account reports
+- All reports saved to `assessment-result/`
+
+### Multi-Account via CodeBuild
+
+When deploying template 2, pass the multi-account parameters:
+
+```bash
+aws cloudformation create-stack \
+  --stack-name ObservabilityAssessmentCodeBuild \
+  --template-body file://2-observability-assessment-codebuild.yaml \
+  --parameters ParameterKey=AssessmentRegion,ParameterValue=us-west-2 \
+               ParameterKey=CreateAssessmentRole,ParameterValue=no \
+               ParameterKey=AssessmentAccounts,ParameterValue=111111111111,222222222222 \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-west-2
+```
+
+Or scope to specific OUs:
+
+```bash
+aws cloudformation create-stack \
+  --stack-name ObservabilityAssessmentCodeBuild \
+  --template-body file://2-observability-assessment-codebuild.yaml \
+  --parameters ParameterKey=AssessmentRegion,ParameterValue=us-west-2 \
+               ParameterKey=CreateAssessmentRole,ParameterValue=no \
+               ParameterKey=AssessmentOUs,ParameterValue=ou-xxxx-aaaaaaaa \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --region us-west-2
+```
+
+Leave both `AssessmentAccounts` and `AssessmentOUs` empty for single-account mode (default).
 
 ## Assessment Coverage
 

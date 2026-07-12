@@ -150,6 +150,124 @@ grep -iP '(\.corp\.|\.internal\.|amazon\.com|@)' sample-result/observability_ass
 # Should return nothing
 ```
 
+## Multi-Account / Org-Level Scrubbing
+
+A multi-account (org) run is **not** a single file — it produces one
+`organization_summary_<ts>.html` plus one `observability_assessment_<ts>_<accountid>.html`
+per account, and the files **cross-link each other**. Scrubbing them needs a few extra
+steps beyond the single-file flow. Learnings from scrubbing a 14-account org scan:
+
+### 1. Every account needs its own placeholder ID
+
+`scrub-sample-report.py --account-id` only replaces **one** ID. For an org scan, build a
+`--names-file` that maps **all** real account IDs to distinct placeholders, and map real
+**account names** too. Pass any one real ID to `--account-id` (redundant but required) and
+let the names-file do the rest. Suggested placeholder IDs (all obviously fake, distinct):
+`111122223333`, `222233334444`, `333344445555`, `444455556666`, … Assign the **management
+account** to `111122223333`.
+
+Get the account-id → name map straight from the summary drop-down:
+
+```bash
+python3 - <<'PY'
+import re, glob
+s = open(glob.glob('assessment-result/<run-dir>/organization_summary_*.html')[0]).read()
+seen = {}
+for m in re.finditer(r'([0-9]{12}) - ([^<]+)</(?:option|a)>', s):
+    seen[m.group(1)] = m.group(2).strip()
+for aid in sorted(seen):
+    print(aid, '->', seen[aid])
+PY
+```
+
+### 2. Account names — scrub aliases, keep standard governance names
+
+Map customer/alias/codename account names to `Example*` labels. Typical offenders are
+names built from a team or project codename (`<codename> Prod`, `<codename> Network`) or a
+user alias plus a label (`<alias>+<label>`). **Keep** the standard AWS Control Tower account
+names — `Audit`, `Log Archive`, `Sandbox 1` — they're generic and make the sample look
+authentic.
+
+### 3. Filenames embed the account ID — rename them, or links break
+
+Per-account filenames are `observability_assessment_<ts>_<accountid>.html`, and the summary
+links to them by that exact name. So: replace the account ID **inside** the HTML (fixes the
+`href`) **and** rename the output file to the placeholder ID (same `<ts>`). Because both use
+the same mapping, the links stay consistent. Keep timestamps — dates are not sensitive
+(see "Manual Scrubbing Checklist" item 6) — and keep the summary filename unchanged (the
+per-account "Back to Organization Summary" back-links point at it).
+
+### 4. Turnkey loop
+
+Keep the real mapping file **out of the repo** (use `/tmp`). Then:
+
+```bash
+SRC=assessment-result/<run-dir>; OUT=sample-result/<sample-dir>; MAP=/tmp/name-mappings.json
+rm -rf "$OUT" && mkdir -p "$OUT"
+declare -A PH=( [<realid1>]=111122223333 [<realid2>]=222233334444 ... )   # 1 entry per account
+for f in "$SRC"/observability_assessment_*.html; do
+  base=$(basename "$f"); aid=$(echo "$base" | grep -oE '[0-9]{12}')
+  ts=$(echo "$base" | sed -E 's/observability_assessment_(.*)_[0-9]{12}\.html/\1/')
+  python3 scripts/scrub-sample-report.py -i "$f" \
+    -o "$OUT/observability_assessment_${ts}_${PH[$aid]}.html" -a "$aid" --names-file "$MAP"
+done
+SUM=$(basename "$SRC"/organization_summary_*.html)
+python3 scripts/scrub-sample-report.py -i "$SRC/$SUM" -o "$OUT/$SUM" -a <mgmt-id> --names-file "$MAP"
+```
+
+### 5. Resource names the regex won't catch
+
+The script auto-handles resource IDs, ARNs, and UUIDs, but **custom resource names** need
+explicit `--names-file` entries. Watch for (examples use generic placeholders — substitute
+what your run actually contains):
+
+- CloudFormation **stack names with an alias/codename suffix** — e.g. a public base name plus
+  an internal suffix like `<BaseStack>-<alias>`. Map it to strip the suffix
+  (`<BaseStack>-<alias>` → `<BaseStack>`); substring replacement then also fixes derived log
+  groups like `...-cdk-deployment`.
+- **Custom S3 buckets** — e.g. `my-app-bucket-<label>-<codename>` → `amzn-s3-demo-bucket`.
+- **Tool stacks** — a stack named after a third-party tool (e.g. a security scanner):
+  `<Tool>AssessmentStack`, `<tool>findingsbucket`. Map the bare token both cased
+  (`<Tool>` → `ExampleSecurity`, `<tool>` → `examplesecurity`).
+
+**Keep** genuinely public names — standard AWS workshop / sample-app resource names (e.g.
+public pet-store demo app components) are safe and aid teaching. Only scrub the
+customer/alias-specific portions layered on top of them.
+
+Mapping-order gotchas (the script applies `--names-file` **longest-first**):
+- Put full compound strings (`my-app-bucket-<label>-<codename>`) before their shorter
+  prefixes (`my-app-bucket`).
+- Give a longer explicit entry (`<tool>2` → `ExampleSecurity2`) if a bare-token rule
+  (`<tool>` → `examplesecurity`) would otherwise produce an ugly label like `examplesecurity2`.
+- Short hex fragments inside UUIDs/CSS colors (e.g. a 4-char hex like `abc4` inside
+  `...-4133-abc4-43d8...`) are false positives — the UUID scrubber rewrites those, so ignore.
+
+### 6. Org-scan verification (do all of these)
+
+```bash
+OUT=sample-result/<sample-dir>
+# a) no real account IDs remain (list your run's real IDs)
+grep -rohcE '<realid1>|<realid2>|...' "$OUT" | paste -sd+ | bc          # expect 0
+# b) no alias/codename/tool tokens — fill in the tokens specific to YOUR run
+#    (user aliases, team/project codenames, custom bucket prefixes, tool names)
+grep -rohiE '<alias>|<codename>|<custom-prefix>|<tool>|@amazon\.com' "$OUT" | sort -u   # empty
+# c) only placeholder 12-digit numbers remain
+grep -rohE '\b[0-9]{12}\b' "$OUT" | sort -u
+# d) cross-link integrity: every summary->account link resolves, and back-links resolve
+SUM=$(ls "$OUT"/organization_summary_*.html)
+for h in $(grep -oE 'observability_assessment_[0-9_]+\.html' "$SUM" | sort -u); do [ -f "$OUT/$h" ] || echo "MISSING $h"; done
+```
+
+> **Do not paste real resource, account, or alias names into this guide or any committed
+> file.** Keep the real→placeholder mapping only in `/tmp`. Use generic placeholders
+> (`<alias>`, `<codename>`, `<tool>`) when documenting patterns here.
+
+### 7. `.gitignore` blocks new sample folders
+
+`sample-result/*` excludes everything except the allow-listed sample. A new org-sample
+folder needs its own negation, e.g. `!sample-result/org-scan-sample/`. Verify with
+`git check-ignore sample-result/<sample-dir>/<file>` (no output = trackable).
+
 ## What NOT to Scrub
 
 - **Service names**: `Amazon CloudWatch`, `AWS X-Ray`, etc. are public.

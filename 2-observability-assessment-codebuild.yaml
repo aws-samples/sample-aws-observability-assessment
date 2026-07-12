@@ -25,6 +25,18 @@ Parameters:
     Type: String
     Default: "yes"
     AllowedValues: ["yes", "no"]
+  AssessmentAccounts:
+    Description: >-
+      Comma-separated account IDs for multi-account assessment.
+      Leave empty for single-account mode.
+    Type: String
+    Default: ""
+  AssessmentOUs:
+    Description: >-
+      Comma-separated OU IDs to scope multi-account assessment.
+      Leave empty for single-account or explicit account list mode.
+    Type: String
+    Default: ""
 
 Conditions:
   CreateAssessmentRole: !Equals [!Ref CreateAssessmentRole, "yes"]
@@ -228,7 +240,19 @@ Resources:
               - Effect: Allow
                 Action:
                   - sts:AssumeRole
-                Resource: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/ObservabilityAssessmentRole"
+                Resource: !Sub "arn:${AWS::Partition}:iam::*:role/service-role/ObservabilityAssessmentRole"
+        - PolicyName: OrganizationsReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - organizations:ListAccounts
+                  - organizations:ListAccountsForParent
+                  - organizations:ListOrganizationalUnitsForParent
+                  - organizations:DescribeOrganization
+                  - organizations:DescribeAccount
+                Resource: "*"
 
   # --- CodeBuild Project ---
   ObservabilityAssessmentCodeBuild:
@@ -248,6 +272,12 @@ Resources:
             Type: PLAINTEXT
           - Name: ASSESSMENT_REGION
             Value: !Ref AssessmentRegion
+            Type: PLAINTEXT
+          - Name: ASSESSMENT_ACCOUNTS
+            Value: !Ref AssessmentAccounts
+            Type: PLAINTEXT
+          - Name: ASSESSMENT_OUS
+            Value: !Ref AssessmentOUs
             Type: PLAINTEXT
       Artifacts:
         Type: NO_ARTIFACTS
@@ -305,9 +335,20 @@ Resources:
                     echo "ERROR: could not resolve AWS partition from caller ARN '${CALLER_ARN}'." >&2
                     exit 1
                   fi
-                  ROLE_ARN="arn:${PARTITION}:iam::${ACCOUNT_ID}:role/service-role/ObservabilityAssessmentRole"
-                  echo "Assuming assessment role: ${ROLE_ARN}"
-                  python3 observability_assessment_comprehensive.py --region "$ASSESSMENT_REGION" --role-arn "$ROLE_ARN"
+                  MULTI_ACCOUNT_FLAGS=""
+                  if [ -n "${ASSESSMENT_ACCOUNTS:-}" ]; then
+                    MULTI_ACCOUNT_FLAGS="--accounts $ASSESSMENT_ACCOUNTS"
+                  elif [ -n "${ASSESSMENT_OUS:-}" ]; then
+                    MULTI_ACCOUNT_FLAGS="--ou $ASSESSMENT_OUS"
+                  fi
+                  if [ -n "$MULTI_ACCOUNT_FLAGS" ]; then
+                    echo "Running multi-account assessment: ${MULTI_ACCOUNT_FLAGS}"
+                    python3 observability_assessment_comprehensive.py --region "$ASSESSMENT_REGION" $MULTI_ACCOUNT_FLAGS
+                  else
+                    ROLE_ARN="arn:${PARTITION}:iam::${ACCOUNT_ID}:role/service-role/ObservabilityAssessmentRole"
+                    echo "Assuming assessment role: ${ROLE_ARN}"
+                    python3 observability_assessment_comprehensive.py --region "$ASSESSMENT_REGION" --role-arn "$ROLE_ARN"
+                  fi
                 - |
                   set -euo pipefail
                   if [ ! -d assessment-result ]; then
@@ -315,6 +356,12 @@ Resources:
                     exit 1
                   fi
                   aws s3 cp assessment-result/ "s3://$BUCKET_REPORT/" --recursive --exclude "*" --include "*.html" --include "*.csv"
+                  # Also publish a single zip bundle of all reports for convenience.
+                  # Timestamp the bundle name so repeated scans (multi-region or
+                  # re-runs) don't overwrite each other in the report bucket.
+                  REPORT_TS=$(date -u +%Y%m%d_%H%M%S)
+                  ( cd assessment-result && zip -r "../assessment-report_${REPORT_TS}.zip" *.html *.csv )
+                  aws s3 cp "assessment-report_${REPORT_TS}.zip" "s3://$BUCKET_REPORT/"
                   echo "Assessment complete. Reports uploaded to s3://$BUCKET_REPORT/"
 
   # --- Lambda to trigger first build ---
