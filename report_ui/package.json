@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@cloudscape-design/collection-hooks": "1.0.110",
-    "@cloudscape-design/components": "3.0.1391",
+    "@cloudscape-design/components": "3.0.1396",
     "@cloudscape-design/global-styles": "1.0.71",
     "react": "19.3.0",
     "react-dom": "19.3.0"
