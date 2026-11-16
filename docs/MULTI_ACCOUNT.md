@@ -1,7 +1,7 @@
 # Multi-Account Assessment
 
 This guide deploys the assessment across multiple AWS accounts. For a
-single-account assessment, see the [Quick Start](README.md#quick-start). To
+single-account assessment, see the [Quick Start](../README.md#quick-start). To
 remove the resources afterward, see [Cleanup](CLEANUP.md).
 
 ## Contents

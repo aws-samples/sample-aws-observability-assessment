@@ -67,7 +67,7 @@ The single-account flow is `ComprehensiveObservabilityAssessment.run_full_assess
 2. `setup_discovery_checks()` samples the largest log groups, then loads 52
    fixed specifications from `discovery/check_specs.py`. Checks 1–50 preserve
    the former IDs and categories. Five commands and thirteen display names
-   changed; see `ASSESSMENT_METHODOLOGY.md` for the migration list. Checks 51–52 are new.
+   changed; see `docs/ASSESSMENT_METHODOLOGY.md` for the migration list. Checks 51–52 are new.
 3. `execute_all_discovery_checks()` → `execute_discovery_check(id)` for each.
 4. `setup_assessment_questions()` — defines the 17 `ObservabilityCheck` questions with their 4 maturity-level descriptions.
 5. `assess_all_categories()` → `assess_logs_maturity()`, `assess_metrics_maturity()`, etc. Each maps discovery-check results to a `current_level` (1–4) per question.
@@ -117,7 +117,7 @@ Pass dynamic command values through `_sanitize()`.
 
 ### Scoring model
 
-Each `assess_*_maturity()` method contains per-question `if question_id == N:` blocks with hardcoded level thresholds (e.g. Q1: "coverage >= 0.75 AND has_structured_json AND has_centralization" → level 3, plus "has_eks_addon OR has_anomaly_detection" → level 4). Maturity is rule-based and deterministic — there is no ML in the scoring (see the AI/ML security and compliance section of `ASSESSMENT_METHODOLOGY.md`). If you change what a check returns, the downstream threshold logic in these blocks likely needs updating too.
+Each `assess_*_maturity()` method contains per-question `if question_id == N:` blocks with hardcoded level thresholds (e.g. Q1: "coverage >= 0.75 AND has_structured_json AND has_centralization" → level 3, plus "has_eks_addon OR has_anomaly_detection" → level 4). Maturity is rule-based and deterministic — there is no ML in the scoring (see the AI/ML security and compliance section of `docs/ASSESSMENT_METHODOLOGY.md`). If you change what a check returns, the downstream threshold logic in these blocks likely needs updating too.
 
 ## Deployment (CloudFormation)
 
@@ -139,6 +139,6 @@ Each `assess_*_maturity()` method contains per-question `if question_id == N:` b
 - **Read-only by design.** Nearly every AWS interaction is `describe`/`list`/`get`, and the IAM policy in the role template grants read actions. The **one exception** is the EC2 CloudWatch agent check, which calls `ssm:SendCommand` (via the managed `AWS-RunShellScript` document) to run a read-only diagnostic on SSM-managed instances — it does not modify instances and is skipped for non-SSM-managed ones. Do not introduce any other mutating AWS call, and do not extend `SendCommand` usage to anything that changes state.
 - `assessment-result/` is gitignored. The committed examples are `sample-result/observability_assessment_single_account_sample.html` and the scrubbed multi-account bundle under `sample-result/org-scan-sample/`.
 - The target-account role template trusts the exact provided CodeBuild role. Local multi-account runs require a separately authorized principal in every target role trust policy.
-- Most checks are scoped to the selected region and several use bounded samples. Read `ASSESSMENT_METHODOLOGY.md` before changing scope or scoring behavior.
+- Most checks are scoped to the selected region and several use bounded samples. Read `docs/ASSESSMENT_METHODOLOGY.md` before changing scope or scoring behavior.
 - License is MIT-0; keep the `Copyright Amazon.com` / `SPDX-License-Identifier: MIT-0` header on source files.
 - The `# nosec` / `# nosemgrep` comments on the subprocess calls are intentional (audited) — keep them when editing those lines.

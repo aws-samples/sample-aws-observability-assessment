@@ -7,7 +7,7 @@ Scrub sensitive AWS resource data from an Observability Assessment HTML report.
 Replaces a specified account ID, known resource identifier patterns, UUIDs, email
 addresses, and custom names supplied in a mapping file with documentation-style
 placeholders. It does not discover arbitrary customer resource names automatically.
-See SCRUBBING.md for conventions and required manual review.
+See docs/SCRUBBING.md for conventions and required manual review.
 
 Usage:
     python3 scripts/scrub-sample-report.py \
@@ -198,7 +198,7 @@ def verify_scrub(content: str, real_account_id: str) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Scrub sensitive data from Observability Assessment HTML reports.",
-        epilog="See SCRUBBING.md for placeholder conventions and manual review guidance.",
+        epilog="See docs/SCRUBBING.md for placeholder conventions and manual review guidance.",
     )
     parser.add_argument(
         "--input",

@@ -81,7 +81,7 @@ checks that they match the committed files. See
 [report_ui/README.md](report_ui/README.md) for the embedded data contract.
 
 Do not commit raw assessment output. Reports can contain account IDs, ARNs, resource names,
-and infrastructure details. Follow [SCRUBBING.md](SCRUBBING.md) before updating committed
+and infrastructure details. Follow [docs/SCRUBBING.md](docs/SCRUBBING.md) before updating committed
 sample reports.
 
 GitHub provides additional documentation on [forking a repository](https://help.github.com/articles/fork-a-repo/) and

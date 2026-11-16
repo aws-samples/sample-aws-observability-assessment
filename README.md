@@ -158,7 +158,7 @@ organization summary plus per-account reports. Setup has three steps:
 3. Deploy `2-observability-assessment-codebuild.yaml` in the central account
    with `CreateAssessmentRole=no`.
 
-See the [Multi-Account Assessment guide](MULTI_ACCOUNT.md) for commands, the
+See the [Multi-Account Assessment guide](docs/MULTI_ACCOUNT.md) for commands, the
 recommended delegated administrator setup, and the Organizations resource
 policy needed for OU discovery.
 
@@ -198,7 +198,7 @@ assessed questions, labeled Reactive, Proactive, or Autonomous. Questions
 without evaluable evidence are shown as **Not assessed** and excluded from the
 average. The assessment is deterministic and rule-based, but some checks use
 heuristics or limited samples. Review
-[Assessment Methodology and Limitations](ASSESSMENT_METHODOLOGY.md) for score
+[Assessment Methodology and Limitations](docs/ASSESSMENT_METHODOLOGY.md) for score
 bands, evidence semantics, and known constraints before using scores for
 governance decisions.
 
@@ -243,7 +243,7 @@ HTML evidence and methodology documentation when interpreting it.
 
 The report buckets are retained when the CodeBuild stack is deleted, and
 multi-account deployments leave target-account roles and StackSets in place.
-Follow the [Cleanup guide](CLEANUP.md) to empty the buckets and remove the
+Follow the [Cleanup guide](docs/CLEANUP.md) to empty the buckets and remove the
 stacks, StackSets, and Organizations resource policy in the correct order.
 
 ## IAM Permissions
