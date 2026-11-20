@@ -1,5 +1,7 @@
 # Assessment Methodology and Current Limitations
 
+English | [日本語](ASSESSMENT_METHODOLOGY.ja.md)
+
 This document describes how the current implementation collects evidence, assigns maturity
 levels, and aggregates multi-account results. It is intended to make assessment output
 interpretable without overstating its coverage.

@@ -11,6 +11,8 @@ checks covering logs, metrics, traces, dashboards and alerting, and
 organizational practices. The tool generates HTML reports with maturity
 scores, supporting evidence, and recommendations.
 
+English | [日本語](README.ja.md)
+
 ## Sample Reports
 
 See what the assessment produces before you run it. Both samples use
