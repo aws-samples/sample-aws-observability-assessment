@@ -12,10 +12,13 @@ deployed.
 
 The reports bucket and its access-log bucket are declared with
 `DeletionPolicy: Retain` and have versioning enabled, so deleting the CodeBuild
-stack leaves both buckets and their contents in place. Empty every object
-version from each bucket, then delete the buckets. Find the reports bucket name
-from the stack's `ReportBucketName` output; the access-log bucket is named in
-the stack's resources.
+stack leaves both buckets and their contents in place. Because versioning is
+enabled, `aws s3 rm --recursive` only adds delete markers, and `delete-bucket`
+fails with `BucketNotEmpty` until every object version and delete marker is
+deleted. The commands below delete them in batches of up to 1,000 and require
+`jq`. The S3 console's **Empty** action also deletes all versions. Preserve any
+report history you need before emptying the buckets, because this is
+irreversible.
 
 ```bash
 REPORT_BUCKET=$(aws cloudformation describe-stacks \
@@ -23,17 +26,36 @@ REPORT_BUCKET=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='ReportBucketName'].OutputValue" \
   --output text --region us-west-2)
 
-# Deleting a bucket requires removing all object versions and delete markers
-# first because versioning is enabled.
-aws s3 rm "s3://$REPORT_BUCKET" --recursive --region us-west-2
+# Delete every object version and delete marker, up to 1,000 per request.
+empty_bucket() {
+  while true; do
+    OBJS=$(aws s3api list-object-versions --bucket "$1" \
+      --max-keys 1000 --no-paginate --output json --region us-west-2 \
+      --query '{Objects: [Versions[].{Key:Key,VersionId:VersionId}, DeleteMarkers[].{Key:Key,VersionId:VersionId}][], Quiet: `true`}')
+    [ "$(echo "$OBJS" | jq '.Objects | length')" -eq 0 ] && break
+    aws s3api delete-objects --bucket "$1" --delete "$OBJS" --region us-west-2
+  done
+}
+
+empty_bucket "$REPORT_BUCKET"
 aws s3api delete-bucket --bucket "$REPORT_BUCKET" --region us-west-2
 ```
 
-Repeat the empty-and-delete steps for the access-log bucket. If a bucket still
-reports objects on deletion, remaining noncurrent versions or delete markers
-must be purged (for example with `aws s3api list-object-versions` and
-`delete-objects`) before `delete-bucket` succeeds. Preserve any report history
-you need before emptying the buckets, because this is irreversible.
+Delete the access-log bucket after the reports bucket. Server access logs are
+delivered on a best-effort basis and can arrive hours later, including records
+of the cleanup requests above, so wait before emptying it. If `delete-bucket`
+still returns `BucketNotEmpty`, run `empty_bucket` again.
+
+```bash
+LOG_BUCKET=$(aws cloudformation describe-stack-resource \
+  --stack-name ObservabilityAssessmentCodeBuild \
+  --logical-resource-id ReportBucketAccessLogs \
+  --query StackResourceDetail.PhysicalResourceId \
+  --output text --region us-west-2)
+
+empty_bucket "$LOG_BUCKET"
+aws s3api delete-bucket --bucket "$LOG_BUCKET" --region us-west-2
+```
 
 ## 2. Delete the CodeBuild stack
 

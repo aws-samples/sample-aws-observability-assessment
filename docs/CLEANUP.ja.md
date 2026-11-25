@@ -11,8 +11,11 @@ CloudFormation は、スタックが所有しない依存リソースが残っ�
 
 レポートバケットとそのアクセスログ用バケットは `DeletionPolicy: Retain` で宣言され、バージョニングが有効になっています。
 そのため、CodeBuild スタックを削除しても、両方のバケットとその内容は残ります。
-各バケットからすべてのオブジェクトバージョンを削除して空にしてから、バケットを削除してください。
-レポートバケットの名前はスタック出力の `ReportBucketName` で、アクセスログ用バケットの名前はスタックのリソースで確認できます。
+バージョニングが有効なため、`aws s3 rm --recursive` は削除マーカーを追加するだけで、すべてのオブジェクトバージョンと削除マーカーを削除するまで `delete-bucket` は `BucketNotEmpty` で失敗します。
+以下のコマンドは、それらを 1 回に最大 1,000 件ずつ削除します。
+実行には `jq` が必要です。
+S3 コンソールの **Empty** でも、すべてのバージョンを削除できます。
+この操作は元に戻せないため、必要なレポートの履歴はバケットを空にする前に保存してください。
 
 ```bash
 REPORT_BUCKET=$(aws cloudformation describe-stacks \
@@ -20,16 +23,35 @@ REPORT_BUCKET=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='ReportBucketName'].OutputValue" \
   --output text --region us-west-2)
 
-# Deleting a bucket requires removing all object versions and delete markers
-# first because versioning is enabled.
-aws s3 rm "s3://$REPORT_BUCKET" --recursive --region us-west-2
+# Delete every object version and delete marker, up to 1,000 per request.
+empty_bucket() {
+  while true; do
+    OBJS=$(aws s3api list-object-versions --bucket "$1" \
+      --max-keys 1000 --no-paginate --output json --region us-west-2 \
+      --query '{Objects: [Versions[].{Key:Key,VersionId:VersionId}, DeleteMarkers[].{Key:Key,VersionId:VersionId}][], Quiet: `true`}')
+    [ "$(echo "$OBJS" | jq '.Objects | length')" -eq 0 ] && break
+    aws s3api delete-objects --bucket "$1" --delete "$OBJS" --region us-west-2
+  done
+}
+
+empty_bucket "$REPORT_BUCKET"
 aws s3api delete-bucket --bucket "$REPORT_BUCKET" --region us-west-2
 ```
 
-アクセスログ用バケットにも、空にして削除する手順を繰り返します。
-削除時にバケットにオブジェクトが残っていると報告された場合は、残っている最新でないバージョンや削除マーカーを消去してください（たとえば `aws s3api list-object-versions` と `delete-objects` を使います）。
-これらを消去するまで `delete-bucket` は成功しません。
-この操作は元に戻せないため、必要なレポートの履歴はバケットを空にする前に保存してください。
+アクセスログ用バケットは、レポートバケットの後に削除します。
+サーバーアクセスログはベストエフォートで配信され、上記の削除リクエストの記録を含め、数時間後に届くことがあるため、時間を置いてから空にしてください。
+それでも `delete-bucket` が `BucketNotEmpty` を返す場合は、もう一度 `empty_bucket` を実行します。
+
+```bash
+LOG_BUCKET=$(aws cloudformation describe-stack-resource \
+  --stack-name ObservabilityAssessmentCodeBuild \
+  --logical-resource-id ReportBucketAccessLogs \
+  --query StackResourceDetail.PhysicalResourceId \
+  --output text --region us-west-2)
+
+empty_bucket "$LOG_BUCKET"
+aws s3api delete-bucket --bucket "$LOG_BUCKET" --region us-west-2
+```
 
 ## 2. CodeBuild スタックを削除する
 
